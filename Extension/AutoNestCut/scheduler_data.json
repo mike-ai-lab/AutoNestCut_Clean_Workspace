@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1763660972",
+    "name": "daily_rep[ort_",
+    "cron": "9",
+    "filters": {
+      "material": "Cherry Wood"
+    },
+    "format": "csv",
+    "email": "muhamad.shkeir@gmail.com",
+    "next_run": 1764741600,
+    "active": true
+  },
+  {
+    "id": "1763661006",
+    "name": "daily_rep[ort_",
+    "cron": "21",
+    "filters": {
+      "material": "Cherry Wood"
+    },
+    "format": "csv",
+    "email": "muhamad.shkeir@gmail.com",
+    "next_run": 1764698400,
+    "active": true
+  }
+]

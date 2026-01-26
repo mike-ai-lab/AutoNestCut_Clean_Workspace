@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AutoNestCut Professional Report</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #fff;
+            color: #333;
+            font-size: 12px;
+        }
+        .report-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 15px;
+        }
+        .report-header h1 {
+            font-size: 28px;
+            color: #007bff;
+            margin: 0;
+        }
+        .report-header p {
+            font-size: 14px;
+            color: #555;
+            margin: 5px 0;
+        }
+        .section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+        .section h2 {
+            font-size: 20px;
+            color: #333;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        .summary-box {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-left: 5px solid #007bff;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .summary-box label {
+            display: block;
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        .summary-box .value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+        }
+        .diagram-card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+        .diagram-card h3 {
+            font-size: 16px;
+            margin: 0 0 10px 0;
+        }
+        .diagram-canvas {
+            width: 100%;
+            height: auto;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .total-highlight {
+            font-weight: 700;
+            color: #007bff;
+        }
+        @media print {
+            body {
+                padding: 10px;
+            }
+            .section h2 {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-header">
+        <h1 id="report-title">AutoNestCut Report</h1>
+        <p>Project: <span id="project-name">{project_name}</span></p>
+        <p>Generated on: <span id="generation-date">{generation_date}</span></p>
+    </div>
+
+    <div class="section">
+        <h2>Executive Summary</h2>
+        <div class="summary-grid" id="summary-grid-content">
+            <!-- Summary boxes will be injected here -->
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Part Types Summary</h2>
+        <table id="part-types-summary-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Dimensions (W x H x T)</th>
+                    <th>Material</th>
+                    <th>Quantity</th>
+                    <th>Total Area</th>
+                </tr>
+            </thead>
+            <tbody id="part-types-summary-tbody">
+                <!-- Part types rows will be injected here -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Board Layout Summary</h2>
+        <table id="board-layout-summary-table">
+            <thead>
+                <tr>
+                    <th>Board #</th>
+                    <th>Material</th>
+                    <th>Size</th>
+                    <th>Parts Count</th>
+                    <th>Efficiency</th>
+                </tr>
+            </thead>
+            <tbody id="board-layout-summary-tbody">
+                <!-- Board layout rows will be injected here -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Cost Analysis</h2>
+        <table id="cost-analysis-table">
+            <thead>
+                <tr>
+                    <th>Material</th>
+                    <th>Sheets Used</th>
+                    <th>Price per Sheet</th>
+                    <th>Total Cost</th>
+                </tr>
+            </thead>
+            <tbody id="cost-analysis-tbody">
+                <!-- Cost analysis rows will be injected here -->
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" class="total-highlight" style="text-align: right;">TOTAL PROJECT COST:</td>
+                    <td id="total-project-cost" class="total-highlight"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Nesting Diagrams</h2>
+        <div id="diagrams-content">
+            <!-- Diagrams will be injected here -->
+        </div>
+    </div>
+
+</body>
+</html>

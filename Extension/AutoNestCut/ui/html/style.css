@@ -1,0 +1,1607 @@
+/* AutoNestCut Professional Styles - Enhanced Readability */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    font-size: 17px;
+    color: #1a1a1a;
+    font-weight: 400;
+    line-height: 1.5;
+    overflow: hidden;
+}
+
+/* Ensure consistent font across all elements */
+*, *::before, *::after {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+table, th, td, h1, h2, h3, h4, h5, h6, p, span, div, button, input, select, textarea, label {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+.header {
+    background: #ffffff;
+    border-bottom: 2px solid #e1e5e9;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 64px;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.language-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.language-selector select {
+    padding: 8px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 17px;
+    background: #ffffff;
+    color: #1a1a1a;
+    font-weight: 500;
+}
+
+.settings-btn {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-right: 16px;
+}
+
+.settings-btn:hover {
+    background: #f0f4f8;
+    border-color: #8c959f;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.settings-btn svg {
+    stroke: #1a1a1a;
+}
+
+.settings-section {
+    margin-bottom: 24px;
+}
+
+.settings-section h3 {
+    margin: 0 0 12px 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1a1a;
+    letter-spacing: 0.3px;
+}
+
+.settings-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.header-content h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a1a;
+    letter-spacing: -0.5px;
+}
+
+.developer-credit {
+    margin: 4px 0 0 0;
+    font-size: 17px;
+    color: #5a5a5a;
+    font-weight: 500;
+}
+
+.tabs {
+    display: flex;
+    gap: 8px;
+    background: #f0f4f8;
+    padding: 8px;
+    border-radius: 8px;
+}
+
+/* Tab buttons in tab container */
+.tabs .tab-button {
+    background: transparent;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 17px;
+    color: #5a5a5a;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-weight: 600;
+}
+
+.tabs .tab-button:hover {
+    background: #ffffff;
+    color: #1a1a1a;
+}
+
+.tabs .tab-button.active {
+    background: #ffffff;
+    color: #1a1a1a;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    font-weight: 700;
+}
+
+.tabs .tab-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.tab-content {
+    display: none;
+    flex: 1;
+    overflow: hidden;
+}
+
+.tab-content.active {
+    display: flex;
+    flex-direction: column;
+}
+
+.config-container {
+    max-width: none;
+    margin: 0;
+    padding: 28px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    background: #f8f9fa;
+}
+
+.report-header {
+    background: #ffffff;
+    border-bottom: 2px solid #e1e5e9;
+    padding: 16px 24px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* Unified modern button styling for all buttons */
+.icon-btn, .material-icon-btn, button, .tab-button, .material-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    min-height: 38px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #d0d7de;
+    background: #ffffff;
+    color: #1a1a1a;
+    box-sizing: border-box;
+    white-space: nowrap;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-size: 17px;
+    font-weight: 600;
+    gap: 8px;
+    text-decoration: none;
+    outline: none;
+}
+
+/* Icon-only buttons get square dimensions */
+.icon-btn.icon-only, .material-icon-btn.icon-only {
+    min-width: 38px;
+    padding: 10px;
+}
+
+/* Default icon buttons without text */
+.table-controls .icon-btn,
+.header-controls .icon-btn,
+.material-actions .icon-btn {
+    min-width: 38px;
+    padding: 10px;
+}
+
+.icon-btn:hover, .material-icon-btn:hover, button:hover, .tab-button:hover, .material-action-btn:hover {
+    background: #f0f4f8;
+    border-color: #8c959f;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+}
+
+.icon-btn:active, .material-icon-btn:active, button:active, .tab-button:active, .material-action-btn:active {
+    transform: translateY(0);
+    transition: all 0.1s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.icon-btn svg, .material-icon-btn svg {
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+    stroke: currentColor;
+    stroke-width: 2;
+    width: 18px;
+    height: 18px;
+}
+
+.icon-btn:hover svg, .material-icon-btn:hover svg {
+    transform: scale(1.1);
+}
+
+/* Header action buttons maintain light theme */
+.header-controls .action-buttons .tab-button.icon-btn.report-action-btn {
+    background: #ffffff;
+    color: #1a1a1a;
+    border: 1px solid #d0d7de;
+    padding: 10px;
+    min-width: 38px;
+    min-height: 38px;
+    border-radius: 6px;
+    box-shadow: none;
+}
+
+.header-controls .action-buttons .tab-button.icon-btn.report-action-btn:hover {
+    background: #f0f4f8;
+    border-color: #8c959f;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+}
+
+/* Configuration tab buttons */
+.header-controls .action-buttons .tab-button:not(.icon-btn) {
+    background: #ffffff;
+    color: #1a1a1a;
+    border: 1px solid #d0d7de;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.header-controls .action-buttons .tab-button:not(.icon-btn):hover {
+    background: #f0f4f8;
+    border-color: #8c959f;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+}
+
+/* Styling for the 'Show Used Only' button feedback */
+#foldToggle.active {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+#foldToggle.active:hover {
+    background: #218838;
+    border-color: #218838;
+}
+
+/* Visually hidden for screen readers */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 28px 0 16px 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    letter-spacing: -0.3px;
+}
+
+/* Ensure all table titles use Inter font */
+.parts-card-title, .table-wrapper h2, .report-container h2, h3 {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+.section {
+    margin-bottom: 28px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+label {
+    display: block;
+    font-size: 17px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+    letter-spacing: 0.2px;
+}
+
+input[type="number"], input[type="text"], input[type="date"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 17px;
+    box-sizing: border-box;
+    background: #ffffff;
+    color: #1a1a1a;
+}
+
+input:focus {
+    outline: none;
+    border-color: #1a1a1a;
+    box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.1);
+}
+
+.materials-controls-group {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.materials-action-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Reduced column count in materials header */
+.materials-header {
+    display: grid;
+    grid-template-columns: 1fr 100px 100px 100px 100px auto auto;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #f0f4f8;
+    border-radius: 6px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 12px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    letter-spacing: 0.3px;
+}
+
+.material-item {
+    display: grid;
+    grid-template-columns: 1fr 100px 100px 100px 100px auto auto;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+    border: 1px solid transparent;
+    font-size: 17px;
+}
+
+#materials_list {
+    min-height: 100px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.material-used {
+    background: #f0f4f8;
+    border-color: #d0d7de;
+}
+
+.material-unused {
+    background: #ffffff;
+    border-color: #d0d7de;
+}
+
+.material-item input {
+    padding: 8px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 17px;
+}
+
+.material-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* Material action buttons now use unified styling */
+.material-action-btn {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 8px;
+    font-size: 17px;
+}
+
+.buttons-top {
+    text-align: center;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: #f0f4f8;
+    border-radius: 8px;
+    border: 1px solid #d0d7de;
+}
+
+button svg {
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+}
+
+button:hover svg {
+    transform: scale(1.05);
+}
+
+/* Primary button variant */
+.icon-btn.primary, .material-icon-btn.primary, button.primary, .tab-button.primary, .material-action-btn.primary {
+    background: #007cba;
+    color: white;
+    border-color: #007cba;
+}
+
+.icon-btn.primary:hover, .material-icon-btn.primary:hover, button.primary:hover, .tab-button.primary:hover, .material-action-btn.primary:hover {
+    background: #005a87;
+    border-color: #005a87;
+}
+
+/* Secondary button variant */
+.icon-btn.secondary, .material-icon-btn.secondary, button.secondary, .tab-button.secondary, .material-action-btn.secondary {
+    background: #656d76;
+    color: white;
+    border-color: #656d76;
+}
+
+.icon-btn.secondary:hover, .material-icon-btn.secondary:hover, button.secondary:hover, .tab-button.secondary:hover, .material-action-btn.secondary:hover {
+    background: #4c5561;
+    border-color: #4c5561;
+}
+
+/* Success button variant */
+.icon-btn.success, .material-icon-btn.success, button.success, .tab-button.success, .material-action-btn.success {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.icon-btn.success:hover, .material-icon-btn.success:hover, button.success:hover, .tab-button.success:hover, .material-action-btn.success:hover {
+    background: #218838;
+    border-color: #218838;
+}
+
+/* Specific styling for the header action button group */
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+    margin-bottom: 20px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+    display: block;
+    background: #ffffff;
+}
+
+/* Ensure any table within a known container stretches to full width */
+.table-wrapper > table,
+.table-with-controls > table,
+.report-container table {
+    width: 100% !important;
+}
+
+/* Make inner table elements respect container width, remove stray gap */
+.report-container .table-with-controls,
+.report-container .table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* New container for tables with markdown buttons */
+.table-with-controls {
+    margin-bottom: 20px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    background: #ffffff;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+    /* Default global table variables to ensure consistency across sections */
+    --table-cell-padding: var(--table-cell-padding, 12px 14px);
+    --table-border-color: var(--table-border-color, #d0d7de);
+    --table-border-width: var(--table-border-width, 1px);
+    --table-header-bg: var(--table-header-bg, #f0f4f8);
+    --table-header-color: var(--table-header-color, #1a1a1a);
+    --table-row-hover: var(--table-row-hover, #f8f9fa);
+    --table-text-align: var(--table-text-align, left);
+    --table-vertical-align: var(--table-vertical-align, middle);
+    --table-text-wrap: var(--table-text-wrap, normal);
+    --table-font-size: var(--table-font-size, 14px);
+}
+
+.table-controls {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #d0d7de;
+    z-index: 5;
+}
+
+/* Table customization panel */
+.table-customization-panel {
+    position: fixed;
+    top: 0;
+    right: -360px;
+    width: 340px;
+    height: 100vh;
+    background: #ffffff;
+    border-left: 1px solid #d0d7de;
+    box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+    z-index: 1000;
+    transition: right 0.3s ease;
+    overflow-y: auto;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.table-customization-panel.active {
+    right: 0;
+}
+
+.table-customization-panel h3 {
+    margin: 0 0 20px 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #d0d7de;
+}
+
+.table-setting-group {
+    margin-bottom: 24px;
+}
+
+.table-setting-group h4 {
+    margin: 0 0 12px 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.table-setting-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.table-setting-row label {
+    flex: 1;
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.table-setting-row input,
+.table-setting-row select {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 17px;
+}
+
+.color-input {
+    width: 40px !important;
+    height: 32px;
+    padding: 2px !important;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #d0d7de;
+}
+
+.panel-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #d0d7de;
+    justify-content: space-evenly;
+    align-items: center;
+}
+
+.panel-buttons .icon-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 12px 14px;
+    border-radius: 6px;
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    color: #1a1a1a;
+    transition: all 0.2s ease;
+    font-size: 17px;
+}
+
+.panel-buttons .icon-btn.primary {
+    background: #007cba;
+    color: white;
+    border-color: #007cba;
+}
+
+.panel-buttons .icon-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.panel-buttons .icon-btn.primary:hover {
+    background: #005a87;
+    border-color: #005a87;
+}
+
+.panel-buttons .icon-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.panel-buttons .icon-btn span {
+    font-weight: 600;
+}
+
+/* Material icon buttons use unified styling */
+.material-icon-btn {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 10px;
+    border-radius: 6px;
+}
+
+/* Settings modal buttons use unified styling */
+.settings-section button.icon-btn {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 10px;
+    border-radius: 6px;
+}
+
+/* Column resize handles */
+.table-with-controls table th {
+    position: relative;
+    border-right: 1px solid #d0d7de;
+}
+
+.column-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    background: rgba(0, 124, 186, 0.2);
+    border-right: 1px solid rgba(0, 124, 186, 0.4);
+    z-index: 10;
+    transition: all 0.2s ease;
+}
+
+.column-resize-handle:hover {
+    background: rgba(0, 124, 186, 0.6);
+    border-right: 2px solid #007cba;
+    width: 8px;
+    right: -4px;
+}
+
+.column-resize-handle.resizing {
+    background: #007cba;
+    border-right: 2px solid #005a87;
+    width: 8px;
+    right: -4px;
+}
+
+/* Table customization visual enhancements */
+.table-with-controls .column-resize-handle {
+    opacity: 0.6;
+}
+
+.table-with-controls:hover .column-resize-handle {
+    opacity: 0.8;
+}
+
+.table-with-controls .column-resize-handle:hover {
+    opacity: 1;
+    transform: scaleX(1.2);
+}
+
+/* Add visual separator lines between columns */
+.table-with-controls table th:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 10%;
+    right: 0;
+    width: 1px;
+    height: 80%;
+    background: rgba(0, 124, 186, 0.15);
+    pointer-events: none;
+}
+
+/* Smooth transitions for table changes */
+.table-with-controls table {
+    transition: all 0.2s ease;
+}
+
+.table-with-controls th,
+.table-with-controls td {
+    transition: all 0.2s ease;
+}
+
+/* Panel overlay */
+.table-customization-panel.active + .modal-overlay {
+    display: block;
+}
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 999;
+}
+
+/* Global controls styling */
+.report-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.report-title h2 {
+    margin: 0;
+}
+
+/* Improved color input styling */
+.color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.color-input::-webkit-color-swatch {
+    border: none;
+    border-radius: 2px;
+}
+
+/* Table setting groups spacing */
+.table-setting-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-customization-panel {
+        width: 100%;
+        right: -100%;
+    }
+    
+    .global-table-controls {
+        padding: 12px;
+    }
+    
+    .table-setting-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .table-setting-row label {
+        margin-bottom: 6px;
+    }
+}
+
+.table-controls .icon-btn {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 8px;
+    font-size: 17px;
+}
+
+
+table {
+    width: 100% !important;
+    table-layout: auto;
+    border-collapse: collapse;
+    font-size: var(--table-font-size, 14px);
+    background: #ffffff;
+    margin: 0;
+    min-width: fit-content;
+}
+
+th, td {
+    padding: var(--table-cell-padding, 12px 14px);
+    text-align: var(--table-text-align, left);
+    border-bottom: var(--table-border-width, 1px) solid var(--table-border-color, #d0d7de);
+    white-space: var(--table-text-wrap, normal);
+    word-wrap: break-word;
+    vertical-align: var(--table-vertical-align, middle);
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: relative;
+    color: #1a1a1a;
+}
+
+th {
+    background: var(--table-header-bg, #f0f4f8) !important;
+    color: var(--table-header-color, #1a1a1a) !important;
+    font-weight: 700;
+    text-align: var(--table-text-align, left) !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-size: 17px;
+    letter-spacing: 0.2px;
+}
+
+tbody tr:hover {
+    background: var(--table-row-hover, #f8f9fa) !important;
+}
+
+/* Ensure numeric column headers are right-aligned for better readability */
+th:nth-child(n+2):not(#uniquePartTypesTable th:nth-child(5)):not(#uniquePartTypesTable th:nth-child(1)),
+#sheetInventoryTable th:nth-child(2), /* Dimensions should be left */
+#materialsUsedTable th:nth-child(2) /* Price should be right */
+{
+    text-align: right !important;
+}
+
+/* Ensure corresponding data cells match header alignment */
+td:nth-child(n+2):not(#uniquePartTypesTable td:nth-child(5)):not(#uniquePartTypesTable td:nth-child(1)),
+#sheetInventoryTable td:nth-child(2),
+#materialsUsedTable td:nth-child(2)
+{
+    text-align: right !important;
+}
+
+/* Specifically align 'Total Area' in uniquePartTypesTable to the right */
+#uniquePartTypesTable th:nth-child(9) {
+    text-align: right !important;
+}
+
+#uniquePartTypesTable td:nth-child(9) {
+    text-align: right !important;
+}
+
+/* Ensure numeric columns in all tables are consistently right-aligned */
+#uniquePartTypesTable th:nth-child(2), #uniquePartTypesTable td:nth-child(2), /* Width */
+#uniquePartTypesTable th:nth-child(3), #uniquePartTypesTable td:nth-child(3), /* Height */
+#uniquePartTypesTable th:nth-child(4), #uniquePartTypesTable td:nth-child(4), /* Thickness */
+#uniquePartTypesTable th:nth-child(8), #uniquePartTypesTable td:nth-child(8)  /* Quantity */
+{
+    text-align: right !important;
+}
+
+/* Ensure text columns remain left-aligned */
+#uniquePartTypesTable th:nth-child(1), #uniquePartTypesTable td:nth-child(1), /* Name */
+#uniquePartTypesTable th:nth-child(5), #uniquePartTypesTable td:nth-child(5), /* Material */
+#uniquePartTypesTable th:nth-child(6), #uniquePartTypesTable td:nth-child(6), /* Grain */
+#uniquePartTypesTable th:nth-child(7), #uniquePartTypesTable td:nth-child(7)  /* Edge Banding */
+{
+    text-align: left !important;
+}
+
+/* Explicitly left align headers that are textual and might be affected by nth-child rules */
+#uniquePartTypesTable th:nth-child(1), #uniquePartTypesTable td:nth-child(1), /* Name */
+#uniquePartTypesTable th:nth-child(5), #uniquePartTypesTable td:nth-child(5), /* Material */
+#uniquePartTypesTable th:nth-child(6), #uniquePartTypesTable td:nth-child(6), /* Grain */
+#uniquePartTypesTable th:nth-child(7), #uniquePartTypesTable td:nth-child(7), /* Edge Banding */
+#partsTable th:nth-child(1), #partsTable td:nth-child(1), /* ID */
+#partsTable th:nth-child(2), #partsTable td:nth-child(2), /* Name */
+#partsTable th:nth-child(3), #partsTable td:nth-child(3), /* Dimensions */
+#partsTable th:nth-child(4), #partsTable td:nth-child(4), /* Material */
+#partsTable th:nth-child(5), #partsTable td:nth-child(5), /* Grain */
+#partsTable th:nth-child(6), #partsTable td:nth-child(6), /* Edge Banding */
+#materialsUsedTable th:nth-child(1), #materialsUsedTable td:nth-child(1), /* Material */
+#sheetInventoryTable th:nth-child(1), #sheetInventoryTable td:nth-child(1), /* Material */
+#sheetInventoryTable th:nth-child(2), #sheetInventoryTable td:nth-child(2) /* Dimensions (now descriptive string) */
+{
+    text-align: left !important;
+}
+
+/* Ensure all numeric/currency columns are right-aligned */
+#sheetInventoryTable th:nth-child(3), #sheetInventoryTable td:nth-child(3), /* Count */
+#sheetInventoryTable th:nth-child(4), #sheetInventoryTable td:nth-child(4), /* Total Area */
+#sheetInventoryTable th:nth-child(5), #sheetInventoryTable td:nth-child(5), /* Price/Sheet */
+#sheetInventoryTable th:nth-child(6), #sheetInventoryTable td:nth-child(6), /* Total Cost */
+#partsTable th:nth-child(7), #partsTable td:nth-child(7), /* Board# */
+#partsTable th:nth-child(8), #partsTable td:nth-child(8), /* Cost */
+#summaryTable th:nth-child(2), #summaryTable td:nth-child(2) /* Values */
+{
+    text-align: right !important;
+}
+
+/* Explicit 2-column width proportions for simple summary tables */
+#materialsUsedTable th:nth-child(1),
+#materialsUsedTable td:nth-child(1) {
+    width: 70%;
+}
+#materialsUsedTable th:nth-child(2),
+#materialsUsedTable td:nth-child(2) {
+    width: 30%;
+}
+
+#summaryTable th:nth-child(1),
+#summaryTable td:nth-child(1) {
+    width: 65%;
+}
+#summaryTable th:nth-child(2),
+#summaryTable td:nth-child(2) {
+    width: 35%;
+}
+
+
+/* Specific column widths for Unique Part Types table */
+#uniquePartTypesTable th:nth-child(1), #uniquePartTypesTable td:nth-child(1) { /* Name */
+    width: 20%;
+}
+#uniquePartTypesTable th:nth-child(2), #uniquePartTypesTable td:nth-child(2) { /* W */
+    width: 9%;
+}
+#uniquePartTypesTable th:nth-child(3), #uniquePartTypesTable td:nth-child(3) { /* H */
+    width: 9%;
+}
+#uniquePartTypesTable th:nth-child(4), #uniquePartTypesTable td:nth-child(4) { /* Thick */
+    width: 9%;
+}
+#uniquePartTypesTable th:nth-child(5), #uniquePartTypesTable td:nth-child(5) { /* Material */
+    width: 15%;
+}
+#uniquePartTypesTable th:nth-child(6), #uniquePartTypesTable td:nth-child(6) { /* Grain */
+    width: 8%;
+}
+#uniquePartTypesTable th:nth-child(7), #uniquePartTypesTable td:nth-child(7) { /* Edge Banding */
+    width: 10%;
+}
+#uniquePartTypesTable th:nth-child(8), #uniquePartTypesTable td:nth-child(8) { /* Qty */
+    width: 5%;
+}
+#uniquePartTypesTable th:nth-child(9), #uniquePartTypesTable td:nth-child(9) { /* Total Area */
+    width: 15%;
+}
+
+/* Responsive table behavior - this section remains valid for smaller screens */
+@media (max-width: 768px) {
+    .table-wrapper, .table-with-controls {
+        font-size: 17px;
+    }
+    
+    th, td {
+        padding: 10px 12px;
+    }
+    
+    /* Responsive adjustment for uniquePartTypesTable */
+    #uniquePartTypesTable th:nth-child(1), #uniquePartTypesTable td:nth-child(1) { width: 18%; }
+    #uniquePartTypesTable th:nth-child(2), #uniquePartTypesTable td:nth-child(2) { width: 8%; }
+    #uniquePartTypesTable th:nth-child(3), #uniquePartTypesTable td:nth-child(3) { width: 8%; }
+    #uniquePartTypesTable th:nth-child(4), #uniquePartTypesTable td:nth-child(4) { width: 8%; }
+    #uniquePartTypesTable th:nth-child(5), #uniquePartTypesTable td:nth-child(5) { width: 12%; }
+    #uniquePartTypesTable th:nth-child(6), #uniquePartTypesTable td:nth-child(6) { width: 7%; }
+    #uniquePartTypesTable th:nth-child(7), #uniquePartTypesTable td:nth-child(7) { width: 9%; }
+    #uniquePartTypesTable th:nth-child(8), #uniquePartTypesTable td:nth-child(8) { width: 5%; }
+    #uniquePartTypesTable th:nth-child(9), #uniquePartTypesTable td:nth-child(9) { width: 15%; }
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.diagrams-container {
+    flex: 1;
+    min-width: 300px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-right: 1px solid #d0d7de;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 20px;
+}
+
+.report-container {
+    flex: 1;
+    min-width: 400px;
+    padding: 28px;
+    background: #f8f9fa;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-width: 0;
+    width: 100%;
+}
+
+#resizer {
+    width: 8px;
+    background: #d0d7de;
+    cursor: col-resize;
+    user-select: none;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    border-left: 1px solid #d0d7de;
+    border-right: 1px solid #d0d7de;
+}
+
+#resizer:hover {
+    background: #8c959f;
+}
+
+#resizer:active {
+    background: #656d76;
+}
+
+.tree-controls {
+    margin: 16px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.tree-search {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 14px;
+    background: #f0f4f8;
+    border-radius: 6px;
+    border: 1px solid #d0d7de;
+    flex-grow: 1;
+}
+
+.tree-search input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 17px;
+}
+
+.tree-search button {
+    padding: 8px 14px;
+    font-size: 17px;
+    margin: 0;
+}
+
+.parts-card {
+    margin-bottom: 20px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    background: #ffffff;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* Ensure parts-preview tables fill the card: no trailing gap after last column */
+.parts-card table {
+    width: 100% !important;
+    border-collapse: collapse;
+}
+
+.parts-card-title {
+    background: #f0f4f8;
+    padding: 12px 16px;
+    font-weight: 700;
+    font-size: 17px;
+    border-bottom: 1px solid #d0d7de;
+    color: #1a1a1a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    letter-spacing: 0.2px;
+}
+
+.parts-card-title .icon-btn {
+    background: transparent;
+    border: none;
+    padding: 6px;
+    min-width: 32px;
+    height: 32px;
+    color: #1a1a1a;
+}
+
+.parts-card-title .icon-btn:hover {
+    background: #e0e0e0;
+}
+
+.parts-preview-table th, .parts-preview-table td {
+    padding: 10px 12px;
+    font-size: 17px;
+}
+
+.used-indicator {
+    color: #1a1a1a;
+    font-weight: 800;
+    font-size: 17px;
+}
+
+.unused-indicator {
+    color: #5a5a5a;
+    font-size: 17px;
+}
+
+.sort-select {
+    padding: 8px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 17px;
+    background: #ffffff;
+    max-width: 140px;
+}
+
+.materials-sort-controls, .materials-filter-buttons, .currency-selector {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.currency-selector {
+    margin-bottom: 16px;
+}
+
+.currency-selector label {
+    margin-bottom: 0;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.tree-structure {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 20px;
+    margin: 16px 0;
+    max-height: 500px;
+    overflow-y: auto;
+    font-size: 17px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background: #ffffff;
+    margin: 5% auto;
+    padding: 24px;
+    border: 1px solid #d0d7de;
+    width: 520px;
+    max-width: 90%;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.close {
+    color: #5a5a5a;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #1a1a1a;
+}
+
+/* Facade Calculator Specific Styles */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: #f0f4f8;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #d0d7de;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.stat-number {
+    font-size: 28px;
+    font-weight: 900;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+}
+
+.stat-label {
+    font-size: 17px;
+    color: #5a5a5a;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.preset-selection {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.material-option {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.material-option:hover {
+    background: #f0f4f8;
+    border-color: #8c959f;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+}
+
+.material-option.selected {
+    background: #1a1a1a;
+    color: #ffffff;
+    border-color: #1a1a1a;
+}
+
+.material-name {
+    font-size: 15px;
+    font-weight: 900;
+    margin-bottom: 6px;
+    letter-spacing: -0.3px;
+}
+
+.material-details {
+    font-size: 17px;
+    color: #5a5a5a;
+    margin-bottom: 4px;
+}
+
+.material-option.selected .material-details,
+.material-option.selected .material-pattern {
+    color: #ffffff;
+    opacity: 0.85;
+}
+
+.material-pattern {
+    font-size: 17px;
+    color: #5a5a5a;
+    font-style: italic;
+}
+
+.results-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin-top: 20px;
+}
+
+.result-group {
+    background: #f0f4f8;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #d0d7de;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.result-group h3 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 900;
+    color: #1a1a1a;
+    letter-spacing: -0.3px;
+}
+
+.result-group p {
+    margin: 10px 0;
+    font-size: 17px;
+    color: #1a1a1a;
+    line-height: 1.6;
+}
+
+.result-group strong {
+    font-weight: 800;
+}
+
+select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 17px;
+    background: #ffffff;
+    color: #1a1a1a;
+    box-sizing: border-box;
+}
+
+select:focus {
+    outline: none;
+    border-color: #1a1a1a;
+    box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.1);
+}
+
+/* Cut sequence styling */
+.cut-sequence-board {
+    margin-bottom: 28px;
+    padding: 20px;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    background: #f0f4f8;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.cut-sequence-board h4 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    letter-spacing: -0.2px;
+}
+
+.cut-sequence-table {
+    width: 100% !important;
+    margin-top: 16px;
+    table-layout: auto;
+}
+
+/* Ensure cut sequence container does not isolate tables from global variables */
+.cut-sequence-board,
+.cut-sequence-board .table-with-controls,
+.cut-sequence-board .table-wrapper {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Default alignment improvements for cut sequence columns */
+.cut-sequence-table th,
+.cut-sequence-table td {
+    text-align: left;
+}
+.cut-sequence-table th:nth-child(1),
+.cut-sequence-table td:nth-child(1) {
+    width: 10%;
+    text-align: right;
+}
+.cut-sequence-table th:nth-child(2),
+.cut-sequence-table td:nth-child(2) {
+    width: 50%;
+    text-align: left;
+}
+.cut-sequence-table th:nth-child(3),
+.cut-sequence-table td:nth-child(3) {
+    width: 40%;
+    text-align: right;
+}
+.cut-sequence-table th:last-child,
+.cut-sequence-table td:last-child {
+    text-align: right;
+}
+
+.cut-sequence-table th {
+    background: #ffffff;
+    font-weight: 700;
+}
+
+.cut-sequence-table td:first-child {
+    font-weight: 700;
+    color: #007cba;
+}
+
+.cut-sequence-table td:nth-child(2) {
+    font-weight: 600;
+}
+
+/* Materials table styling */
+.materials-table-wrapper {
+    width: 100%;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.materials-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 17px;
+}
+
+.materials-table thead {
+    background: #f0f4f8;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.materials-table th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 700;
+    color: #1a1a1a;
+    border-bottom: 1px solid #d0d7de;
+    font-size: 17px;
+    letter-spacing: 0.2px;
+}
+
+.materials-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #d0d7de;
+    color: #1a1a1a;
+}
+
+.materials-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.materials-table input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 17px;
+    background: #ffffff;
+    color: #1a1a1a;
+    box-sizing: border-box;
+}
+
+.materials-table input:focus {
+    outline: none;
+    border-color: #007cba;
+    box-shadow: 0 0 0 3px rgba(0, 124, 186, 0.1);
+}
+
+.materials-table .material-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-start;
+}
+
+.materials-table .material-action-btn {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 6px;
+    font-size: 12px;
+}
+
+.materials-table .material-action-btn.delete {
+    background: #fee;
+    color: #d73a49;
+    border-color: #d73a49;
+}
+
+.materials-table .material-action-btn.delete:hover {
+    background: #fdd;
+    border-color: #cb2431;
+}
+
+/* Column width constraints - prevent infinite resizing */
+.materials-table th:nth-child(2),
+.materials-table td:nth-child(2),
+.materials-table th:nth-child(3),
+.materials-table td:nth-child(3),
+.materials-table th:nth-child(4),
+.materials-table td:nth-child(4),
+.materials-table th:nth-child(5),
+.materials-table td:nth-child(5) {
+    min-width: 100px;
+    max-width: 150px;
+    word-break: break-word;
+}
+
+.materials-table th:nth-child(1),
+.materials-table td:nth-child(1) {
+    min-width: 150px;
+}
+
+.materials-table th:nth-child(6),
+.materials-table td:nth-child(6) {
+    min-width: 120px;
+}
+
+/* Parts Preview Table - Specific column widths */
+.parts-table-scroll table {
+    table-layout: fixed !important;
+    width: 100% !important;
+}
+
+.parts-table-scroll th:nth-child(1),
+.parts-table-scroll td:nth-child(1) { width: 20%; }
+.parts-table-scroll th:nth-child(2),
+.parts-table-scroll td:nth-child(2) { width: 12%; }
+.parts-table-scroll th:nth-child(3),
+.parts-table-scroll td:nth-child(3) { width: 12%; }
+.parts-table-scroll th:nth-child(4),
+.parts-table-scroll td:nth-child(4) { width: 12%; }
+.parts-table-scroll th:nth-child(5),
+.parts-table-scroll td:nth-child(5) { width: 22%; }
+.parts-table-scroll th:nth-child(6),
+.parts-table-scroll td:nth-child(6) { width: 10%; }
+.parts-table-scroll th:nth-child(7),
+.parts-table-scroll td:nth-child(7) { width: 12%; }
+
+
+/* Materials Table Scrolling Container */
+.materials-table-wrapper {
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    background: #ffffff;
+}
+
+.materials-table-wrapper::-webkit-scrollbar {
+    width: 8px;
+}
+
+.materials-table-wrapper::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.materials-table-wrapper::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.materials-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Firefox scrollbar styling */
+.materials-table-wrapper {
+    scrollbar-width: thin;
+    scrollbar-color: #888 #f1f1f1;
+}

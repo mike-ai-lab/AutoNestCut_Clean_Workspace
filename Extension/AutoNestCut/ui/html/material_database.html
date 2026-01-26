@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Database Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-orange: #E46D3A;
+            --brand-blue: #8FD5FF;
+            --brand-green: #ADEDC5;
+            --bg-off-white: #FAFAFA;
+            --bg-light-gray: #F2F2F2;
+            --text-main: #2D3748;
+            --text-muted: #718096;
+            --border: #E2E8F0;
+            --slate-gray: #64748B;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg-light-gray);
+            color: var(--text-main);
+            overflow: hidden;
+        }
+        
+        .container { height: 100vh; display: flex; flex-direction: column; }
+        
+        .materials-section { background: var(--bg-off-white); flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        
+        .section-header { 
+            background: #1A202C;
+            color: white; 
+            padding: 20px 24px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
+        
+        .header-left { display: flex; flex-direction: column; gap: 8px; }
+        
+        .section-header h2 { font-size: 18px; font-weight: 700; margin: 0; }
+        
+        .header-stats { 
+            font-size: 11px; 
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0.7; 
+            display: flex; 
+            gap: 16px; 
+        }
+        
+        .stat-item { display: flex; align-items: center; gap: 4px; }
+        
+        .header-controls { display: flex; gap: 12px; }
+        
+        .icon-btn { 
+            background: rgba(255,255,255,0.1); 
+            border: 1px solid rgba(255,255,255,0.2); 
+            color: white; 
+            width: 36px; 
+            height: 36px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: all 0.2s; 
+        }
+        
+        .icon-btn:hover { background: rgba(255,255,255,0.2); }
+        
+        .icon-btn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; }
+        
+        .toolbar { 
+            background: var(--bg-off-white); 
+            border-bottom: 1px solid var(--border); 
+            padding: 16px 24px; 
+            display: flex; 
+            gap: 12px; 
+            align-items: center; 
+            flex-wrap: wrap;
+        }
+        
+        .toolbar-btn { 
+            background: white; 
+            border: 1px solid var(--border); 
+            color: var(--text-main); 
+            padding: 8px 16px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 13px; 
+            font-weight: 600; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            transition: all 0.2s;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        
+        .toolbar-btn:hover { background: var(--bg-light-gray); border-color: var(--text-muted); }
+        
+        .toolbar-btn.primary { 
+            background: var(--brand-orange); 
+            color: white; 
+            border-color: var(--brand-orange); 
+        }
+        
+        .toolbar-btn.primary:hover { filter: brightness(110%); }
+        
+        .toolbar-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+        
+        .search-box { 
+            position: relative; 
+            flex: 1; 
+            max-width: 300px; 
+        }
+        
+        .search-box .search-icon { 
+            position: absolute; 
+            left: 12px; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            width: 16px; 
+            height: 16px; 
+            stroke: var(--text-muted); 
+            stroke-width: 2; 
+            fill: none; 
+            pointer-events: none; 
+            z-index: 1; 
+        }
+        
+        .search-box input { 
+            width: 100%; 
+            padding: 8px 12px 8px 40px; 
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            font-size: 13px; 
+            background: white;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        
+        .search-box input:focus { 
+            outline: none; 
+            border-color: var(--brand-blue); 
+            box-shadow: 0 0 0 3px rgba(143, 213, 255, 0.1); 
+        }
+        
+        .sort-select { 
+            padding: 8px 12px; 
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            font-size: 13px; 
+            background: white; 
+            cursor: pointer;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-weight: 600;
+        }
+        
+        .table-wrapper { overflow-y: auto; overflow-x: auto; flex: 1; }
+        
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+        
+        thead { background: var(--bg-light-gray); position: sticky; top: 0; z-index: 200; }
+        
+        th { 
+            padding: 14px 16px; 
+            text-align: left; 
+            font-weight: 700; 
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--slate-gray);
+            border-bottom: 1px solid var(--border); 
+            white-space: nowrap; 
+            background: var(--bg-light-gray); /* Ensure sticky header has bg */
+            position: relative;
+            z-index: 200;
+        }
+        
+        th:nth-child(1) { text-align: center; width: 48px; min-width: 48px; } /* Checkbox */
+        th:nth-child(2) { width: 40%; min-width: 300px; } /* Material Name - Wider */
+        th:nth-child(3) { width: 10%; min-width: 90px; } /* Width */
+        th:nth-child(4) { width: 10%; min-width: 90px; } /* Height */
+        th:nth-child(5) { width: 10%; min-width: 90px; } /* Thickness */
+        th:nth-child(6) { width: 10%; min-width: 80px; } /* Price */
+        th:nth-child(7) { width: 8%; min-width: 60px; } /* Currency */
+        th:nth-child(8) { text-align: center; width: 80px; min-width: 80px; } /* Actions */
+        
+        td { 
+            padding: 0;
+            border-bottom: 1px solid var(--border); 
+            color: var(--text-main); 
+            text-align: left;
+            vertical-align: top;
+            background: white;
+            height: 1px; 
+        }
+        
+        tbody tr { transition: background-color 0.15s; }
+        tbody tr:hover td { background: rgba(143, 213, 255, 0.03); }
+        tbody tr.flagged td { background: rgba(173, 237, 197, 0.08); }
+        tbody tr.flagged:hover td { background: rgba(173, 237, 197, 0.15); }
+        
+        .cell-content {
+            display: flex;
+            flex-direction: column;
+            min-height: 56px; 
+            padding: 10px 16px;
+            width: 100%;
+            height: 100%;
+            justify-content: center; 
+            position: relative;
+        }
+
+        .checkbox-cell { text-align: center; vertical-align: middle; }
+        .checkbox-cell .cell-content { align-items: center; }
+        .checkbox-cell input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--brand-orange); }
+        
+        .material-name-cell .cell-content { justify-content: flex-start; gap: 4px; }
+
+        .data-input { 
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: rgb(45, 55, 72);
+            background: transparent;
+            border: 2px solid transparent; 
+            border-radius: 4px;
+            cursor: text;
+            width: 100%;
+            resize: none; 
+            overflow: hidden; 
+            line-height: 1.5;
+            padding: 4px;
+            margin: -6px; 
+            margin-bottom: 0;
+            display: block;
+            white-space: pre-wrap;      
+            word-break: break-word;     
+            overflow-wrap: break-word;  
+        }
+        
+        .data-input:focus { outline: none; border-color: var(--brand-blue); background: white; z-index: 2; position: relative; }
+        .material-name-cell .data-input { color: var(--brand-orange); font-weight: 700; }
+        textarea.data-input { height: auto; min-height: 24px; }
+
+        .badges-container { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+        .badge { display: inline-flex; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; align-items: center; position: relative; cursor: help; }
+        .badge.auto { background: rgba(143, 213, 255, 0.3); color: #2B6CB0; }
+        .badge.flagged { background: #FED7D7; color: #C53030; }
+        .badge.default { background: #E2E8F0; color: #4A5568; }
+
+        /* Smart Tooltip Styles - Horizontal rectangular with smart positioning */
+        .badge-tooltip {
+            position: fixed;
+            background: #1A202C;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            white-space: normal;
+            min-width: 320px;
+            max-width: 420px;
+            z-index: 10000;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            text-transform: none;
+            letter-spacing: normal;
+            line-height: 1.5;
+            display: none;
+        }
+
+        .badge-tooltip.show {
+            opacity: 1;
+            visibility: visible;
+            display: block;
+        }
+
+        .tooltip-item {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: flex-start;
+        }
+
+        .tooltip-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .tooltip-icon {
+            width: 18px;
+            height: 18px;
+            min-width: 18px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+            margin-top: 2px;
+            color: var(--brand-orange);
+        }
+
+        .tooltip-text {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .tooltip-arrow {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #1A202C;
+            transform: rotate(45deg);
+            z-index: 9999;
+        }
+        
+        .empty-state { padding: 60px 24px; text-align: center; color: var(--text-muted); background: white;}
+        
+        .batch-actions { display: none; background: rgba(173, 237, 197, 0.15); border-bottom: 1px solid var(--border); padding: 12px 24px; align-items: center; gap: 12px; }
+        .batch-actions.active { display: flex; }
+        
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-btn { background: white; border: 1px solid var(--border); color: var(--text-main); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .dropdown-btn.export { background: var(--brand-green); color: white; border-color: var(--brand-green); }
+        .dropdown-btn.export:hover { filter: brightness(110%); }
+        
+        .dropdown-content { display: none; position: absolute; background: white; min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; z-index: 1000; top: 100%; left: 0; margin-top: 4px; border: 1px solid var(--border); }
+        .dropdown-content.show { display: block; }
+        .dropdown-item { padding: 10px 16px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
+        .dropdown-item:hover { background: var(--bg-light-gray); }
+        input[type="file"] { display: none; }
+        
+        .actions-cell .cell-content { align-items: center; justify-content: center; }
+        .action-btn { background: transparent; border: 1px solid var(--border); border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+        .action-btn:hover { background: #FFF5F5; border-color: #FEB2B2; color: #E53E3E; }
+
+        /* Custom Modal & Toast Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center; border: 1px solid var(--border); }
+        .modal h3 { margin-bottom: 12px; color: var(--text-main); font-size: 18px; }
+        .modal p { color: var(--text-muted); margin-bottom: 24px; font-size: 14px; line-height: 1.5; }
+        .modal-actions { display: flex; gap: 12px; justify-content: center; }
+        
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px); background: #1A202C; color: white; padding: 12px 24px; border-radius: 50px; font-size: 13px; font-weight: 600; opacity: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 3000; pointer-events: none; box-shadow: 0 5px 15px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px; }
+        .toast.active { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast svg { width: 16px; height: 16px; }
+
+        /* Favorite Star Styles */
+        .favorite-star {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 24px;
+            height: 24px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: all 0.2s;
+            z-index: 5;
+        }
+
+        .favorite-star svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--brand-orange);
+            stroke-width: 2;
+            fill: none;
+            transition: all 0.2s;
+        }
+
+        .favorite-star.active svg {
+            fill: var(--brand-orange);
+            stroke: var(--brand-orange);
+        }
+
+        .favorite-star:hover svg {
+            stroke-width: 2.5;
+            filter: brightness(120%);
+        }
+
+        .favorite-star.bounce {
+            animation: starBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes starBounce {
+            0% { transform: scale(1); }
+            25% { transform: scale(1.3); }
+            50% { transform: scale(0.9); }
+            75% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .material-name-cell {
+            position: relative;
+        }
+
+        .material-name-cell .cell-content {
+            position: relative;
+            padding-right: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="materials-section">
+            <div class="section-header">
+                <div class="header-left">
+                    <h2>Material Database Manager</h2>
+                    <div class="header-stats">
+                        <div class="stat-item"><span>Total: <strong id="totalCount">0</strong></span></div>
+                        <div class="stat-item"><span>Auto: <strong id="autoCount">0</strong></span></div>
+                        <div class="stat-item"><span>Flagged: <strong id="flaggedCount">0</strong></span></div>
+                        <div class="stat-item"><span id="lastUpdated">Loading...</span></div>
+                    </div>
+                </div>
+                <div class="header-controls">
+                    <button class="icon-btn" id="refreshBtn" title="Refresh">
+                        <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M3 21v-5h5"/></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="toolbar">
+                <button class="toolbar-btn primary" id="addMaterialBtn">
+                    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add Material
+                </button>
+                <button class="toolbar-btn" id="saveBtn">
+                    <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Changes
+                </button>
+                <div class="dropdown">
+                    <button class="dropdown-btn export" id="exportBtn">
+                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Export
+                    </button>
+                    <div class="dropdown-content" id="exportDropdown">
+                        <div class="dropdown-item" data-action="CSV">Export as CSV</div>
+                        <div class="dropdown-item" data-action="JSON">Export as JSON</div>
+                        <div class="dropdown-item" data-action="Clipboard">Copy to Clipboard</div>
+                    </div>
+                </div>
+                <button class="toolbar-btn" id="importBtn" style="background: rgba(173, 237, 197, 0.2); color: #0c5460; border-color: rgba(173, 237, 197, 0.5);">
+                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Import CSV
+                </button>
+                <button class="toolbar-btn" id="loadDefaultsBtn">Load Defaults</button>
+                <input type="file" id="importFileInput" accept=".csv" />
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" class="search-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input type="text" id="searchInput" placeholder="Search materials..." />
+                </div>
+                <select class="sort-select" id="filterSelect">
+                    <option value="all">Filter: All</option>
+                    <option value="favorites">Filter: Favorites</option>
+                    <option value="flagged">Filter: Flagged</option>
+                    <option value="auto">Filter: Auto</option>
+                </select>
+                <select class="sort-select" id="sortSelect">
+                    <option value="name-asc">Sort: A-Z</option>
+                    <option value="name-desc">Sort: Z-A</option>
+                    <option value="favorites-first">Sort: Favorites First</option>
+                </select>
+                <select class="sort-select" id="itemsPerPageSelect">
+                    <option value="20">20 per page</option>
+                    <option value="30" selected>30 per page</option>
+                    <option value="40">40 per page</option>
+                    <option value="50">50 per page</option>
+                </select>
+                <div style="flex: 1;"></div>
+                <div class="pagination-info" id="paginationInfo" style="display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 600; color: var(--text-main);">
+                    <span id="materialsRange">Materials 1-30 / 180</span>
+                    <span style="color: var(--text-muted);">|</span>
+                    <span id="pageInfo">Page 1 / 6</span>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="toolbar-btn" id="prevPageBtn" style="padding: 8px 12px;">
+                            <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M15 18l-6-6 6-6"/></svg>
+                        </button>
+                        <button class="toolbar-btn" id="nextPageBtn" style="padding: 8px 12px;">
+                            <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M9 18l6-6-6-6"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="batch-actions" id="batchActions" style="visibility: hidden; height: 0; padding: 0; overflow: hidden; transition: all 0.2s ease;">
+                <span class="batch-actions-text"><span id="selectedCount">0</span> selected</span>
+                <button class="toolbar-btn" id="batchDeleteBtn" style="background: #fee; border-color: #d73a49; color: #d73a49;">Delete Selected</button>
+                <button class="toolbar-btn" id="batchClearBtn">Clear Selection</button>
+            </div>
+            
+            <div class="table-wrapper">
+                <table id="materialsTable">
+                    <thead>
+                        <tr>
+                            <th class="checkbox-cell"><input type="checkbox" id="selectAllCheckbox"></th>
+                            <th>Material Name</th>
+                            <th>Width (mm)</th>
+                            <th>Height (mm)</th>
+                            <th>Thickness</th>
+                            <th>Price</th>
+                            <th>Cur</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="materialsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- UI Components -->
+    <div id="modalOverlay" class="modal-overlay">
+        <div class="modal">
+            <h3 id="modalTitle">Confirm Action</h3>
+            <p id="modalMessage">Are you sure?</p>
+            <div class="modal-actions">
+                <button class="toolbar-btn" id="modalCancelBtn">Cancel</button>
+                <button class="toolbar-btn primary" id="modalConfirmBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        <span id="toastMessage">Action Successful</span>
+    </div>
+
+    <script>
+        let materialsData = {};
+        let lastUpdateTime = null;
+        let hasUnsavedChanges = false;
+        let searchQuery = '';
+        let filterType = 'all';
+        let selectedMaterials = new Set();
+        let modalCallback = null;
+        
+        // Pagination state
+        let currentPage = 1;
+        let itemsPerPage = 30;
+        let totalPages = 1;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            requestMaterialsData();
+            startUpdateTimer();
+        });
+
+        function adjustHeight(el) {
+            el.style.height = 'auto'; 
+            el.style.height = (el.scrollHeight) + 'px'; 
+        }
+
+        function setupEventListeners() {
+            document.getElementById('refreshBtn').addEventListener('click', refreshData);
+            document.getElementById('addMaterialBtn').addEventListener('click', addNewMaterial);
+            document.getElementById('saveBtn').addEventListener('click', saveChanges);
+            document.getElementById('sortSelect').addEventListener('change', () => renderTable(materialsData));
+            document.getElementById('filterSelect').addEventListener('change', (e) => { filterType = e.target.value; currentPage = 1; renderTable(materialsData); });
+            document.getElementById('searchInput').addEventListener('input', (e) => { searchQuery = e.target.value.toLowerCase().trim(); currentPage = 1; renderTable(materialsData); });
+            
+            // Pagination controls
+            document.getElementById('itemsPerPageSelect').addEventListener('change', (e) => changeItemsPerPage(e.target.value));
+            document.getElementById('prevPageBtn').addEventListener('click', prevPage);
+            document.getElementById('nextPageBtn').addEventListener('click', nextPage);
+            
+            // Dropdowns
+            const exportBtn = document.getElementById('exportBtn');
+            const exportDropdown = document.getElementById('exportDropdown');
+            if (exportBtn && exportDropdown) {
+                exportBtn.addEventListener('click', (e) => { e.stopPropagation(); exportDropdown.classList.toggle('show'); });
+                document.addEventListener('click', () => exportDropdown.classList.remove('show'));
+                document.querySelectorAll('#exportDropdown .dropdown-item').forEach(item => item.addEventListener('click', (e) => { e.stopPropagation(); handleExport(item.getAttribute('data-action')); exportDropdown.classList.remove('show'); }));
+            }
+            
+            // Import/File
+            const importBtn = document.getElementById('importBtn');
+            const importFileInput = document.getElementById('importFileInput');
+            if (importBtn && importFileInput) {
+                importBtn.addEventListener('click', () => importFileInput.click());
+                importFileInput.addEventListener('change', handleImport);
+            }
+            
+            // Selection & Batch
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+            const batchClearBtn = document.getElementById('batchClearBtn');
+            if (selectAllCheckbox) selectAllCheckbox.addEventListener('change', toggleSelectAll);
+            if (batchDeleteBtn) batchDeleteBtn.addEventListener('click', batchDelete);
+            if (batchClearBtn) batchClearBtn.addEventListener('click', clearSelection);
+
+            const loadDefaultsBtn = document.getElementById('loadDefaultsBtn');
+            if (loadDefaultsBtn) loadDefaultsBtn.addEventListener('click', loadDefaultMaterials);
+            
+            // Modal Listeners
+            const modalCancelBtn = document.getElementById('modalCancelBtn');
+            const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+            if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeModal);
+            if (modalConfirmBtn) modalConfirmBtn.addEventListener('click', () => { if(modalCallback) modalCallback(); closeModal(); });
+
+            // Table Delegation
+            const materialsBody = document.getElementById('materialsBody');
+            if (materialsBody) {
+                materialsBody.addEventListener('click', function(e) {
+                    const btn = e.target.closest('.action-btn.delete');
+                    if (btn) deleteMaterial(btn.getAttribute('data-material-name'));
+                });
+
+                materialsBody.addEventListener('input', function(e) {
+                    if (e.target.classList.contains('data-input')) {
+                        adjustHeight(e.target);
+                        hasUnsavedChanges = true;
+                    }
+                });
+            }
+        }
+
+        // --- UI Helpers ---
+        function showModal(title, message, onConfirm) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            modalCallback = onConfirm;
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+            modalCallback = null;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 3000);
+        }
+
+        // --- Core Functions ---
+        function requestMaterialsData() { if (window.sketchup) window.sketchup.get_materials_data(); }
+        function refreshData() { 
+            // CRITICAL: Warn if unsaved changes exist
+            if (hasUnsavedChanges) {
+                showModal('Unsaved Changes', 'You have unsaved changes. Refresh will discard them. Continue?', () => {
+                    hasUnsavedChanges = false;
+                    requestMaterialsData();
+                });
+            } else {
+                requestMaterialsData();
+            }
+        } 
+
+        function receiveMaterialsData(data) {
+            materialsData = JSON.parse(data);
+            console.log('Received materials data:', materialsData);
+            
+            // Debug: Check for flagged materials
+            Object.entries(materialsData).forEach(([name, mat]) => {
+                if (mat.flagged_no_material) {
+                    console.log('Flagged material found:', name, mat);
+                }
+            });
+            
+            lastUpdateTime = new Date();
+            renderTable(materialsData);
+            updateTimestamp();
+            hasUnsavedChanges = false;
+        }
+
+        function renderTable(materials) {
+            const tbody = document.getElementById('materialsBody');
+            tbody.innerHTML = '';
+
+            let materialsArray = Object.entries(materials).map(([name, data]) => ({ name, ...data }));
+            
+            // Apply filters
+            if (filterType === 'favorites') materialsArray = materialsArray.filter(mat => mat.is_favorite === true || mat.is_favorite === 'true');
+            else if (filterType === 'flagged') materialsArray = materialsArray.filter(mat => isFlagged(mat));
+            else if (filterType === 'auto') materialsArray = materialsArray.filter(mat => isAutoGenerated(mat));
+            
+            if (searchQuery) materialsArray = materialsArray.filter(mat => mat.name.toLowerCase().includes(searchQuery));
+            
+            // Apply sorting
+            const sortValue = document.getElementById('sortSelect').value;
+            if (sortValue === 'name-desc') {
+                materialsArray.sort((a, b) => b.name.localeCompare(a.name));
+            } else if (sortValue === 'favorites-first') {
+                materialsArray.sort((a, b) => {
+                    const aFav = a.is_favorite === true || a.is_favorite === 'true' ? 1 : 0;
+                    const bFav = b.is_favorite === true || b.is_favorite === 'true' ? 1 : 0;
+                    if (aFav !== bFav) return bFav - aFav;
+                    return a.name.localeCompare(b.name);
+                });
+            } else {
+                materialsArray.sort((a, b) => a.name.localeCompare(b.name));
+            }
+
+            // Calculate pagination
+            const totalMaterials = materialsArray.length;
+            totalPages = Math.ceil(totalMaterials / itemsPerPage) || 1;
+            
+            // Ensure current page is valid
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+            
+            // Get materials for current page
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, totalMaterials);
+            const paginatedMaterials = materialsArray.slice(startIndex, endIndex);
+            
+            // Update pagination info
+            updatePaginationInfo(startIndex + 1, endIndex, totalMaterials);
+
+            // Update stats
+            let autoCount = 0, flaggedCount = 0;
+            Object.values(materials).forEach(mat => {
+                if (isAutoGenerated({name: '', ...mat})) autoCount++;
+                if (isFlagged(mat)) flaggedCount++;
+            });
+            document.getElementById('totalCount').textContent = Object.keys(materials).length;
+            document.getElementById('autoCount').textContent = autoCount;
+            document.getElementById('flaggedCount').textContent = flaggedCount;
+
+            if (paginatedMaterials.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No materials found.</td></tr>`;
+            } else {
+                paginatedMaterials.forEach(mat => tbody.appendChild(createMaterialRow(mat)));
+            }
+            setTimeout(() => { document.querySelectorAll('textarea.data-input').forEach(adjustHeight); }, 0);
+        }
+        
+        function updatePaginationInfo(start, end, total) {
+            document.getElementById('materialsRange').textContent = `Materials ${start}-${end} / ${total}`;
+            document.getElementById('pageInfo').textContent = `Page ${currentPage} / ${totalPages}`;
+            
+            // Enable/disable pagination buttons
+            document.getElementById('prevPageBtn').disabled = currentPage === 1;
+            document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+        }
+        
+        function goToPage(page) {
+            currentPage = page;
+            renderTable(materialsData);
+        }
+        
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable(materialsData);
+            }
+        }
+        
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable(materialsData);
+            }
+        }
+        
+        function changeItemsPerPage(newSize) {
+            itemsPerPage = parseInt(newSize);
+            currentPage = 1; // Reset to first page
+            renderTable(materialsData);
+        }
+
+        function isAutoGenerated(mat) { return mat.auto_generated || mat.name.startsWith('Auto_user_') || mat.name.startsWith('no_material_'); }
+        function isFlagged(mat) { return mat.flagged_no_material === true || mat.flagged_no_material === 'true'; }
+
+        function createMaterialRow(mat) {
+            const row = document.createElement('tr');
+            if (isFlagged(mat)) row.classList.add('flagged');
+            
+            let badgesHtml = '';
+            if (isAutoGenerated(mat)) badgesHtml += `<span class="badge auto" data-tooltip="auto"><span class="badge-tooltip"><div class="tooltip-item"><svg class="tooltip-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg><div class="tooltip-text"><strong>Auto-Generated</strong> - Created from SketchUp component</div></div><div class="tooltip-item"><svg class="tooltip-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg><div class="tooltip-text"><strong>Why</strong> - No matching material in database</div></div><div class="tooltip-item"><svg class="tooltip-icon" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg><div class="tooltip-text"><strong>Action</strong> - Rename to match a known material</div></div></span>AUTO</span>`;
+            if (isFlagged(mat)) badgesHtml += `<span class="badge flagged" data-tooltip="flagged"><span class="badge-tooltip"><div class="tooltip-item"><svg class="tooltip-icon" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg><div class="tooltip-text"><strong>Unrealistic</strong> - Unusual dimensions detected</div></div><div class="tooltip-item"><svg class="tooltip-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg><div class="tooltip-text"><strong>Why</strong> - Very small, large, or extreme ratio</div></div><div class="tooltip-item"><svg class="tooltip-icon" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg><div class="tooltip-text"><strong>Action</strong> - Correct dimensions or rename</div></div></span>⚠ CHECK</span>`;
+            if (mat.is_default) badgesHtml += `<span class="badge default" data-tooltip="default"><span class="badge-tooltip"><div class="tooltip-item"><svg class="tooltip-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg><div class="tooltip-text"><strong>Default</strong> - Standard material from database</div></div><div class="tooltip-item"><svg class="tooltip-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S15.33 8 14.5 8 13 8.67 13 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S8.33 8 7.5 8 6 8.67 6 9.5 6.67 11 7.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg><div class="tooltip-text"><strong>Why</strong> - Pre-configured for common materials</div></div><div class="tooltip-item"><svg class="tooltip-icon" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg><div class="tooltip-text"><strong>Action</strong> - Customize pricing & properties</div></div></span>DEFAULT</span>`;
+
+            const isFavorite = mat.is_favorite === true || mat.is_favorite === 'true';
+            const starFill = isFavorite ? 'var(--brand-orange)' : 'none';
+
+            row.innerHTML = `
+                <td class="checkbox-cell"><div class="cell-content"><input type="checkbox" class="row-checkbox" data-material="${escapeHtml(mat.name)}" ${selectedMaterials.has(mat.name) ? 'checked' : ''}></div></td>
+                <td class="material-name-cell">
+                    <div class="cell-content">
+                        <button class="favorite-star ${isFavorite ? 'active' : ''}" data-material="${escapeHtml(mat.name)}" title="Add to favorites">
+                            <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="${isFavorite ? 'currentColor' : 'none'}"><polygon points="12 2 15.09 10.26 24 10.35 17.77 16.01 20.16 24.02 12 18.35 3.84 24.02 6.23 16.01 0 10.35 8.91 10.26 12 2"/></svg>
+                        </button>
+                        <textarea class="data-input edit-name" rows="1">${escapeHtml(mat.name)}</textarea>
+                        <div class="badges-container">${badgesHtml}</div>
+                    </div>
+                </td>
+                <td><div class="cell-content"><textarea class="data-input edit-width" rows="1">${mat.width || 2440}</textarea></div></td>
+                <td><div class="cell-content"><textarea class="data-input edit-height" rows="1">${mat.height || 1220}</textarea></div></td>
+                <td><div class="cell-content"><textarea class="data-input edit-thickness" rows="1">${mat.thickness || 18}</textarea></div></td>
+                <td><div class="cell-content"><textarea class="data-input edit-price" rows="1">${mat.price || 0}</textarea></div></td>
+                <td><div class="cell-content"><textarea class="data-input edit-currency" rows="1">${mat.currency || 'USD'}</textarea></div></td>
+                <td class="actions-cell">
+                    <div class="cell-content">
+                        <button class="action-btn delete" data-material-name="${escapeHtml(mat.name)}" title="Delete"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                    </div>
+                </td>
+            `;
+
+            row.querySelector('.row-checkbox').addEventListener('change', (e) => {
+                if(e.target.checked) selectedMaterials.add(mat.name);
+                else selectedMaterials.delete(mat.name);
+                updateBatchActions();
+            });
+
+            row.querySelector('.favorite-star').addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleFavorite(mat.name, e.target.closest('.favorite-star'));
+            });
+
+            return row;
+        }
+
+        // --- Logic Handlers ---
+        function addNewMaterial() {
+            if (window.sketchup) window.sketchup.prompt_add_material();
+            else addMaterialCallback('New_Material_' + Math.floor(Math.random() * 1000));
+        }
+        function addMaterialCallback(name) {
+            if(materialsData[name]) return;
+            materialsData[name] = { width: 2440, height: 1220, thickness: 18, price: 0, currency: 'USD' };
+            renderTable(materialsData);
+        }
+        function deleteMaterial(name) {
+            showModal('Delete Material', `Are you sure you want to delete ${name}?`, () => {
+                delete materialsData[name];
+                selectedMaterials.delete(name);
+                renderTable(materialsData);
+                updateBatchActions();
+                showToast('Material deleted');
+            });
+        }
+        function toggleSelectAll(e) {
+            const checked = e.target.checked;
+            document.querySelectorAll('.row-checkbox').forEach(cb => {
+                cb.checked = checked;
+                if(checked) selectedMaterials.add(cb.getAttribute('data-material'));
+                else selectedMaterials.delete(cb.getAttribute('data-material'));
+            });
+            updateBatchActions();
+        }
+        function updateBatchActions() {
+            const count = selectedMaterials.size;
+            const batchBar = document.getElementById('batchActions');
+            if (!batchBar) return;
+            
+            document.getElementById('selectedCount').textContent = count;
+            
+            if (count > 0) {
+                batchBar.classList.add('active');
+                batchBar.style.visibility = 'visible';
+                batchBar.style.height = 'auto';
+                batchBar.style.padding = '12px 24px';
+                batchBar.style.overflow = 'visible';
+            } else {
+                batchBar.classList.remove('active');
+                batchBar.style.visibility = 'hidden';
+                batchBar.style.height = '0';
+                batchBar.style.padding = '0';
+                batchBar.style.overflow = 'hidden';
+            }
+        }
+        function batchDelete() {
+            showModal('Delete Selection', `Delete ${selectedMaterials.size} items?`, () => {
+                selectedMaterials.forEach(name => delete materialsData[name]);
+                selectedMaterials.clear();
+                renderTable(materialsData);
+                updateBatchActions();
+                showToast('Batch delete successful');
+            });
+        }
+        function clearSelection() {
+            selectedMaterials.clear();
+            renderTable(materialsData);
+            updateBatchActions();
+        }
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        function updateTimestamp() {
+            const elem = document.getElementById('lastUpdated');
+            if (!lastUpdateTime) { elem.textContent = 'Not loaded'; return; }
+            const diff = Math.floor((new Date() - lastUpdateTime) / 1000);
+            elem.textContent = diff < 60 ? 'Just now' : `${Math.floor(diff/60)}m ago`;
+        }
+        function startUpdateTimer() { updateTimestamp(); setInterval(updateTimestamp, 30000); }
+
+        function saveChanges() {
+            console.log('=== SAVE CHANGES STARTED ===');
+            console.log(`Total materials in memory: ${Object.keys(materialsData).length}`);
+            
+            // CRITICAL FIX: Start with ALL materials, not just visible rows
+            // This prevents data loss when pagination is active
+            const updated = { ...materialsData };
+            let unflaggedCount = 0;
+            let editedCount = 0;
+            
+            // Only update materials that are currently visible and edited
+            const rows = document.querySelectorAll('#materialsBody tr');
+            
+            rows.forEach((row, index) => {
+                const nameInput = row.querySelector('.edit-name');
+                if (!nameInput) return;
+                
+                const oldName = nameInput.defaultValue || nameInput.textContent.trim();
+                const newName = nameInput.value.trim();
+                
+                const widthInput = row.querySelector('.edit-width');
+                const heightInput = row.querySelector('.edit-height');
+                const thicknessInput = row.querySelector('.edit-thickness');
+                const priceInput = row.querySelector('.edit-price');
+                const currencyInput = row.querySelector('.edit-currency');
+                
+                if (!newName) return;
+                
+                const originalData = materialsData[oldName] || materialsData[newName] || {};
+                
+                // Update the material (whether it's a rename or edit)
+                updated[newName] = {
+                    width: parseFloat(widthInput.value) || 2440,
+                    height: parseFloat(heightInput.value) || 1220,
+                    thickness: parseFloat(thicknessInput.value) || 18,
+                    price: parseFloat(priceInput.value) || 0,
+                    currency: currencyInput.value.toUpperCase() || 'USD',
+                    density: originalData.density || 600,
+                    auto_generated: originalData.auto_generated || false,
+                    is_default: originalData.is_default || false,
+                    is_favorite: originalData.is_favorite || false,
+                    created_at: originalData.created_at || '',
+                    original_sketchup_material: originalData.original_sketchup_material || ''
+                };
+                
+                // If renamed, remove old entry
+                if (oldName !== newName && oldName in updated) {
+                    delete updated[oldName];
+                    
+                    // Unflag if renamed
+                    if (originalData.flagged_no_material) {
+                        console.log(`✓ UNFLAGGED: "${oldName}" → "${newName}"`);
+                        updated[newName].flagged_no_material = false;
+                        unflaggedCount++;
+                    } else {
+                        updated[newName].flagged_no_material = originalData.flagged_no_material || false;
+                    }
+                } else {
+                    updated[newName].flagged_no_material = originalData.flagged_no_material || false;
+                }
+                
+                editedCount++;
+            });
+            
+            console.log(`Edited materials on current page: ${editedCount}`);
+            if (unflaggedCount > 0) {
+                console.log(`Total unflagged: ${unflaggedCount}`);
+            }
+            
+            // CRITICAL: Update materialsData with ALL materials (visible + hidden)
+            materialsData = updated;
+            console.log(`Total materials after save: ${Object.keys(materialsData).length}`);
+            
+            if (window.sketchup) { 
+                window.sketchup.save_materials_data(JSON.stringify(materialsData)); 
+            }
+            hasUnsavedChanges = false;
+            showToast('Materials saved successfully');
+            console.log('=== SAVE COMPLETED ===');
+        }
+
+        function handleExport(action) {
+            // Determine if exporting selected or all
+            const isSelected = selectedMaterials.size > 0;
+            const dataToExport = isSelected ? 
+                Object.fromEntries(Array.from(selectedMaterials).map(name => [name, materialsData[name]])) :
+                materialsData;
+            
+            const itemCount = isSelected ? selectedMaterials.size : Object.keys(materialsData).length;
+            const exportType = isSelected ? 'selected' : 'all';
+            
+            if (action === 'CSV') {
+                const csv = generateCSV(dataToExport);
+                if (window.sketchup) {
+                    window.sketchup.export_csv(csv);
+                } else {
+                    downloadFile(csv, `materials_${exportType}.csv`, 'text/csv');
+                }
+                showToast(`Exported ${itemCount} materials as CSV`);
+            } else if (action === 'JSON') {
+                const json = JSON.stringify(dataToExport, null, 2);
+                if (window.sketchup) {
+                    window.sketchup.export_json(json);
+                } else {
+                    downloadFile(json, `materials_${exportType}.json`, 'application/json');
+                }
+                showToast(`Exported ${itemCount} materials as JSON`);
+            } else if (action === 'Clipboard') {
+                const csv = generateCSV(dataToExport);
+                if (window.sketchup) {
+                    window.sketchup.copy_to_clipboard(csv);
+                } else {
+                    navigator.clipboard.writeText(csv).then(() => showToast(`Copied ${itemCount} materials to clipboard`));
+                }
+            }
+        }
+
+        function generateCSV(data = null) {
+            const materials = data || materialsData;
+            const headers = ['Material Name', 'Width (mm)', 'Height (mm)', 'Thickness', 'Price', 'Currency'];
+            const rows = Object.entries(materials).map(([name, mat]) => [
+                name,
+                mat.width || '',
+                mat.height || '',
+                mat.thickness || '',
+                mat.price || '',
+                mat.currency || 'USD'
+            ]);
+            return [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+        }
+
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const csv = e.target.result;
+                    const lines = csv.split('\n').filter(line => line.trim());
+                    if (lines.length < 2) {
+                        showToast('Invalid CSV format');
+                        return;
+                    }
+                    
+                    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                    const imported = {};
+                    
+                    for (let i = 1; i < lines.length; i++) {
+                        const values = parseCSVLine(lines[i]);
+                        if (values.length < 2) continue;
+                        
+                        const name = values[0];
+                        imported[name] = {
+                            width: parseFloat(values[1]) || 2440,
+                            height: parseFloat(values[2]) || 1220,
+                            thickness: parseFloat(values[3]) || 18,
+                            price: parseFloat(values[4]) || 0,
+                            currency: values[5] || 'USD',
+                            auto_generated: values[6] === 'Yes',
+                            flagged_no_material: values[7] === 'Yes',
+                            is_default: values[8] === 'Yes'
+                        };
+                    }
+                    
+                    materialsData = { ...materialsData, ...imported };
+                    renderTable(materialsData);
+                    showToast(`Imported ${Object.keys(imported).length} materials`);
+                } catch (err) {
+                    showToast('Error importing CSV: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+
+        function loadDefaultMaterials() {
+            showModal('Load Defaults', 'This will merge default materials with your current list. Continue?', () => {
+                if (window.sketchup) {
+                    window.sketchup.load_default_materials();
+                } else {
+                    // Mock data for testing
+                    const defaults = {
+                        "Plywood_Standard": { width: 2440, height: 1220, thickness: 18, price: 50, is_default: true, currency: 'USD' },
+                        "MDF_Standard": { width: 2440, height: 1220, thickness: 18, price: 45, is_default: true, currency: 'USD' }
+                    };
+                    receiveDefaultMaterials(JSON.stringify(defaults));
+                }
+            });
+        }
+
+        function receiveDefaultMaterials(data) {
+            const defaults = JSON.parse(data);
+            materialsData = { ...materialsData, ...defaults };
+            renderTable(materialsData);
+            showToast(`Loaded ${Object.keys(defaults).length} default materials`);
+        }
+
+        function toggleFavorite(materialName, starButton) {
+            if (!materialsData[materialName]) return;
+            
+            const isFavorite = materialsData[materialName].is_favorite === true || materialsData[materialName].is_favorite === 'true';
+            materialsData[materialName].is_favorite = !isFavorite;
+            
+            // Add bounce animation
+            starButton.classList.add('bounce');
+            setTimeout(() => starButton.classList.remove('bounce'), 600);
+            
+            // Update star appearance
+            starButton.classList.toggle('active');
+            const svg = starButton.querySelector('svg');
+            if (materialsData[materialName].is_favorite) {
+                svg.setAttribute('fill', 'currentColor');
+            } else {
+                svg.setAttribute('fill', 'none');
+            }
+            
+            hasUnsavedChanges = true;
+            showToast(materialsData[materialName].is_favorite ? 'Added to favorites' : 'Removed from favorites');
+        }
+
+        // Smart Tooltip Positioning
+        document.addEventListener('mouseover', function(e) {
+            const badge = e.target.closest('.badge');
+            if (!badge) return;
+            
+            const tooltip = badge.querySelector('.badge-tooltip');
+            if (!tooltip) return;
+            
+            tooltip.classList.add('show');
+            
+            // Calculate position
+            const badgeRect = badge.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+            const tableWrapper = document.querySelector('.table-wrapper');
+            const tableRect = tableWrapper ? tableWrapper.getBoundingClientRect() : null;
+            
+            let top = badgeRect.top - tooltipRect.height - 12;
+            let left = badgeRect.left + badgeRect.width / 2 - tooltipRect.width / 2;
+            
+            // Adjust if tooltip goes above header
+            if (tableRect && top < tableRect.top + 60) {
+                top = badgeRect.bottom + 12;
+            }
+            
+            // Adjust if tooltip goes off left edge
+            if (left < 10) {
+                left = 10;
+            }
+            
+            // Adjust if tooltip goes off right edge
+            if (left + tooltipRect.width > window.innerWidth - 10) {
+                left = window.innerWidth - tooltipRect.width - 10;
+            }
+            
+            tooltip.style.top = top + 'px';
+            tooltip.style.left = left + 'px';
+        });
+
+        document.addEventListener('mouseout', function(e) {
+            const badge = e.target.closest('.badge');
+            if (!badge) return;
+            
+            const tooltip = badge.querySelector('.badge-tooltip');
+            if (tooltip) {
+                tooltip.classList.remove('show');
+            }
+        });
+        
+        // Mock init
+        if (!window.sketchup) {
+            setTimeout(() => receiveMaterialsData(JSON.stringify({
+                "A05_Cherry_Blazedsads": { width: 2440, height: 1220, thickness: 18, price: 0 },
+                "Auto_user_W264xH314xTH18": { width: 264, height: 314, thickness: 18, price: 29.17, auto_generated: true },
+                "Auto_user_W282xH314xTH18": { width: 282, height: 314, thickness: 18, price: 31.16, auto_generated: true },
+                "Plywood_Standard": { width: 2440, height: 1220, thickness: 18, price: 50, is_default: true },
+                "Flagged_Tiny_Piece": { width: 50, height: 50, thickness: 5, flagged_no_material: true }
+            })), 500);
+        }
+    </script>
+</body>
+</html>

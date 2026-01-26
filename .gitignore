@@ -1,0 +1,141 @@
+# ============================================
+# AutoNestCut Extension - Clean Repository
+# ============================================
+# Only Extension/ and essential config files should be tracked
+# Everything else is workspace clutter
+
+# ============================================
+# WORKSPACE CLUTTER - DO NOT PUSH
+# ============================================
+
+# All root-level markdown documentation (workspace notes)
+/*.md
+!README.md
+
+# All root-level HTML files (test/mockup files)
+/*.html
+/*.HTML
+
+# All root-level Ruby scripts (test scripts)
+/*.rb
+/*.RB
+
+# All root-level text files (logs, notes, chats)
+/*.txt
+/*.TXT
+/*.log
+
+# All root-level PDF files
+/*.pdf
+
+# All root-level image files
+/*.JPG
+/*.jpg
+/*.jpeg
+/*.png
+/*.gif
+/*.svg
+
+# All root-level batch/shell scripts
+/*.bat
+/*.ps1
+/*.sh
+
+# All root-level JavaScript files
+/*.js
+/*.mjs
+
+# Workspace directories (NOT part of extension)
+/safe_backup/
+/workspace_archive/
+/temp_files/
+/media/
+/rgloader/
+/ARCHIVED_PDF_EXPORT/
+/construction_bid_tool/
+/creepy-button/
+/other_app/
+/Reverting*/
+/Served/
+
+# IDE and tool directories
+/.vscode/
+/.idea/
+/.continue/
+/.amazonq/
+/.lingma/
+/.qodo/
+/.git/
+
+# Kiro specs and steering (development artifacts)
+/.kiro/specs/
+/.kiro/steering/
+/.kiro/*.md
+
+# ============================================
+# STANDARD IGNORES
+# ============================================
+
+# Logs
+*.log
+-*.log
+
+# Temporary files
+temp/
+temp_files/
+*.tmp
+*.temp
+
+# Build outputs
+build/
+dist/
+out/
+
+# Node modules (if any in Extension)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Ruby gems (vendor should be in Extension/vendor only)
+.bundle/
+
+# Backup files
+*_backup/
+*.bak
+*.backup
+
+# Archives
+*.zip
+*.rar
+*.7z
+*.tar.gz
+*.rbz
+
+# SketchUp files (test models)
+*.skp
+
+# Media files
+*.mp4
+*.avi
+*.mov
+
+# ============================================
+# KEEP THESE (Essential Extension Files)
+# ============================================
+# The following are explicitly tracked:
+# - Extension/ directory (entire extension codebase)
+# - .gitignore (this file)
+# - README.md (if exists at root)
+# - LICENSE (if exists)
+
+# Allow Extension directory and its contents
+!Extension/
+!Extension/**/*
+
+# Keep essential root files
+!.gitignore
+!README.md
+!LICENSE

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Scheduled Exports</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .scheduler-container { padding: 20px; }
+        .task-form { background: #f5f5f5; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .task-list { background: white; border: 1px solid #ddd; border-radius: 5px; }
+        .task-item { padding: 10px; border-bottom: 1px solid #eee; }
+        .task-item:last-child { border-bottom: none; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 5px; }
+        .btn { padding: 8px 16px; background: #007cba; color: white; border: none; border-radius: 3px; cursor: pointer; display: inline-flex; align-items: center; transition: all 0.2s ease; }
+        .btn:hover { background: #005a87; transform: translateY(-1px); }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; transform: translateY(-1px); }
+    </style>
+</head>
+<body>
+    <div class="scheduler-container">
+        <h2>Scheduled Exports</h2>
+        
+        <div class="task-form">
+            <h3>Add New Scheduled Export</h3>
+            <div class="form-group">
+                <label>Task Name:</label>
+                <input type="text" id="taskName" placeholder="Daily Report">
+            </div>
+            <div class="form-group">
+                <label>Run Time (Hour 0-23):</label>
+                <input type="number" id="runHour" min="0" max="23" value="9">
+            </div>
+            <div class="form-group">
+                <label>Output Format:</label>
+                <select id="outputFormat">
+                    <option value="csv">CSV</option>
+                    <option value="json">JSON</option>
+                    <option value="pdf">PDF</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Email Address:</label>
+                <input type="email" id="emailAddress" placeholder="user@example.com">
+            </div>
+            <div class="form-group">
+                <label>Material Filter (optional):</label>
+                <input type="text" id="materialFilter" placeholder="Plywood">
+            </div>
+            <button class="btn" onclick="addTask()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Task
+            </button>
+        </div>
+        
+        <div class="task-list">
+            <h3>Active Tasks</h3>
+            <div id="tasksList"></div>
+        </div>
+    </div>
+
+    <script>
+        function addTask() {
+            const name = document.getElementById('taskName').value;
+            const hour = document.getElementById('runHour').value;
+            const format = document.getElementById('outputFormat').value;
+            const email = document.getElementById('emailAddress').value;
+            const material = document.getElementById('materialFilter').value;
+            
+            if (!name || !email) {
+                alert('Please fill in task name and email address');
+                return;
+            }
+            
+            const filters = material ? { material: material } : {};
+            
+            sketchup.add_scheduled_task(name, hour, JSON.stringify(filters), format, email);
+            loadTasks();
+        }
+        
+        function loadTasks() {
+            sketchup.get_scheduled_tasks();
+        }
+        
+        function deleteTask(taskId) {
+            if (confirm('Delete this scheduled task?')) {
+                sketchup.delete_scheduled_task(taskId);
+                loadTasks();
+            }
+        }
+        
+        function displayTasks(tasks) {
+            const container = document.getElementById('tasksList');
+            if (!tasks || tasks.length === 0) {
+                container.innerHTML = '<div class="task-item">No scheduled tasks</div>';
+                return;
+            }
+            
+            container.innerHTML = tasks.map(task => `
+                <div class="task-item">
+                    <strong>${task.name}</strong><br>
+                    Runs daily at ${task.cron}:00<br>
+                    Format: ${task.format.toUpperCase()}<br>
+                    Email: ${task.email}<br>
+                    Next run: ${new Date(task.next_run * 1000).toLocaleString()}<br>
+                    <button class="btn btn-danger" onclick="deleteTask('${task.id}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                            <polyline points="3,6 5,6 21,6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                        Delete
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        // Load tasks on page load
+        window.onload = loadTasks;
+    </script>
+</body>
+</html>

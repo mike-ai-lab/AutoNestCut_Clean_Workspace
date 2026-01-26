@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>AutoNestCut 3D Assembly Viewer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #005b9f 0%, #008ad6 100%);
+            padding: 12px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            font-size: 1.6em;
+            margin: 0;
+            color: #ffffff;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button {
+            background: linear-gradient(180deg, #00A5E3 0%, #008FCC 100%);
+            color: #ffffff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            filter: brightness(0.95);
+            transform: translateY(0);
+        }
+        
+        button svg {
+            transition: transform 0.2s ease;
+        }
+        
+        button:hover svg {
+            transform: scale(1.1);
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            gap: 0;
+        }
+
+        #canvas {
+            flex: 1;
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+            display: block;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: #222;
+            border-left: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 12px;
+            background: #1a1a1a;
+            border-bottom: 1px solid #444;
+            font-weight: 600;
+            font-size: 13px;
+            color: #00A5E3;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .info-section {
+            margin-bottom: 16px;
+            padding: 10px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            border-left: 3px solid #00A5E3;
+        }
+
+        .info-section h3 {
+            font-size: 12px;
+            color: #00A5E3;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-item {
+            font-size: 11px;
+            color: #ccc;
+            margin: 4px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .info-label {
+            color: #999;
+        }
+
+        .info-value {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .component-list {
+            margin-top: 12px;
+        }
+
+        .component-item {
+            padding: 8px;
+            margin: 4px 0;
+            background: #333;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 2px solid transparent;
+        }
+
+        .component-item:hover {
+            background: #3a3a3a;
+            border-left-color: #00A5E3;
+        }
+
+        .component-item.selected {
+            background: #004a7f;
+            border-left-color: #00FF00;
+        }
+
+        .component-name {
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+
+        .component-info {
+            color: #999;
+            font-size: 10px;
+        }
+
+        .controls-section {
+            padding: 12px;
+            border-top: 1px solid #444;
+            background: #1a1a1a;
+        }
+
+        .control-group {
+            margin-bottom: 10px;
+        }
+
+        .control-label {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 4px;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .control-buttons button {
+            flex: 1;
+            padding: 6px 8px;
+            font-size: 11px;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-size: 14px;
+            color: #999;
+        }
+
+        .spinner {
+            border: 3px solid #444;
+            border-top: 3px solid #00A5E3;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .help-text {
+            font-size: 10px;
+            color: #666;
+            padding: 8px;
+            background: #2a2a2a;
+            border-radius: 4px;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        /* Scrollbar styling */
+        .sidebar-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-track {
+            background: #2a2a2a;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 3px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 200px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px; vertical-align: middle;">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            3D Assembly Viewer [v2.7.0]
+        </h1>
+        <div class="header-controls">
+            <button onclick="resetView()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                    <path d="M21 3v5h-5"/>
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                    <path d="M3 21v-5h5"/>
+                </svg>
+                Reset View
+            </button>
+            <button onclick="toggleWireframe()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27,6.96 12,12.01 20.73,6.96"/>
+                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+                Wireframe
+            </button>
+            <button onclick="window.close()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                Close
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <canvas id="canvas"></canvas>
+        
+        <div class="sidebar">
+            <div class="sidebar-header">Assembly Information</div>
+            <div class="sidebar-content">
+                <div class="info-section">
+                    <h3>Assembly Stats</h3>
+                    <div class="info-item">
+                        <span class="info-label">Total Components:</span>
+                        <span class="info-value" id="totalComponents">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Total Parts:</span>
+                        <span class="info-value" id="totalParts">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Materials:</span>
+                        <span class="info-value" id="totalMaterials">0</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Assembly Bounds</h3>
+                    <div class="info-item">
+                        <span class="info-label">Width:</span>
+                        <span class="info-value" id="boundWidth">0 mm</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Height:</span>
+                        <span class="info-value" id="boundHeight">0 mm</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Depth:</span>
+                        <span class="info-value" id="boundDepth">0 mm</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Components</h3>
+                    <div class="component-list" id="componentList">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="help-text">
+                    <strong>Controls:</strong><br>
+                    • Left drag: Orbit<br>
+                    • Middle/Shift+Left: Pan<br>
+                    • Scroll: Zoom<br>
+                    • Click component: Highlight
+                </div>
+            </div>
+
+            <div class="controls-section">
+                <div class="control-group">
+                    <label class="control-label">Display</label>
+                    <div class="control-buttons">
+                        <button onclick="setDisplayMode('solid')">Solid</button>
+                        <button onclick="setDisplayMode('transparent')">Transparent</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Lighting</label>
+                    <div class="control-buttons">
+                        <button onclick="toggleLighting()">Toggle</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="assembly_viewer.js"></script>
+</body>
+</html>
