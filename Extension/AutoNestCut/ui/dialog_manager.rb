@@ -15,8 +15,15 @@ module AutoNestCut
   class UIDialogManager
 
     # Cache for nesting results to avoid recalculating if inputs haven't changed
-    # Key: cache_key (MD5 hash of parts and nesting settings), Value: Array of Board objects
+    # Key: cache_key (MD5 hash of parts and nesting settings)
+    # Value: { boards: Array of Board objects, timestamp: Time, access_time: Time }
     @nesting_cache = {}
+    
+    # Mutex for thread-safe cache access
+    @cache_mutex = Mutex.new
+    
+    # Maximum number of cached nesting results (LRU eviction)
+    MAX_CACHE_SIZE = 5
 
     # Flag to indicate if processing was cancelled by user
     @processing_cancelled = false
@@ -24,6 +31,7 @@ module AutoNestCut
     def initialize
       # Ensure cache and cancellation flag are initialized for each new manager instance
       @nesting_cache = {}
+      @cache_mutex = Mutex.new
       @processing_cancelled = false
       
       # Initialize all instance variables to nil for proper cleanup
@@ -1250,6 +1258,83 @@ module AutoNestCut
     end
 
     # ======================================================================================
+    # CACHE MANAGEMENT HELPERS
+    # ======================================================================================
+    
+    # Validates cached boards data
+    def validate_cached_boards(boards)
+      return false if boards.nil?
+      return false unless boards.is_a?(Array)
+      return false if boards.empty?
+      
+      # Verify each board is valid
+      boards.all? { |board| board.respond_to?(:material) && board.respond_to?(:parts) }
+    end
+    
+    # Gets cached boards with thread safety and validation
+    def get_cached_boards(cache_key)
+      @cache_mutex.synchronize do
+        cache_entry = @nesting_cache[cache_key]
+        return nil unless cache_entry
+        
+        boards = cache_entry[:boards]
+        
+        # Validate cached data
+        unless validate_cached_boards(boards)
+          puts "WARNING: Invalid cached data for key #{cache_key}, removing from cache"
+          @nesting_cache.delete(cache_key)
+          return nil
+        end
+        
+        # Update access time for LRU
+        cache_entry[:access_time] = Time.now
+        
+        puts "✓ Cache hit for key: #{cache_key[0..8]}... (#{boards.length} boards)"
+        boards
+      end
+    end
+    
+    # Stores boards in cache with thread safety and LRU eviction
+    def store_cached_boards(cache_key, boards)
+      @cache_mutex.synchronize do
+        # Validate before storing
+        unless validate_cached_boards(boards)
+          puts "WARNING: Attempted to cache invalid boards data, skipping"
+          return
+        end
+        
+        # Store with metadata
+        @nesting_cache[cache_key] = {
+          boards: boards,
+          timestamp: Time.now,
+          access_time: Time.now
+        }
+        
+        puts "✓ Nesting results cached for key: #{cache_key[0..8]}... (#{boards.length} boards)"
+        
+        # Enforce cache size limit with LRU eviction
+        if @nesting_cache.size > MAX_CACHE_SIZE
+          # Find least recently accessed entry
+          lru_key = @nesting_cache.min_by { |k, v| v[:access_time] }[0]
+          @nesting_cache.delete(lru_key)
+          puts "⚠ Cache size limit reached, evicted LRU entry: #{lru_key[0..8]}..."
+        end
+        
+        puts "📊 Cache stats: #{@nesting_cache.size}/#{MAX_CACHE_SIZE} entries"
+      end
+    end
+    
+    # Clears the nesting cache with thread safety
+    def clear_nesting_cache
+      @cache_mutex.synchronize do
+        cache_size = @nesting_cache.size
+        @nesting_cache.clear
+        @last_processed_cache_key = nil
+        puts "🗑 Nesting cache cleared (#{cache_size} entries removed)"
+      end
+    end
+
+    # ======================================================================================
     # ASYNCHRONOUS NESTING PROCESSING WITH CACHING
     # ======================================================================================
 
@@ -1316,11 +1401,17 @@ module AutoNestCut
       @nesting_watcher_timer = nil
 
       current_cache_key = generate_cache_key(@parts_by_material, settings)
+      cache_start_time = Time.now
 
-      if @nesting_cache.key?(current_cache_key)
+      # Try to get cached boards with thread safety and validation
+      cached_boards = get_cached_boards(current_cache_key)
+
+      if cached_boards
         # --- CACHE HIT ---
+        cache_elapsed = ((Time.now - cache_start_time) * 1000).round(1)
+        puts "⚡ Cache retrieval took #{cache_elapsed}ms"
+        
         @dialog.execute_script("updateProgressOverlay('Using cached results...', 10)")
-        cached_boards = @nesting_cache[current_cache_key]
         @last_processed_cache_key = current_cache_key
 
         # Simulate quick completion with a very short timer to allow UI update
@@ -1330,6 +1421,7 @@ module AutoNestCut
         end
       else
         # --- CACHE MISS ---
+        puts "✗ Cache miss for key: #{current_cache_key[0..8]}..."
         start_nesting_background_thread(current_cache_key) # Pass key to store results later
         start_nesting_progress_watcher
       end
@@ -1432,9 +1524,9 @@ module AutoNestCut
           @boards = message[:boards]
           @last_processed_cache_key = message[:cache_key]
 
+          # Store in cache with thread safety, validation, and LRU eviction
           if message[:cache_key] && @boards && !@boards.empty?
-            @nesting_cache[message[:cache_key]] = @boards
-            puts "DEBUG: Nesting results cached for key: #{message[:cache_key]}"
+            store_cached_boards(message[:cache_key], @boards)
           end
           
           UI.start_timer(0.01, false) do

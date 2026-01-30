@@ -1014,35 +1014,16 @@ function handleCanvasClick(e, canvas) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    console.log('╔════════════════════════════════════════════════════════════════╗');
-    console.log('║ CANVAS CLICK DEBUG                                            ║');
-    console.log('╚════════════════════════════════════════════════════════════════╝');
-    console.log('🖱️  Click position:', { x, y });
-    
     if (canvas.partData) {
-        console.log('📊 Canvas has', canvas.partData.length, 'parts');
-        
         for (let partData of canvas.partData) {
             if (x >= partData.x && x <= partData.x + partData.width &&
                 y >= partData.y && y <= partData.y + partData.height) {
-                console.log('✅ Clicked on part:');
-                console.log('  - name:', partData.part.name);
-                console.log('  - part_unique_id:', partData.part.part_unique_id);
-                console.log('  - part_number:', partData.part.part_number);
-                console.log('  - instance_id:', partData.part.instance_id);
-                console.log('  - width:', partData.part.width);
-                console.log('  - height:', partData.part.height);
-                console.log('  - material:', partData.part.material);
-                console.log('  - Full part object:', partData.part);
-                
+                console.log(`🖱️ Clicked: ${partData.part.name}`);
                 highlightPartInAssemblyViewer(partData.part);
                 break;
             }
         }
-    } else {
-        console.log('❌ Canvas has no partData');
     }
-    console.log('╚════════════════════════════════════════════════════════════════╝');
 }
 
 function handleCanvasHover(e, canvas) {
@@ -1065,18 +1046,6 @@ function handleCanvasHover(e, canvas) {
 
 // Highlight part in the Report Assembly 3D Viewer
 function highlightPartInAssemblyViewer(part) {
-    console.log('╔════════════════════════════════════════════════════════════════╗');
-    console.log('║ HIGHLIGHT PART IN ASSEMBLY VIEWER                             ║');
-    console.log('╚════════════════════════════════════════════════════════════════╝');
-    console.log('📦 Part to highlight:');
-    console.log('  - name:', part.name);
-    console.log('  - part_unique_id:', part.part_unique_id);
-    console.log('  - part_number:', part.part_number);
-    console.log('  - instance_id:', part.instance_id);
-    console.log('  - width:', part.width);
-    console.log('  - height:', part.height);
-    console.log('  - material:', part.material);
-    
     // Ensure the Assembly 3D Viewer is visible and initialized
     const canvas = document.getElementById('reportAssembly3DCanvas');
     const offScreen = document.getElementById('reportViewer3DOffScreen');
@@ -1091,7 +1060,6 @@ function highlightPartInAssemblyViewer(part) {
     
     // Turn on the viewer if it's off
     if (canvas.style.display === 'none') {
-        console.log('🔌 Turning on Assembly 3D Viewer...');
         canvas.style.display = 'block';
         if (offScreen) offScreen.style.display = 'none';
         if (controls) controls.style.display = 'flex';
@@ -1100,7 +1068,6 @@ function highlightPartInAssemblyViewer(part) {
         
         // Initialize viewer if not already initialized
         if (!window.reportAssemblyScene && window.reportAssemblyData) {
-            console.log('🎨 Initializing Assembly 3D Viewer...');
             initReportAssemblyViewer();
         }
     }
@@ -1108,11 +1075,7 @@ function highlightPartInAssemblyViewer(part) {
     // Wait a moment for viewer to initialize if needed
     setTimeout(() => {
         selectPartInReportViewer(part);
-        // No auto-scrolling - let the 3D camera animation provide the visual feedback
     }, 100);
-    
-    console.log('✓ Part highlighting initiated');
-    console.log('╚════════════════════════════════════════════════════════════════╝');
 }
 
 // Select and highlight a part in the Report Assembly 3D Viewer
@@ -1122,17 +1085,7 @@ function selectPartInReportViewer(part) {
         return;
     }
     
-    console.log('╔════════════════════════════════════════════════════════════════╗');
-    console.log('║ SELECT PART IN REPORT VIEWER                                  ║');
-    console.log('╚════════════════════════════════════════════════════════════════╝');
-    console.log('🎯 Searching for part:');
-    console.log('  - name:', part.name);
-    console.log('  - part_unique_id:', part.part_unique_id);
-    console.log('  - part_number:', part.part_number);
-    console.log('  - instance_id:', part.instance_id);
-    console.log('  - width:', part.width);
-    console.log('  - height:', part.height);
-    console.log('📊 Available groups:', window.reportAssemblyGroups.length);
+    console.log(`🔍 Searching: ${part.name} | ${part.material} | ${part.width}×${part.height}×${part.thickness || 0}mm`);
     
     // Reset all parts to default appearance
     window.reportAssemblyGroups.forEach(group => {
@@ -1160,29 +1113,24 @@ function selectPartInReportViewer(part) {
         part.part_unique_id,
         part.part_number,
         part.instance_id
-    ].filter(id => id); // Remove null/undefined values
+    ].filter(id => id);
     
-    console.log('🔍 Search identifiers:', searchIdentifiers);
-    console.log('🔍 Part dimensions: width=' + part.width + ', height=' + part.height + ', thickness=' + part.thickness);
-    console.log('🔍 Part material: "' + part.material + '"');
-    
-    // Find and highlight ALL matching parts (there might be multiple instances)
+    // Find and highlight ALL matching parts
     let foundCount = 0;
     const matchedGroups = [];
     
     window.reportAssemblyGroups.forEach((group, index) => {
         const groupPartName = group.userData.partName;
         const groupMaterial = group.userData.materialName;
-        
-        console.log(`  Group ${index}:`);
-        console.log(`    - partName: "${groupPartName}"`);
-        console.log(`    - materialName: "${groupMaterial}"`);
+        const groupWidth = group.userData.width || 0;
+        const groupHeight = group.userData.height || 0;
+        const groupThickness = group.userData.thickness || 0;
         
         // CRITICAL: Match using name AND material AND dimensions
         let isMatch = false;
         let matchReason = '';
         
-        // First check if name matches
+        // Step 1: Check name
         let nameMatches = false;
         for (const identifier of searchIdentifiers) {
             if (groupPartName === identifier) {
@@ -1191,37 +1139,64 @@ function selectPartInReportViewer(part) {
             }
         }
         
-        if (nameMatches) {
-            console.log(`    - ✓ Name matches`);
-            
-            // Now verify material matches (CRITICAL for distinguishing same-named parts)
-            const partMaterial = String(part.material || '').trim();
-            const groupMaterialStr = String(groupMaterial || '').trim();
-            
-            // Compare full material strings INCLUDING unique IDs in parentheses
-            // This ensures parts with same base material but different IDs don't match
-            const partMaterialNormalized = partMaterial.toLowerCase();
-            const groupMaterialNormalized = groupMaterialStr.toLowerCase();
-            
-            console.log(`    - Comparing materials: "${partMaterialBase}" vs "${groupMaterialBase}"`);
-            
-            // Check if base materials match (ignoring unique IDs)
-            const materialMatches = (partMaterialBase === groupMaterialBase);
-            
-            if (materialMatches) {
-                console.log(`    - ✓ Material matches`);
-                isMatch = true;
-                matchReason = `name + material match`;
-            } else {
-                console.log(`    - ✗ Material MISMATCH: "${partMaterial}" != "${groupMaterialStr}"`);
-                console.log(`    - ✗ This is NOT the correct part (same name, different material)`);
-            }
+        if (!nameMatches) return; // Skip if name doesn't match
+        
+        // Step 2: Check material
+        const partMaterial = String(part.material || '').trim();
+        const groupMaterialStr = String(groupMaterial || '').trim();
+        
+        let materialMatches = false;
+        
+        if (!partMaterial || !groupMaterialStr) {
+            return; // Skip if materials are empty
         }
+        
+        const partMaterialNormalized = partMaterial.toLowerCase().trim();
+        const groupMaterialNormalized = groupMaterialStr.toLowerCase().trim();
+        
+        const extractBaseMaterial = (mat) => {
+            return mat.replace(/\s*\([^)]*\)\s*/g, '').trim();
+        };
+        
+        const partMaterialBase = extractBaseMaterial(partMaterialNormalized);
+        const groupMaterialBase = extractBaseMaterial(groupMaterialNormalized);
+        
+        materialMatches = (partMaterialNormalized === groupMaterialNormalized) || 
+                         (partMaterialBase === groupMaterialBase && partMaterialBase.length > 0);
+        
+        if (!materialMatches) {
+            console.log(`❌ Group ${index}: Name match but material mismatch - "${partMaterialBase}" vs "${groupMaterialBase}"`);
+            return; // Skip if material doesn't match
+        }
+        
+        // Step 3: Check dimensions (with tolerance and order-independent)
+        const tolerance = 1.0; // Tolerance for floating point errors
+        
+        // Sort both dimension sets to make comparison order-independent
+        const partDims = [part.width, part.height, part.thickness || 0].sort((a, b) => b - a);
+        const groupDims = [groupWidth, groupHeight, groupThickness].sort((a, b) => b - a);
+        
+        const widthMatch = Math.abs(partDims[0] - groupDims[0]) < tolerance;
+        const heightMatch = Math.abs(partDims[1] - groupDims[1]) < tolerance;
+        const thicknessMatch = Math.abs(partDims[2] - groupDims[2]) < tolerance;
+        
+        const dimensionsMatch = widthMatch && heightMatch && thicknessMatch;
+        
+        // RELAXED MATCHING: If name and material match, accept even with dimension mismatch
+        // This handles cases where bounds calculation differs from actual part dimensions
+        if (!dimensionsMatch) {
+            console.log(`⚠️ Group ${index}: Dimension mismatch but accepting due to name+material match`);
+            console.log(`   Part: [${partDims.join(',')}] vs Group: [${groupDims.join(',')}]`);
+        }
+        
+        // ALL CHECKS PASSED (name + material, dimensions optional)
+        isMatch = true;
+        matchReason = dimensionsMatch ? `name + material + dimensions` : `name + material (dimension mismatch)`;
+        console.log(`✅ Group ${index}: MATCH - ${groupPartName} (${matchReason})`);
         
         if (isMatch) {
             foundCount++;
             matchedGroups.push({ group, index, reason: matchReason });
-            console.log(`    ✅ MATCH! Reason: ${matchReason}`);
             
             // Apply highlighting
             group.traverse((child) => {
@@ -1262,9 +1237,6 @@ function selectPartInReportViewer(part) {
     
     if (foundCount > 0) {
         console.log(`✅ Found ${foundCount} matching part(s)`);
-        matchedGroups.forEach(({ group, index, reason }) => {
-            console.log(`  - Group ${index}: ${reason}`);
-        });
         
         // Focus camera on the first matched part
         if (window.reportCamera && window.reportControls && matchedGroups.length > 0) {
@@ -1282,19 +1254,12 @@ function selectPartInReportViewer(part) {
                 center.z + distance * 0.7
             );
             
-            console.log('📷 Animating camera to matched part');
-            // Animate camera movement
+            console.log('📷 Focusing camera on matched part');
             animateCameraToTarget(targetPos, center);
         }
     } else {
-        console.warn(`❌ No matching parts found!`);
-        console.log('Available part names in 3D viewer:');
-        window.reportAssemblyGroups.forEach((g, i) => {
-            console.log(`  ${i}: "${g.userData.partName}" (material: "${g.userData.materialName}")`);
-        });
+        console.warn(`❌ No matching parts found`);
     }
-    
-    console.log('╚════════════════════════════════════════════════════════════════╝');
 }
 
 // Animate camera movement to target position
@@ -1810,6 +1775,9 @@ function initReportAssemblyViewer() {
         group.userData = {
             partName: partData.name,
             materialName: partData.material || "Default Material",
+            width: partData.width || 0,
+            height: partData.height || 0,
+            thickness: partData.thickness || 0,
             explodeVector: new THREE.Vector3(...(partData.explode_vector || [0, 0, 0])),
             originalPosition: null, // Will be set after centering
             originalMaterial: {

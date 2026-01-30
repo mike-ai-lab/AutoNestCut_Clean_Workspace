@@ -484,9 +484,21 @@ module AutoNestCut
         
         puts "DEBUG: Part '#{part_name}' final material: #{material_name} (from #{part_materials.compact.uniq.length} unique face materials)"
         
+        # Calculate dimensions from bounds
+        bounds = part.bounds
+        width_mm = bounds.width.to_mm
+        height_mm = bounds.height.to_mm
+        depth_mm = bounds.depth.to_mm
+        
+        # Sort dimensions to get width (largest), height (middle), thickness (smallest)
+        dims = [width_mm, height_mm, depth_mm].sort.reverse
+        
         parts << {
           name: part_name,
           material: material_name,
+          width: dims[0],
+          height: dims[1],
+          thickness: dims[2],
           explode_vector: [axis_vector.x, axis_vector.z, -axis_vector.y],
           faces: faces
         }
