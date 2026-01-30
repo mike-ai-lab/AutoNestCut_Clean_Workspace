@@ -167,6 +167,46 @@
         }
         .canvas-info-label { font-weight: 500; }
 
+        /* Exploded View Slider */
+        .explode-controls {
+            position: absolute;
+            right: 60px; /* Positioned to the left of the view controls */
+            top: 50%;
+            transform: translateY(-50%);
+            height: 60%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 8px;
+            border-radius: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: 1px solid #d0d7de;
+            transition: opacity 0.3s;
+        }
+
+        .explode-label {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 11px;
+            font-weight: 700;
+            color: #4a4a4a;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            user-select: none;
+        }
+
+        .explode-slider {
+            writing-mode: vertical-lr;
+            direction: rtl;
+            width: 6px;
+            height: 100%;
+            outline: none;
+            cursor: ns-resize;
+        }
+
         .currency-conversion {
             display: flex;
             flex-direction: column;
@@ -466,6 +506,10 @@
                     </div>
                     <div id="viewer3DScreen" class="canvas-viewport" style="background: #1a1a1a; position: relative;">
                         <canvas id="parts3DCanvas" style="display: none;"></canvas>
+                        <div id="explodeControls" class="explode-controls" style="display: none;">
+                            <span class="explode-label">EXPLODE</span>
+                            <input type="range" min="0" max="100" value="0" class="explode-slider" id="explodeSlider" oninput="updateExplosion(this.value)">
+                        </div>
                         <div id="viewControls" style="display: none; position: absolute; right: 10px; top: 10px; flex-direction: column; gap: 4px; z-index: 100;">
                             <button onclick="toggleProjection()" style="background: none; border: none; cursor: pointer; padding: 4px; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'" title="Toggle Perspective/Orthographic">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
@@ -1071,6 +1115,11 @@
         // Global functions - must be defined before app.js loads
         let canvas3DScene, canvas3DCamera, canvas3DRenderer, canvas3DCurrentMesh;
         let viewer3DActive = false;
+        
+        // --- 3D Viewer Globals ---
+        let assemblyMeshes = []; // Stores all 3D parts
+        let isAssemblyMode = false; // Tracks if we are showing full assembly
+        
         let allComponentsData = [];
         let currentComponentIndex = -1;
         let dimensionsVisible = false;
@@ -1150,20 +1199,37 @@
         function toggleTexture() {
             textureMode = !textureMode;
             
-            if (!canvas3DCurrentMesh) return;
-            
-            if (textureMode) {
-                loadTextureForCurrentComponent();
+            if (isAssemblyMode) {
+                // In assembly mode, toggle texture for all meshes
+                assemblyMeshes.forEach(mesh => {
+                    if (textureMode) {
+                        mesh.material.color.setHex(0xFFFFFF); // White to show texture
+                        // If you have texture URLs in partData, load them here:
+                        // loadTextureForMesh(mesh, mesh.userData.textureUrl);
+                    } else {
+                        mesh.material.color.setHex(mesh.userData.baseColor); // Revert to base color
+                        mesh.material.map = null;
+                    }
+                    mesh.material.needsUpdate = true;
+                });
+                renderOnce();
             } else {
-                if (currentTexture) {
-                    currentTexture.dispose();
-                    currentTexture = null;
-                }
-                if (canvas3DCurrentMesh.material) {
-                    canvas3DCurrentMesh.material.map = null;
-                    canvas3DCurrentMesh.material.color.setHex(0x2323FF);
-                    canvas3DCurrentMesh.material.needsUpdate = true;
-                    renderOnce();
+                // Single part mode
+                if (!canvas3DCurrentMesh) return;
+                
+                if (textureMode) {
+                    loadTextureForCurrentComponent();
+                } else {
+                    if (currentTexture) {
+                        currentTexture.dispose();
+                        currentTexture = null;
+                    }
+                    if (canvas3DCurrentMesh.material) {
+                        canvas3DCurrentMesh.material.map = null;
+                        canvas3DCurrentMesh.material.color.setHex(0x2323FF);
+                        canvas3DCurrentMesh.material.needsUpdate = true;
+                        renderOnce();
+                    }
                 }
             }
         }
@@ -1560,16 +1626,32 @@
             const placeholder = document.getElementById('canvasPlaceholder');
             const screen = document.getElementById('viewer3DScreen');
             const powerBtn = document.getElementById('viewer3DPowerBtn');
+            const explodeCtrl = document.getElementById('explodeControls');
             
             if (viewer3DActive) {
                 offScreen.style.display = 'none';
-                placeholder.style.display = 'block';
                 screen.style.background = '#fafbfc';
                 powerBtn.style.background = 'rgba(76, 175, 80, 0.3)';
                 powerBtn.style.borderColor = 'rgba(76, 175, 80, 0.5)';
                 document.getElementById('viewControls').style.display = 'flex';
+                
                 if (!canvas3DRenderer) init3DCanvas();
-                populateComponentsArray();
+                
+                // CHECK FOR ASSEMBLY DATA
+                if (window.assemblyData && (window.assemblyData.parts || window.assemblyData.geometry)) {
+                    isAssemblyMode = true;
+                    placeholder.style.display = 'none';
+                    canvas.style.display = 'block';
+                    explodeCtrl.style.display = 'flex';
+                    renderAssembly(window.assemblyData);
+                } else {
+                    // Fallback to single part mode
+                    isAssemblyMode = false;
+                    placeholder.style.display = 'block';
+                    explodeCtrl.style.display = 'none';
+                    populateComponentsArray();
+                }
+                
                 animate3DCanvas();
             } else {
                 canvas.style.display = 'none';
@@ -1579,11 +1661,170 @@
                 powerBtn.style.background = 'rgba(255,255,255,0.2)';
                 powerBtn.style.borderColor = 'rgba(255,255,255,0.4)';
                 document.getElementById('viewControls').style.display = 'none';
-                if (canvas3DCurrentMesh && canvas3DScene) canvas3DScene.remove(canvas3DCurrentMesh);
+                explodeCtrl.style.display = 'none';
+                
+                // Clear Scene
+                if(isAssemblyMode) clearAssemblyScene();
+                else disposeCurrentMesh();
+                
                 document.getElementById('selectedPartName').textContent = 'None';
                 document.getElementById('selectedPartDims').textContent = '-';
                 document.getElementById('selectedPartVolume').textContent = '-';
             }
+        }
+        
+        function convertGeometryToParts(geometry) {
+            if (!geometry || !geometry.faces) return [];
+            
+            console.log('Converting geometry to parts:', geometry.faces.length, 'faces');
+            
+            // Convert faces array to parts format expected by renderAssembly
+            return geometry.faces.map((face, index) => {
+                // Flatten vertices from [{x,y,z}, {x,y,z}] to [x,y,z,x,y,z]
+                const vertices = [];
+                if (face.vertices && Array.isArray(face.vertices)) {
+                    face.vertices.forEach(v => {
+                        vertices.push(v.x || 0, v.y || 0, v.z || 0);
+                    });
+                }
+                
+                console.log(`Part ${index}: ${face.vertices?.length || 0} vertices -> ${vertices.length} floats`);
+                
+                return {
+                    name: `Part ${index + 1}`,
+                    vertices: vertices,
+                    normals: [],
+                    uvs: [],
+                    colors: [face.color || 0x2323FF],
+                    explode_vector: [0, 0, 1] // Default explode upward
+                };
+            });
+        }
+        
+        function renderAssembly(data) {
+            if (!canvas3DScene) return;
+            clearAssemblyScene();
+
+            const geometryData = data.geometry || data;
+            if (!geometryData || !geometryData.parts || geometryData.parts.length === 0) {
+                console.warn('No geometry parts to render');
+                return;
+            }
+
+            console.log('Rendering assembly:', geometryData.parts.length, 'components');
+
+            let allBounds = null;
+            
+            // Render each component as separate mesh
+            geometryData.parts.forEach((partData, partIndex) => {
+                const faces = partData.faces || [];
+                if (faces.length === 0) return;
+
+                const positions = [];
+                faces.forEach(face => {
+                    const vertices = face.vertices;
+                    if (!vertices || vertices.length < 3) return;
+                    
+                    // Triangulate and swap Y/Z
+                    for (let i = 1; i < vertices.length - 1; i++) {
+                        positions.push(vertices[0].x, vertices[0].z, -vertices[0].y);
+                        positions.push(vertices[i].x, vertices[i].z, -vertices[i].y);
+                        positions.push(vertices[i + 1].x, vertices[i + 1].z, -vertices[i + 1].y);
+                    }
+                });
+
+                if (positions.length === 0) return;
+
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.computeVertexNormals();
+
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: 0xcccccc,
+                    metalness: 0.1,
+                    roughness: 0.6,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.85
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                const edges = new THREE.EdgesGeometry(geometry, 15);
+                const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x666666 });
+                const wireframe = new THREE.LineSegments(edges, edgeMaterial);
+                
+                const group = new THREE.Group();
+                group.add(mesh);
+                group.add(wireframe);
+                
+                group.userData = {
+                    partName: partData.name,
+                    explodeVector: new THREE.Vector3(...(partData.explode_vector || [0, 0, 0])),
+                    originalPosition: group.position.clone()
+                };
+                
+                canvas3DScene.add(group);
+                assemblyMeshes.push(group);
+                
+                // Track bounds
+                const box = new THREE.Box3().setFromObject(group);
+                if (!allBounds) {
+                    allBounds = box;
+                } else {
+                    allBounds.union(box);
+                }
+            });
+
+            if (assemblyMeshes.length === 0) {
+                console.warn('No valid parts rendered');
+                return;
+            }
+
+            // Center camera on all parts
+            const center = allBounds.getCenter(new THREE.Vector3());
+            const size = allBounds.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            
+            assemblyMeshes.forEach(group => {
+                group.position.sub(center);
+                group.userData.originalPosition = group.position.clone();
+            });
+            
+            const distance = maxDim * 2.5;
+            canvas3DCamera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
+            canvas3DCamera.lookAt(0, 0, 0);
+            orbitControls.target.set(0, 0, 0);
+            orbitControls.update();
+
+            console.log('Assembly rendered:', assemblyMeshes.length, 'components');
+            renderOnce();
+        }
+
+        function clearAssemblyScene() {
+            assemblyMeshes.forEach(mesh => {
+                canvas3DScene.remove(mesh);
+                if(mesh.geometry) mesh.geometry.dispose();
+                if(mesh.material) mesh.material.dispose();
+            });
+            assemblyMeshes = [];
+        }
+
+        function updateExplosion(val) {
+            if (!isAssemblyMode || assemblyMeshes.length === 0) return;
+
+            const percentage = val / 100.0;
+            const explodeScale = 500; // Scale factor for explosion distance
+
+            assemblyMeshes.forEach(mesh => {
+                if (mesh.userData && mesh.userData.explodeVector && mesh.userData.originalPos) {
+                    // New Pos = Original + (Vector * Percentage * Scale)
+                    const vec = mesh.userData.explodeVector;
+                    mesh.position.copy(mesh.userData.originalPos).addScaledVector(vec, percentage * explodeScale);
+                }
+            });
+
+            renderOnce();
         }
         
         function populateComponentsArray() {
@@ -1669,66 +1910,98 @@
                 return;
             }
             
-            const rowIndex = Array.from(row.parentElement.children).indexOf(row);
-            currentComponentIndex = rowIndex;
-            
+            // Highlight UI Row
             document.querySelectorAll('#partsTableBody tr').forEach(r => r.classList.remove('selected'));
             row.classList.add('selected');
             
-            document.getElementById('canvasPlaceholder').style.display = 'none';
-            document.getElementById('parts3DCanvas').style.display = 'block';
-            
+            // Update Info Panel
             document.getElementById('selectedPartName').textContent = name;
             document.getElementById('selectedPartDims').textContent = `W: ${Math.round(width)} × H: ${Math.round(height)} × T: ${Math.round(thickness)} mm`;
             const volume = (width * height * thickness / 1000000000).toFixed(4);
             document.getElementById('selectedPartVolume').textContent = `${volume} m³`;
             
-            if (dimensionGroup && canvas3DCurrentMesh) {
-                canvas3DCurrentMesh.remove(dimensionGroup);
-                dimensionGroup = null;
+            if (isAssemblyMode) {
+                // ASSEMBLY MODE: Highlight selected component in 3D view
+                console.log('Selected part in assembly:', name);
+                
+                // Reset all components to normal opacity
+                assemblyMeshes.forEach(mesh => {
+                    if (mesh.material) {
+                        mesh.material.opacity = 0.85;
+                        mesh.material.transparent = true;
+                        if (mesh.material.emissive) {
+                            mesh.material.emissive.setHex(0x000000);
+                        }
+                    }
+                });
+                
+                // Highlight the selected component
+                const selectedMesh = assemblyMeshes.find(m => m.userData.name === name);
+                if (selectedMesh && selectedMesh.material) {
+                    selectedMesh.material.opacity = 1.0;
+                    selectedMesh.material.transparent = false;
+                    if (selectedMesh.material.emissive) {
+                        selectedMesh.material.emissive.setHex(0x444444); // Subtle glow
+                    }
+                }
+                
+                renderOnce();
+            } else {
+                // FALLBACK: Single Part Mode
+                const rowIndex = Array.from(row.parentElement.children).indexOf(row);
+                currentComponentIndex = rowIndex;
+                
+                document.getElementById('canvasPlaceholder').style.display = 'none';
+                document.getElementById('parts3DCanvas').style.display = 'block';
+                
+                if (dimensionGroup && canvas3DCurrentMesh) {
+                    canvas3DCurrentMesh.remove(dimensionGroup);
+                    dimensionGroup = null;
+                }
+                
+                disposeCurrentMesh();
+                
+                const geomKey = `${width}_${height}_${thickness}`;
+                let geometry = geometryCache[geomKey];
+                if (!geometry) {
+                    geometry = new THREE.BoxGeometry(width, thickness, height);
+                    geometryCache[geomKey] = geometry;
+                }
+                
+                const materialColor = textureMode ? 0xFFFFFF : 0x2323FF;
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: materialColor, 
+                    transparent: true, 
+                    opacity: 0.8,
+                    side: THREE.DoubleSide
+                });
+                canvas3DCurrentMesh = new THREE.Mesh(geometry, material);
+                
+                const edges = new THREE.EdgesGeometry(geometry);
+                const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+                const wireframe = new THREE.LineSegments(edges, lineMaterial);
+                canvas3DCurrentMesh.add(wireframe);
+                
+                canvas3DScene.add(canvas3DCurrentMesh);
+                
+                const maxDim = Math.max(width, height, thickness);
+                canvas3DCamera.position.set(maxDim * 1.5, maxDim * 1.2, maxDim * 1.5);
+                canvas3DCamera.lookAt(0, 0, 0);
+                if (orbitControls) orbitControls.target.set(0, 0, 0);
+                
+                if (dimensionsVisible) {
+                    toggleDimensions();
+                    toggleDimensions();
+                }
+                
+                if (textureMode) {
+                    loadTextureForCurrentComponent();
+                }
+                
+                const container = document.getElementById('parts3DCanvas').parentElement;
+                canvas3DRenderer.setSize(container.clientWidth, container.clientHeight);
             }
             
-            disposeCurrentMesh();
-            
-            const geomKey = `${width}_${height}_${thickness}`;
-            let geometry = geometryCache[geomKey];
-            if (!geometry) {
-                geometry = new THREE.BoxGeometry(width, thickness, height);
-                geometryCache[geomKey] = geometry;
-            }
-            
-            const materialColor = textureMode ? 0xFFFFFF : 0x2323FF;
-            const material = new THREE.MeshPhongMaterial({ 
-                color: materialColor, 
-                transparent: true, 
-                opacity: 0.8,
-                side: THREE.DoubleSide
-            });
-            canvas3DCurrentMesh = new THREE.Mesh(geometry, material);
-            
-            const edges = new THREE.EdgesGeometry(geometry);
-            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
-            const wireframe = new THREE.LineSegments(edges, lineMaterial);
-            canvas3DCurrentMesh.add(wireframe);
-            
-            canvas3DScene.add(canvas3DCurrentMesh);
-            
-            const maxDim = Math.max(width, height, thickness);
-            canvas3DCamera.position.set(maxDim * 1.5, maxDim * 1.2, maxDim * 1.5);
-            canvas3DCamera.lookAt(0, 0, 0);
-            if (orbitControls) orbitControls.target.set(0, 0, 0);
-            
-            if (dimensionsVisible) {
-                toggleDimensions();
-                toggleDimensions();
-            }
-            
-            if (textureMode) {
-                loadTextureForCurrentComponent();
-            }
-            
-            const container = document.getElementById('parts3DCanvas').parentElement;
-            canvas3DRenderer.setSize(container.clientWidth, container.clientHeight);
             renderOnce();
         }
         

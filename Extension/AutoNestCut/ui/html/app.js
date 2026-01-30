@@ -103,6 +103,13 @@ function receiveInitialData(data) {
     currentSettings = data.settings;
     partsData = data.parts_by_material;
     window.hierarchyTree = data.hierarchy_tree || [];
+    window.assemblyData = data.assembly_data || null; // Store assembly data globally
+    
+    if (window.assemblyData) {
+        console.log('✓ Assembly data received:', window.assemblyData);
+    } else {
+        console.log('✗ No assembly data available');
+    }
     
     defaultCurrency = currentSettings.default_currency || 'USD';
     currentUnits = currentSettings.units || 'mm';
@@ -130,10 +137,10 @@ function receiveInitialData(data) {
     if (foldToggleBtn) {
         if (showOnlyUsed) {
             foldToggleBtn.classList.add('active');
-            foldToggleBtn.querySelector('.visually-hidden').textContent = 'Show All Materials';
+            foldToggleBtn.textContent = 'Show All';
         } else {
             foldToggleBtn.classList.remove('active');
-            foldToggleBtn.querySelector('.visually-hidden').textContent = 'Show Used Only';
+            foldToggleBtn.textContent = 'Used Only';
         }
     }
     displayMaterials();

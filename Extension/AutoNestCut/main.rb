@@ -73,6 +73,17 @@ module AutoNestCut
       "#{type}=\"#{absolute_url}?v=#{cache_buster}\""
     end
     
+    # Add cache-busting meta tags and timestamp comment to force reload
+    if html_content =~ /<head[^>]*>/i
+      cache_meta = <<~META
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="0">
+        <!-- Cache Buster: #{cache_buster} -->
+      META
+      html_content.sub!(/<head[^>]*>/i, "\\0\n#{cache_meta}")
+    end
+    
     # Set the modified HTML content
     dialog.set_html(html_content)
   end

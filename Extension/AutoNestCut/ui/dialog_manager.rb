@@ -1217,10 +1217,11 @@ module AutoNestCut
         parts_by_material: serialize_parts_by_material(@parts_by_material),
         original_components: @original_components,
         model_materials: get_model_materials, # Materials from SketchUp model
-        hierarchy_tree: @hierarchy_tree
+        hierarchy_tree: @hierarchy_tree,
+        assembly_data: @assembly_data # Add assembly data for 3D viewer
       }
       
-      script = "receiveInitialData(#{initial_data.to_json})"
+      script = "receiveInitialData(#{initial_data.to_json}); if(window.assemblyData) { console.log('Assembly data set:', window.assemblyData); }"
       @dialog.execute_script(script)
     rescue => e
       puts "ERROR in send_initial_data: #{e.message}"

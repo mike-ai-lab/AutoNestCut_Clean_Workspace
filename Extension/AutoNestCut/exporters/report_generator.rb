@@ -357,11 +357,12 @@ module AutoNestCut
         views = AssemblyExporter.capture_assembly_views(entity, "1", selected_views)
         puts "DEBUG: Views captured: #{views.keys.inspect if views}"
         
-        geometry_data = AssemblyExporter.extract_geometry_data(entity)
-        geometry_data = { faces: [] } unless geometry_data && geometry_data[:faces]
-        puts "DEBUG: Geometry faces count: #{geometry_data[:faces].length if geometry_data}"
+        # Get component-grouped geometry with explode vectors
+        geometry_data = extract_component_geometry(entity)
+        geometry_data = { parts: [] } unless geometry_data && geometry_data[:parts]
+        puts "DEBUG: Geometry parts count: #{geometry_data[:parts].length if geometry_data}"
 
-        # Encode views to base64 data URIs for PDF and HTML embedding
+        # Encode views to base64 data URIs
         encoded_views = {}
         if views && views.is_a?(Hash)
           views.each do |view_name, image_path|
@@ -369,7 +370,6 @@ module AutoNestCut
               begin
                 image_data = File.binread(image_path)
                 base64_data = Base64.strict_encode64(image_data)
-                # Store as data URI for direct embedding in HTML/PDF (using JPEG for optimized file size)
                 encoded_views[view_name] = "data:image/jpeg;base64,#{base64_data}"
                 puts "DEBUG: Encoded #{view_name} view to base64 data URI"
               rescue => e
@@ -388,6 +388,76 @@ module AutoNestCut
         puts "WARNING: Failed to capture assembly data: #{e.message}"
         puts e.backtrace.join("\n")
         nil
+      end
+    end
+    
+    private
+    
+    def extract_component_geometry(entity)
+      parts = []
+      parent_center = entity.bounds.center
+      
+      # Get sub-components
+      entities = entity.is_a?(Sketchup::ComponentInstance) ? entity.definition.entities : entity.entities
+      sub_parts = entities.select { |e| e.is_a?(Sketchup::Group) || e.is_a?(Sketchup::ComponentInstance) }
+      
+      sub_parts.each do |part|
+        # Calculate explode vector
+        center = part.bounds.center
+        raw_vector = center - parent_center
+        raw_vector = Geom::Vector3d.new(0, 0, 1) if raw_vector.length == 0
+        
+        # Find dominant axis
+        abs_x, abs_y, abs_z = raw_vector.x.abs, raw_vector.y.abs, raw_vector.z.abs
+        axis_vector = Geom::Vector3d.new(0, 0, 0)
+        
+        if abs_x >= abs_y && abs_x >= abs_z
+          axis_vector.x = raw_vector.x
+        elsif abs_y >= abs_x && abs_y >= abs_z
+          axis_vector.y = raw_vector.y
+        else
+          axis_vector.z = raw_vector.z
+        end
+        axis_vector.normalize!
+        
+        # Extract geometry for this component
+        faces = []
+        collect_component_faces(part, part.transformation, faces)
+        
+        parts << {
+          name: part.name.empty? ? "Part" : part.name,
+          explode_vector: [axis_vector.x, axis_vector.z, -axis_vector.y],
+          faces: faces
+        }
+      end
+      
+      { parts: parts }
+    end
+    
+    def collect_component_faces(entity, transformation, faces)
+      entities = entity.is_a?(Sketchup::Group) ? entity.entities : entity.definition.entities
+      current_transform = transformation
+      
+      entities.each do |e|
+        if e.is_a?(Sketchup::Face)
+          vertices = []
+          e.outer_loop.vertices.each do |v|
+            pt = v.position.transform(current_transform)
+            vertices << {
+              x: pt.x.to_mm / 100.0,
+              y: pt.y.to_mm / 100.0,
+              z: pt.z.to_mm / 100.0
+            }
+          end
+          
+          color = e.material ? (e.material.color.to_i & 0xFFFFFF) : 0x74b9ff
+          faces << { vertices: vertices, color: color }
+          
+        elsif e.is_a?(Sketchup::Group)
+          collect_component_faces(e, current_transform * e.transformation, faces)
+        elsif e.is_a?(Sketchup::ComponentInstance)
+          collect_component_faces(e, current_transform * e.transformation, faces)
+        end
       end
     end
     
