@@ -276,7 +276,9 @@ function renderDiagrams() {
                 (maxCanvasDim - 2 * padding) / boardHeight
             );
 
-            const dpr = window.devicePixelRatio || 1;
+            // Use 3x DPR for high-resolution PDF export (instead of devicePixelRatio)
+            // This ensures crisp, clear diagrams in the PDF
+            const dpr = Math.max(window.devicePixelRatio || 1, 3);
             canvas.width = (boardWidth * scale + 2 * padding) * dpr;
             canvas.height = (boardHeight * scale + 2 * padding) * dpr;
             canvas.style.width = (boardWidth * scale + 2 * padding) + 'px';
@@ -1529,7 +1531,9 @@ function captureDiagramImages() {
     
     canvases.forEach((canvas, index) => {
         try {
-            const dataURL = canvas.toDataURL('image/png');
+            // Use maximum quality (1.0) for PDF export instead of 0.8
+            // PNG format with quality 1.0 ensures crisp, clear images
+            const dataURL = canvas.toDataURL('image/png', 1.0);
             diagrams.push({
                 index: index,
                 image: dataURL,
