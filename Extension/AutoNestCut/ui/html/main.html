@@ -1932,13 +1932,8 @@
         }
         
         function exportToPDF() {
-            // Use the clean JavaScript PDF export instead of Ruby backend
-            if (typeof exportToPDFClean === 'function') {
-                exportToPDFClean();
-            } else {
-                // Fallback to old method
-                showPDFPreview();
-            }
+            // Call showPDFPreview which triggers Ruby PDF export with ReportPdfExporter
+            showPDFPreview();
         }
 
         function showError(message) {

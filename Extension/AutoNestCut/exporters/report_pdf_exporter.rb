@@ -52,8 +52,30 @@ module AutoNestCut
       begin
         output_path ||= generate_default_pdf_path
         
-        puts "DEBUG: PDF export starting"
+        puts "\n" + "="*80
+        puts "DEBUG: PDF EXPORT STARTING"
+        puts "="*80
         puts "DEBUG: Output path: #{output_path}"
+        
+        # Debug: Check what data we have
+        puts "\nDEBUG: DATA AVAILABILITY CHECK:"
+        puts "  @report_data present: #{!@report_data.nil?}"
+        puts "  @report_data keys: #{@report_data.keys.inspect if @report_data}"
+        puts "  @diagrams_data present: #{!@diagrams_data.nil?}"
+        puts "  @diagrams_data count: #{@diagrams_data.length if @diagrams_data}"
+        puts "  @assembly_data present: #{!@assembly_data.nil?}"
+        puts "  @assembly_data keys: #{@assembly_data.keys.inspect if @assembly_data}"
+        puts "  @diagram_images count: #{@diagram_images.length}"
+        
+        if @report_data
+          puts "\nDEBUG: REPORT DATA DETAILS:"
+          puts "  summary: #{!@report_data[:summary].nil?}"
+          puts "  unique_board_types: #{@report_data[:unique_board_types]&.length || 0}"
+          puts "  unique_part_types: #{@report_data[:unique_part_types]&.length || 0}"
+          puts "  parts_placed: #{@report_data[:parts_placed]&.length || 0}"
+          puts "  cut_sequences: #{@report_data[:cut_sequences]&.length || 0}"
+          puts "  usable_offcuts: #{@report_data[:usable_offcuts]&.length || 0}"
+        end
         
         # Force UTF-8 encoding on output path
         output_path = output_path.encode('UTF-8', invalid: :replace, undef: :replace, replace: '?')
@@ -74,13 +96,15 @@ module AutoNestCut
           end
         end
         
-        puts "PDF exported successfully: #{output_path}"
+        puts "\n" + "="*80
+        puts "DEBUG: PDF EXPORT COMPLETED SUCCESSFULLY"
+        puts "="*80
         return output_path
         
       rescue LoadError
         raise "Prawn gem required for PDF export. Install with: gem install prawn"
       rescue => e
-        puts "ERROR in PDF export: #{e.message}"
+        puts "\nERROR in PDF export: #{e.message}"
         puts "Backtrace: #{e.backtrace.join("\n")}"
         raise "PDF export failed: #{e.message}"
       end
@@ -158,65 +182,111 @@ module AutoNestCut
     
     # Render all PDF content
     def render_pdf_content(pdf)
+      puts "\nDEBUG: RENDERING PDF CONTENT..."
+      
       # Title page
+      puts "  → Rendering title page..."
       render_title_page(pdf)
       
-      # Project Summary
+      # Overall Summary (Enhanced)
       if @report_data[:summary]
+        puts "  → Rendering overall summary (NEW PAGE)..."
         pdf.start_new_page
-        render_summary_section(pdf)
+        render_overall_summary_section(pdf)
+      else
+        puts "  ✗ Skipping overall summary (no data)"
       end
       
       # Materials Used
       if @report_data[:unique_board_types] && @report_data[:unique_board_types].length > 0
-        pdf.start_new_page
+        puts "  → Rendering materials section (#{@report_data[:unique_board_types].length} materials)..."
         render_materials_section(pdf)
+      else
+        puts "  ✗ Skipping materials section (no data)"
       end
       
       # Unique Part Types
       if @report_data[:unique_part_types] && @report_data[:unique_part_types].length > 0
-        pdf.start_new_page
+        puts "  → Rendering unique parts section (#{@report_data[:unique_part_types].length} parts)..."
         render_unique_parts_section(pdf)
+      else
+        puts "  ✗ Skipping unique parts section (no data)"
       end
       
       # Sheet Inventory Summary
       if @report_data[:unique_board_types] && @report_data[:unique_board_types].length > 0
-        pdf.start_new_page
+        puts "  → Rendering sheet inventory section..."
         render_sheet_inventory_section(pdf)
+      else
+        puts "  ✗ Skipping sheet inventory section (no data)"
+      end
+      
+      # Boards Summary (NEW - Detailed per-board breakdown)
+      if @diagrams_data && @diagrams_data.length > 0
+        puts "  → Rendering boards summary section (NEW PAGE) (#{@diagrams_data.length} boards)..."
+        pdf.start_new_page
+        render_boards_summary_section(pdf)
+      else
+        puts "  ✗ Skipping boards summary section (no diagrams data)"
       end
       
       # Cutting Diagrams
       if @diagrams_data && @diagrams_data.length > 0
+        puts "  → Rendering cutting diagrams section (NEW PAGE) (#{@diagrams_data.length} diagrams)..."
         pdf.start_new_page
         render_diagrams_section(pdf)
+      else
+        puts "  ✗ Skipping cutting diagrams section (no data)"
       end
       
       # Cut Sequences
       if @report_data[:cut_sequences] && @report_data[:cut_sequences].length > 0
+        puts "  → Rendering cut sequences section (NEW PAGE) (#{@report_data[:cut_sequences].length} sequences)..."
         pdf.start_new_page
         render_cut_sequences_section(pdf)
+      else
+        puts "  ✗ Skipping cut sequences section (no data)"
       end
       
       # Usable Offcuts
       if @report_data[:usable_offcuts] && @report_data[:usable_offcuts].length > 0
-        pdf.start_new_page
+        puts "  → Rendering offcuts section (#{@report_data[:usable_offcuts].length} offcuts)..."
         render_offcuts_section(pdf)
+      else
+        puts "  ✗ Skipping offcuts section (no data)"
       end
       
       # Assembly Views
       if @assembly_data && @assembly_data[:views]
+        puts "  → Rendering assembly section (NEW PAGE) (#{@assembly_data[:views].length} views)..."
         pdf.start_new_page
         render_assembly_section(pdf)
+      else
+        puts "  ✗ Skipping assembly section (no data)"
       end
       
       # Cut List & Part Details
       if @report_data[:parts_placed] && @report_data[:parts_placed].length > 0
+        puts "  → Rendering parts list section (NEW PAGE) (#{@report_data[:parts_placed].length} parts)..."
         pdf.start_new_page
         render_parts_list_section(pdf)
+      else
+        puts "  ✗ Skipping parts list section (no data)"
+      end
+      
+      # Cost Breakdown (NEW)
+      if @report_data[:unique_board_types] && @report_data[:unique_board_types].length > 0
+        puts "  → Rendering cost breakdown section (#{@report_data[:unique_board_types].length} materials)..."
+        render_cost_breakdown_section(pdf)
+      else
+        puts "  ✗ Skipping cost breakdown section (no data)"
       end
       
       # Footer
+      puts "  → Rendering footer..."
       render_footer(pdf)
+      
+      puts "DEBUG: PDF CONTENT RENDERING COMPLETE"
     end
     
     def render_title_page(pdf)
@@ -257,6 +327,26 @@ module AutoNestCut
       render_text_table(pdf, metrics)
     end
     
+    def render_overall_summary_section(pdf)
+      pdf.font_size(16) { pdf.text 'Overall Summary', style: :bold, color: '0066cc' }
+      pdf.move_down 12
+      
+      summary = @report_data[:summary]
+      
+      table_data = [
+        ['Metric', 'Value'],
+        ['Total Parts Instances', summary[:total_parts_instances] || 0],
+        ['Total Unique Part Types', summary[:total_unique_part_types] || 0],
+        ['Total Boards', summary[:total_boards] || 0],
+        ['Overall Efficiency', "#{(summary[:overall_efficiency] || 0).round(1)}%"],
+        ['Total Project Weight', "#{(summary[:total_project_weight_kg] || 0).round(2)} kg"],
+        ['Total Project Cost', "#{summary[:currency] || 'USD'} #{(summary[:total_project_cost] || 0).round(2)}"]
+      ]
+      
+      render_text_table(pdf, table_data)
+      pdf.move_down 15
+    end
+    
     def render_summary_section(pdf)
       pdf.font_size(16) { pdf.text 'Project Summary', style: :bold, color: '0066cc' }
       pdf.move_down 12
@@ -282,40 +372,42 @@ module AutoNestCut
       pdf.font_size(16) { pdf.text 'Materials Used', style: :bold, color: '0066cc' }
       pdf.move_down 12
       
-      table_data = [['Material Type', 'Sheets Required', 'Unit Cost', 'Total Cost']]
+      table_data = [['Material', 'Price per Sheet']]
       
       @report_data[:unique_board_types].each do |board_type|
         table_data << [
-          board_type[:material],
-          board_type[:count].to_s,
-          "#{board_type[:currency] || 'USD'} #{(board_type[:price_per_sheet] || 0).round(2)}",
-          "#{board_type[:currency] || 'USD'} #{(board_type[:total_cost] || 0).round(2)}"
+          board_type[:material] || board_type['material'],
+          "#{board_type[:currency] || board_type['currency'] || 'USD'} #{(board_type[:price_per_sheet] || board_type['price_per_sheet'] || 0).round(2)}"
         ]
       end
       
       render_text_table(pdf, table_data)
+      pdf.move_down 15
     end
     
     def render_unique_parts_section(pdf)
       pdf.font_size(16) { pdf.text 'Unique Part Types', style: :bold, color: '0066cc' }
       pdf.move_down 12
       
-      table_data = [['Part Name', 'Width (mm)', 'Height (mm)', 'Thickness (mm)', 'Material', 'Grain', 'Qty', 'Area (m²)']]
+      table_data = [['Name', 'Width (mm)', 'Height (mm)', 'Thickness (mm)', 'Material', 'Grain', 'Edge Banding', 'Qty', 'Total Area (m²)', 'Weight (kg)']]
       
       @report_data[:unique_part_types].each do |part|
         table_data << [
-          part[:name],
-          (part[:width] || 0).round(1).to_s,
-          (part[:height] || 0).round(1).to_s,
-          (part[:thickness] || 0).round(1).to_s,
-          part[:material],
-          part[:grain_direction] || 'Any',
-          part[:total_quantity].to_s,
-          ((part[:total_area] || 0) / 1000000).round(2).to_s
+          part[:name] || part['name'] || '',
+          (part[:width] || part['width'] || 0).round(1).to_s,
+          (part[:height] || part['height'] || 0).round(1).to_s,
+          (part[:thickness] || part['thickness'] || 0).round(1).to_s,
+          part[:material] || part['material'] || '',
+          part[:grain_direction] || part['grain_direction'] || 'Any',
+          part[:edge_banding] || part['edge_banding'] || 'None',
+          (part[:total_quantity] || part['total_quantity']).to_s,
+          ((part[:total_area] || part['total_area'] || 0) / 1000000).round(2).to_s,
+          (part[:total_weight_kg] || part['total_weight_kg'] || 0).round(2).to_s
         ]
       end
       
       render_text_table(pdf, table_data)
+      pdf.move_down 15
     end
     
     def render_sheet_inventory_section(pdf)
@@ -338,6 +430,67 @@ module AutoNestCut
       end
       
       render_text_table(pdf, table_data)
+    end
+    
+    def render_boards_summary_section(pdf)
+      pdf.font_size(16) { pdf.text 'Boards Summary', style: :bold, color: '0066cc' }
+      pdf.move_down 12
+      
+      @diagrams_data.each_with_index do |board, idx|
+        # Check if we need a new page
+        if pdf.cursor < 200
+          pdf.start_new_page
+        end
+        
+        material = board[:material] || board['material'] || 'Unknown'
+        width = board[:stock_width] || board['stock_width'] || 2440
+        height = board[:stock_height] || board['stock_height'] || 1220
+        parts_count = board[:parts_count] || board['parts_count'] || 0
+        efficiency = (board[:efficiency_percentage] || board['efficiency_percentage'] || 0).round(1)
+        waste = (board[:waste_percentage] || board['waste_percentage'] || 0).round(1)
+        
+        pdf.font_size(13) { pdf.text "Board #{idx + 1}: #{material}", style: :bold }
+        pdf.move_down 6
+        
+        # Board info
+        board_info = [
+          ['Size:', "#{width.round(1)} × #{height.round(1)} mm"],
+          ['Parts:', parts_count.to_s],
+          ['Efficiency:', "#{efficiency}%"],
+          ['Waste:', "#{waste}%"]
+        ]
+        
+        render_text_table(pdf, board_info)
+        
+        # Parts on this board
+        if @report_data[:parts_placed]
+          parts_on_board = @report_data[:parts_placed].select { |p| (p[:board_number] || p['board_number']) == (idx + 1) }
+          
+          if parts_on_board.length > 0
+            pdf.move_down 8
+            pdf.font_size(11) { pdf.text 'Parts on this board:', style: :bold }
+            pdf.move_down 4
+            
+            parts_table = [['Part ID', 'Name', 'Dimensions (mm)', 'Material', 'Grain', 'Edge Banding']]
+            
+            parts_on_board.each_with_index do |part, part_idx|
+              part_id = part[:part_unique_id] || part['part_unique_id'] || part[:instance_id] || part['instance_id'] || "P#{part_idx + 1}"
+              name = part[:name] || part['name'] || ''
+              width_p = (part[:width] || part['width'] || 0).round(1)
+              height_p = (part[:height] || part['height'] || 0).round(1)
+              material_p = part[:material] || part['material'] || ''
+              grain = part[:grain_direction] || part['grain_direction'] || 'Any'
+              edge_banding = part[:edge_banding].is_a?(Hash) ? (part[:edge_banding][:type] || 'None') : (part[:edge_banding] || 'None')
+              
+              parts_table << [part_id, name, "#{width_p} × #{height_p}", material_p, grain, edge_banding]
+            end
+            
+            render_text_table(pdf, parts_table)
+          end
+        end
+        
+        pdf.move_down 15
+      end
     end
     
     def render_diagrams_section(pdf)
@@ -464,7 +617,9 @@ module AutoNestCut
           pdf.move_down 12
         end
         
-        pdf.font_size(11) { pdf.text view_name, style: :bold }
+        # Force UTF-8 encoding on view name
+        view_name_utf8 = ensure_utf8(view_name.to_s)
+        pdf.font_size(11) { pdf.text view_name_utf8, style: :bold }
         pdf.move_down 6
         
         begin
@@ -475,7 +630,9 @@ module AutoNestCut
             
             # Write to temp file as JPEG for optimized file size
             # JPEG format reduces assembly image size from 14-15MB to ~300-400KB while maintaining quality
-            temp_file = File.join(Dir.tmpdir, "assembly_#{view_name}_#{Time.now.to_i}.jpg")
+            # Use sanitized view name for filename
+            safe_view_name = view_name_utf8.gsub(/[^a-zA-Z0-9_-]/, '_')
+            temp_file = File.join(Dir.tmpdir, "assembly_#{safe_view_name}_#{Time.now.to_i}.jpg")
             File.binwrite(temp_file, decoded_image)
             
             # Add to PDF with larger size - fit to page width with proper height
@@ -519,6 +676,26 @@ module AutoNestCut
       end
       
       render_text_table(pdf, table_data)
+    end
+    
+    def render_cost_breakdown_section(pdf)
+      pdf.move_down 20
+      pdf.font_size(16) { pdf.text 'Cost Breakdown', style: :bold, color: '0066cc' }
+      pdf.move_down 12
+      
+      table_data = [['Material', 'Sheets Required', 'Unit Cost', 'Total Cost']]
+      
+      @report_data[:unique_board_types].each do |board_type|
+        table_data << [
+          board_type[:material] || board_type['material'],
+          (board_type[:count] || board_type['count']).to_s,
+          "#{board_type[:currency] || board_type['currency'] || 'USD'} #{(board_type[:price_per_sheet] || board_type['price_per_sheet'] || 0).round(2)}",
+          "#{board_type[:currency] || board_type['currency'] || 'USD'} #{(board_type[:total_cost] || board_type['total_cost'] || 0).round(2)}"
+        ]
+      end
+      
+      render_text_table(pdf, table_data)
+      pdf.move_down 20
     end
     
     def render_footer(pdf)
