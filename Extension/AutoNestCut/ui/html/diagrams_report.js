@@ -111,9 +111,8 @@ let g_reportData = null;
 let currentHighlightedPiece = null;
 let currentHighlightedCanvas = null;
 
-// 3D Viewer globals
-let modalScene, modalCamera, modalRenderer, modalControls;
-let currentPart = null;
+// 3D Viewer globals (removed - now using unified Assembly 3D Viewer)
+// Old modal-based viewer variables removed: modalScene, modalCamera, modalRenderer, modalControls, currentPart
 
 function receiveData(data) {
     console.log('╔════════════════════════════════════════════════════════════════╗');
@@ -1015,15 +1014,35 @@ function handleCanvasClick(e, canvas) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
+    console.log('╔════════════════════════════════════════════════════════════════╗');
+    console.log('║ CANVAS CLICK DEBUG                                            ║');
+    console.log('╚════════════════════════════════════════════════════════════════╝');
+    console.log('🖱️  Click position:', { x, y });
+    
     if (canvas.partData) {
+        console.log('📊 Canvas has', canvas.partData.length, 'parts');
+        
         for (let partData of canvas.partData) {
             if (x >= partData.x && x <= partData.x + partData.width &&
                 y >= partData.y && y <= partData.y + partData.height) {
-                showPartModal(partData.part);
+                console.log('✅ Clicked on part:');
+                console.log('  - name:', partData.part.name);
+                console.log('  - part_unique_id:', partData.part.part_unique_id);
+                console.log('  - part_number:', partData.part.part_number);
+                console.log('  - instance_id:', partData.part.instance_id);
+                console.log('  - width:', partData.part.width);
+                console.log('  - height:', partData.part.height);
+                console.log('  - material:', partData.part.material);
+                console.log('  - Full part object:', partData.part);
+                
+                highlightPartInAssemblyViewer(partData.part);
                 break;
             }
         }
+    } else {
+        console.log('❌ Canvas has no partData');
     }
+    console.log('╚════════════════════════════════════════════════════════════════╝');
 }
 
 function handleCanvasHover(e, canvas) {
@@ -1044,231 +1063,258 @@ function handleCanvasHover(e, canvas) {
     canvas.style.cursor = hovering ? 'pointer' : 'default';
 }
 
-function showPartModal(part) {
+// Highlight part in the Report Assembly 3D Viewer
+function highlightPartInAssemblyViewer(part) {
     console.log('╔════════════════════════════════════════════════════════════════╗');
-    console.log('║ SHOW PART MODAL - 3D COMPONENT VIEWER                         ║');
+    console.log('║ HIGHLIGHT PART IN ASSEMBLY VIEWER                             ║');
     console.log('╚════════════════════════════════════════════════════════════════╝');
-    console.log('📦 showPartModal called with part:', part.name);
+    console.log('📦 Part to highlight:');
+    console.log('  - name:', part.name);
+    console.log('  - part_unique_id:', part.part_unique_id);
+    console.log('  - part_number:', part.part_number);
+    console.log('  - instance_id:', part.instance_id);
+    console.log('  - width:', part.width);
+    console.log('  - height:', part.height);
+    console.log('  - material:', part.material);
     
-    const modal = document.getElementById('partModal');
-    const modalInfo = document.getElementById('modalInfo');
-    const modalCanvas = document.getElementById('modalCanvas');
+    // Ensure the Assembly 3D Viewer is visible and initialized
+    const canvas = document.getElementById('reportAssembly3DCanvas');
+    const offScreen = document.getElementById('reportViewer3DOffScreen');
+    const controls = document.getElementById('reportViewControls');
+    const explodeControls = document.getElementById('reportExplodeControls');
+    const powerBtn = document.getElementById('reportViewer3DPowerBtn');
     
-    if (!modal || !modalInfo || !modalCanvas) {
-        console.error('❌ CRITICAL: Modal elements not found');
-        return;
-    }
-    
-    // Use global units and precision from app.js
-    const modalUnits = window.currentUnits || 'mm';
-    const modalPrecision = window.currentPrecision ?? 1; 
-    const width = (part.width || 0) / window.unitFactors[modalUnits];
-    const height = (part.height || 0) / window.unitFactors[modalUnits];
-    const thickness = (part.thickness || 0) / window.unitFactors[modalUnits];
-    const areaInM2 = (part.width * part.height / 1000000);
-    
-    // Show part information
-    modalInfo.innerHTML = `
-        <h3>${part.name}</h3>
-        <p><strong>Dimensions:</strong> ${formatNumber(width, modalPrecision)} × ${formatNumber(height, modalPrecision)} × ${formatNumber(thickness, modalPrecision)} ${modalUnits}</p>
-        <p><strong>Area:</strong> ${formatNumber(areaInM2, 3)} m²</p>
-        <p><strong>Material:</strong> ${part.material}</p>
-        <p><strong>Grain Direction:</strong> ${part.grain_direction || 'Any'}</p>
-        <p><strong>Edge Banding:</strong> ${typeof part.edge_banding === 'string' ? part.edge_banding : (part.edge_banding?.type || 'None')}</p>
-        <p><strong>Rotated:</strong> ${part.rotated ? 'Yes' : 'No'}</p>
-    `;
-    
-    currentPart = part;
-    modal.style.display = 'block';
-    
-    console.log('✓ Part modal displayed');
-    
-    // Initialize 3D viewer using stable assembly viewer approach
-    console.log('🎨 Initializing 3D viewer...');
-    try {
-        initPartViewer(part, modalCanvas);
-        console.log('✓ 3D viewer initialized successfully');
-    } catch (error) {
-        console.error('❌ Error initializing 3D viewer:', error);
-        console.error('Stack trace:', error.stack);
-    }
-    
-    console.log('╔════════════════════════════════════════════════════════════════╗');
-    console.log('║ SHOW PART MODAL - COMPLETE                                    ║');
-    console.log('╚════════════════════════════════════════════════════════════════╝');
-}
-
-function initPartViewer(part, canvas) {
-    // Validate canvas element
     if (!canvas) {
-        console.error('❌ Invalid canvas element');
+        console.error('❌ Assembly 3D Viewer canvas not found');
         return;
     }
     
-    // Check if THREE.js is available
-    if (typeof THREE === 'undefined') {
-        console.warn('THREE.js not available - 3D viewer disabled');
-        displayPartViewerFallback(canvas);
+    // Turn on the viewer if it's off
+    if (canvas.style.display === 'none') {
+        console.log('🔌 Turning on Assembly 3D Viewer...');
+        canvas.style.display = 'block';
+        if (offScreen) offScreen.style.display = 'none';
+        if (controls) controls.style.display = 'flex';
+        if (explodeControls) explodeControls.style.display = 'flex';
+        if (powerBtn) powerBtn.style.background = 'rgba(76, 175, 80, 0.3)';
+        
+        // Initialize viewer if not already initialized
+        if (!window.reportAssemblyScene && window.reportAssemblyData) {
+            console.log('🎨 Initializing Assembly 3D Viewer...');
+            initReportAssemblyViewer();
+        }
+    }
+    
+    // Wait a moment for viewer to initialize if needed
+    setTimeout(() => {
+        selectPartInReportViewer(part);
+        // No auto-scrolling - let the 3D camera animation provide the visual feedback
+    }, 100);
+    
+    console.log('✓ Part highlighting initiated');
+    console.log('╚════════════════════════════════════════════════════════════════╝');
+}
+
+// Select and highlight a part in the Report Assembly 3D Viewer
+function selectPartInReportViewer(part) {
+    if (!window.reportAssemblyGroups || window.reportAssemblyGroups.length === 0) {
+        console.warn('⚠️ No assembly groups available for highlighting');
         return;
     }
     
-    try {
-        // Create scene
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf0f0f0);
-        
-        // Create camera
-        const width = canvas.clientWidth || 500;
-        const height = canvas.clientHeight || 400;
-        const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-        
-        // Create renderer
-        const renderer = new THREE.WebGLRenderer({ 
-            canvas: canvas,
-            antialias: true,
-            alpha: true,
-            preserveDrawingBuffer: true
+    console.log('╔════════════════════════════════════════════════════════════════╗');
+    console.log('║ SELECT PART IN REPORT VIEWER                                  ║');
+    console.log('╚════════════════════════════════════════════════════════════════╝');
+    console.log('🎯 Searching for part:');
+    console.log('  - name:', part.name);
+    console.log('  - part_unique_id:', part.part_unique_id);
+    console.log('  - part_number:', part.part_number);
+    console.log('  - instance_id:', part.instance_id);
+    console.log('  - width:', part.width);
+    console.log('  - height:', part.height);
+    console.log('📊 Available groups:', window.reportAssemblyGroups.length);
+    
+    // Reset all parts to default appearance
+    window.reportAssemblyGroups.forEach(group => {
+        group.traverse((child) => {
+            if (child.isMesh && child.material) {
+                // Reset to original material properties
+                const originalMat = group.userData.originalMaterial || {};
+                child.material.emissive.setHex(0x000000);
+                child.material.emissiveIntensity = 0;
+                child.material.color.setHex(originalMat.color || 0xcccccc);
+                child.material.opacity = originalMat.opacity || 0.85;
+                child.material.needsUpdate = true;
+            }
+            if (child.isLineSegments) {
+                // Reset edge color
+                child.material.color.setHex(group.userData.originalEdgeColor || 0x666666);
+                child.material.needsUpdate = true;
+            }
         });
-        renderer.setSize(width, height);
-        renderer.setPixelRatio(window.devicePixelRatio || 1);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    });
+    
+    // Build multiple identifiers to match against
+    const searchIdentifiers = [
+        part.name,
+        part.part_unique_id,
+        part.part_number,
+        part.instance_id
+    ].filter(id => id); // Remove null/undefined values
+    
+    console.log('🔍 Search identifiers:', searchIdentifiers);
+    
+    // Find and highlight ALL matching parts (there might be multiple instances)
+    let foundCount = 0;
+    const matchedGroups = [];
+    
+    window.reportAssemblyGroups.forEach((group, index) => {
+        const groupPartName = group.userData.partName;
+        const groupMaterial = group.userData.materialName;
         
-        // Create part geometry
-        const w = Math.max((part.width || 100) / 100, 0.1);
-        const h = Math.max((part.height || 100) / 100, 0.1);
-        const d = Math.max((part.thickness || 100) / 100, 0.1);
+        console.log(`  Group ${index}:`);
+        console.log(`    - partName: "${groupPartName}"`);
+        console.log(`    - materialName: "${groupMaterial}"`);
         
-        const geometry = new THREE.BoxGeometry(w, h, d);
-        const colorHex = hslToRgb(getMaterialColor(part.material));
+        // Try to match using any of the search identifiers
+        let isMatch = false;
+        let matchReason = '';
         
-        const material = new THREE.MeshStandardMaterial({ 
-            color: colorHex,
-            metalness: 0.1,
-            roughness: 0.6,
-            side: THREE.DoubleSide
+        for (const identifier of searchIdentifiers) {
+            if (groupPartName === identifier) {
+                isMatch = true;
+                matchReason = `partName matches "${identifier}"`;
+                break;
+            }
+        }
+        
+        // Also try matching by dimensions and material (for components with same dimensions)
+        if (!isMatch && part.width && part.height && part.material) {
+            // Check if this group's name contains dimension info that matches
+            // This is a fallback for when names don't match exactly
+            const partWidthMM = parseFloat(part.width);
+            const partHeightMM = parseFloat(part.height);
+            const partMaterial = String(part.material).toLowerCase();
+            const groupMaterialLower = String(groupMaterial).toLowerCase();
+            
+            // Check if materials match (case-insensitive partial match)
+            if (partMaterial && groupMaterialLower.includes(partMaterial) || partMaterial.includes(groupMaterialLower)) {
+                // Materials match, now check if name suggests same dimensions
+                // This is a heuristic - you might need to adjust based on your naming convention
+                console.log(`    - Material match candidate: "${partMaterial}" vs "${groupMaterialLower}"`);
+            }
+        }
+        
+        if (isMatch) {
+            foundCount++;
+            matchedGroups.push({ group, index, reason: matchReason });
+            console.log(`    ✅ MATCH! Reason: ${matchReason}`);
+            
+            // Apply highlighting
+            group.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    // Store original color if not already stored
+                    if (!group.userData.originalMaterial.color) {
+                        group.userData.originalMaterial.color = child.material.color.getHex();
+                        group.userData.originalMaterial.opacity = child.material.opacity;
+                    }
+                    
+                    // Apply emissive glow (green highlight)
+                    child.material.emissive.setHex(0x00ff00);
+                    child.material.emissiveIntensity = 0.5;
+                    
+                    // Brighten the color
+                    const currentColor = child.material.color.getHex();
+                    const r = Math.min(255, ((currentColor >> 16) & 0xff) + 50);
+                    const g = Math.min(255, ((currentColor >> 8) & 0xff) + 50);
+                    const b = Math.min(255, (currentColor & 0xff) + 50);
+                    child.material.color.setRGB(r / 255, g / 255, b / 255);
+                    
+                    // Increase opacity slightly
+                    child.material.opacity = Math.min(1.0, child.material.opacity + 0.15);
+                    child.material.needsUpdate = true;
+                }
+                if (child.isLineSegments) {
+                    // Store original edge color
+                    if (!group.userData.originalEdgeColor) {
+                        group.userData.originalEdgeColor = child.material.color.getHex();
+                    }
+                    // Highlight edges in green
+                    child.material.color.setHex(0x00ff00);
+                    child.material.needsUpdate = true;
+                }
+            });
+        }
+    });
+    
+    if (foundCount > 0) {
+        console.log(`✅ Found ${foundCount} matching part(s)`);
+        matchedGroups.forEach(({ group, index, reason }) => {
+            console.log(`  - Group ${index}: ${reason}`);
         });
         
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
+        // Focus camera on the first matched part
+        if (window.reportCamera && window.reportControls && matchedGroups.length > 0) {
+            const firstMatch = matchedGroups[0].group;
+            const box = new THREE.Box3().setFromObject(firstMatch);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            
+            // Smoothly move camera to focus on this part
+            const distance = maxDim * 3;
+            const targetPos = new THREE.Vector3(
+                center.x + distance * 0.7,
+                center.y + distance * 0.5,
+                center.z + distance * 0.7
+            );
+            
+            console.log('📷 Animating camera to matched part');
+            // Animate camera movement
+            animateCameraToTarget(targetPos, center);
+        }
+    } else {
+        console.warn(`❌ No matching parts found!`);
+        console.log('Available part names in 3D viewer:');
+        window.reportAssemblyGroups.forEach((g, i) => {
+            console.log(`  ${i}: "${g.userData.partName}" (material: "${g.userData.materialName}")`);
+        });
+    }
+    
+    console.log('╚════════════════════════════════════════════════════════════════╝');
+}
+
+// Animate camera movement to target position
+function animateCameraToTarget(targetPosition, targetLookAt) {
+    if (!window.reportCamera || !window.reportControls) return;
+    
+    const startPos = window.reportCamera.position.clone();
+    const startTarget = window.reportControls.target.clone();
+    const duration = 1000; // 1 second
+    const startTime = Date.now();
+    
+    function animate() {
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(elapsed / duration, 1);
         
-        // Add wireframe edges
-        const edges = new THREE.EdgesGeometry(geometry);
-        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x666666 });
-        const wireframe = new THREE.LineSegments(edges, edgeMaterial);
+        // Ease-in-out function
+        const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
         
-        scene.add(mesh);
-        scene.add(wireframe);
+        // Interpolate position
+        window.reportCamera.position.lerpVectors(startPos, targetPosition, eased);
+        window.reportControls.target.lerpVectors(startTarget, targetLookAt, eased);
+        window.reportControls.update();
         
-        // Add lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-        scene.add(ambientLight);
-        
-        const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        keyLight.position.set(5, 10, 7);
-        scene.add(keyLight);
-        
-        // Add orbit controls
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.1;
-        controls.enableZoom = true;
-        controls.enablePan = true;
-        controls.enableRotate = true;
-        controls.autoRotate = false;
-        
-        // Fit camera to mesh
-        const box = new THREE.Box3().setFromObject(mesh);
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z);
-        
-        const distance = maxDim * 2.5;
-        camera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
-        camera.lookAt(center);
-        controls.target.copy(center);
-        controls.update();
-        
-        // Animation loop
-        function animate() {
+        if (t < 1) {
             requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
         }
-        animate();
-        
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            const newWidth = canvas.clientWidth;
-            const newHeight = canvas.clientHeight;
-            camera.aspect = newWidth / newHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(newWidth, newHeight);
-        });
-        
-    } catch (error) {
-        console.error('Error initializing part viewer:', error);
-        displayPartViewerFallback(canvas);
     }
+    
+    animate();
 }
 
-function displayPartViewerFallback(canvas) {
-    try {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-            ctx.fillStyle = '#f5f5f5';
-            ctx.fillRect(0, 0, canvas.width || 500, canvas.height || 400);
-            ctx.fillStyle = '#666';
-            ctx.font = '14px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('3D Viewer Not Available', (canvas.width || 500) / 2, (canvas.height || 400) / 2 - 20);
-            ctx.font = '12px Arial';
-            ctx.fillStyle = '#999';
-            ctx.fillText('WebGL is not supported in this environment', (canvas.width || 500) / 2, (canvas.height || 400) / 2 + 10);
-        }
-    } catch (drawError) {
-        console.error('Error drawing fallback message:', drawError);
-    }
-}
-
-function fitCameraToPartMesh(mesh) {
-    const box = new THREE.Box3().setFromObject(mesh);
-    
-    if (!box.isEmpty()) {
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const fov = modalCamera.fov * (Math.PI / 180);
-        let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-        
-        cameraZ *= 1.8;
-        
-        const center = box.getCenter(new THREE.Vector3());
-        
-        modalControls.target.copy(center);
-        modalCamera.position.copy(center);
-        modalCamera.position.z += cameraZ;
-    }
-    
-    modalControls.update();
-}
-
-function animatePartViewer() {
-    if (!modalRenderer || !modalScene || !modalCamera) return;
-    
-    const modal = document.getElementById('partModal');
-    if (!modal || modal.style.display !== 'block') {
-        return;
-    }
-    
-    if (modalControls) {
-        modalControls.update();
-    }
-    
-    modalRenderer.render(modalScene, modalCamera);
-    requestAnimationFrame(animatePartViewer);
-}
+// REMOVED: Old modal-based 3D viewer code (initPartViewer, displayPartViewerFallback, etc.)
+// Now using unified Assembly 3D Viewer with highlighting instead
 
 function renderAssemblyViews(assemblyData) {
     console.log('DEBUG: renderAssemblyViews called with:', assemblyData);
@@ -1568,9 +1614,9 @@ function toggleReportProjection() {
     const aspect = canvas.clientWidth / canvas.clientHeight;
     if (window.reportCamera.isPerspectiveCamera) {
         const frustumSize = 1000;
-        window.reportCamera = new THREE.OrthographicCamera(frustumSize * aspect / -2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / -2, 0.1, 10000);
+        window.reportCamera = new THREE.OrthographicCamera(frustumSize * aspect / -2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / -2, 1, 50000);
     } else {
-        window.reportCamera = new THREE.PerspectiveCamera(75, aspect, 0.1, 10000);
+        window.reportCamera = new THREE.PerspectiveCamera(75, aspect, 1, 50000);
     }
     
     // Restore position and target
@@ -1583,7 +1629,7 @@ function toggleReportProjection() {
 function setReportView(view) {
     if (!window.reportCamera || !window.reportControls || !window.reportAssemblyBounds) return;
     
-    const distance = window.reportAssemblyBounds.size * 2.5;
+    const distance = window.reportAssemblyBounds.size * 1.8; // Reduced from 2.5 to bring camera closer
     const center = window.reportAssemblyBounds.center;
     
     switch(view) {
@@ -1597,7 +1643,8 @@ function setReportView(view) {
             window.reportCamera.position.set(distance, center.y, center.z);
             break;
         case 'iso':
-            window.reportCamera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
+            // Reduced multipliers to bring ISO view much closer
+            window.reportCamera.position.set(distance * 0.5, distance * 0.4, distance * 0.5);
             break;
     }
     
@@ -1634,7 +1681,7 @@ function initReportAssemblyViewer() {
     window.reportAssemblyScene = new THREE.Scene();
     window.reportAssemblyScene.background = new THREE.Color(0xf0f0f0); // Light gray background
     
-    window.reportCamera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 10000);
+    window.reportCamera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 1, 50000);
     window.reportCamera.position.set(500, 500, 500);
     
     window.reportRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
