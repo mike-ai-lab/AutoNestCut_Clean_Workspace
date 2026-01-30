@@ -276,9 +276,9 @@ function renderDiagrams() {
                 (maxCanvasDim - 2 * padding) / boardHeight
             );
 
-            // Use 3x DPR for high-resolution PDF export (instead of devicePixelRatio)
-            // This ensures crisp, clear diagrams in the PDF
-            const dpr = Math.max(window.devicePixelRatio || 1, 3);
+            // Use normal DPR for live display (performance), but allow override for PDF capture
+            // When capturing for PDF, we'll temporarily set a higher DPR for quality
+            const dpr = window.capturingForPDF ? 3 : (window.devicePixelRatio || 1);
             canvas.width = (boardWidth * scale + 2 * padding) * dpr;
             canvas.height = (boardHeight * scale + 2 * padding) * dpr;
             canvas.style.width = (boardWidth * scale + 2 * padding) + 'px';
@@ -1529,6 +1529,17 @@ function captureDiagramImages() {
     const diagrams = [];
     const canvases = document.querySelectorAll('.diagram-canvas');
     
+    // Set flag to enable high-resolution rendering for PDF capture
+    window.capturingForPDF = true;
+    
+    // Redraw all canvases at high resolution
+    canvases.forEach(canvas => {
+        if (canvas.drawCanvas) {
+            canvas.drawCanvas();
+        }
+    });
+    
+    // Capture the high-resolution images
     canvases.forEach((canvas, index) => {
         try {
             // Use maximum quality (1.0) for PDF export instead of 0.8
@@ -1541,6 +1552,14 @@ function captureDiagramImages() {
             });
         } catch (e) {
             console.error('Failed to capture diagram:', e);
+        }
+    });
+    
+    // Reset flag and redraw at normal resolution for display
+    window.capturingForPDF = false;
+    canvases.forEach(canvas => {
+        if (canvas.drawCanvas) {
+            canvas.drawCanvas();
         }
     });
     

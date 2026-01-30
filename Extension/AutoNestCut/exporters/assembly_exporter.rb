@@ -105,14 +105,15 @@ module AutoNestCut
         view.invalidate
         sleep(0.2)
         
-        temp_file = File.join(Dir.tmpdir, "assembly_view_#{name}_#{Time.now.to_i}.png")
-        # Export at 3072x2304 resolution with maximum quality (1.0) for crisp PDF output
-        # PNG format preserves quality without compression artifacts
-        # The 4th parameter (false) disables transparency, 5th parameter (1.0) sets maximum quality
-        view.write_image(temp_file, 3072, 2304, false, 1.0)
+        temp_file = File.join(Dir.tmpdir, "assembly_view_#{name}_#{Time.now.to_i}.jpg")
+        # Export at 3072x2304 resolution (3x higher) with quality 0.85 for maximum clarity in PDF
+        # Higher resolution ensures assembly views are crisp and clear when printed or viewed
+        # The 4th parameter (false) disables transparency, 5th parameter (0.85) sets JPEG quality to 85%
+        view.write_image(temp_file, 3072, 2304, false, 0.85)
         
-        # NO optimization - keep maximum quality for PDF
-        views[name] = temp_file
+        # Further optimize the JPEG if needed
+        optimized_file = Util.optimize_image_to_jpeg(temp_file, 0.75, 500)
+        views[name] = optimized_file
       end
       
       # Validate captured images

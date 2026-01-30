@@ -589,57 +589,30 @@ module AutoNestCut
         }
         pdf.move_down 20
         
-        # Try to embed diagram image - MAXIMIZED TO FULL PAGE WITH ROTATION
+        # Try to embed diagram image - MAXIMIZED TO FULL PAGE
         diagram_img = @diagram_images.find { |img| img[:index] == idx || img['index'] == idx }
         if diagram_img && (diagram_img[:image] || diagram_img['image'])
           image_data = diagram_img[:image] || diagram_img['image']
           
           begin
-            temp_file = nil
-            
             if image_data.is_a?(String) && image_data.start_with?('data:image')
               base64_data = image_data.sub(/^data:image\/[^;]+;base64,/, '')
               decoded_image = Base64.decode64(base64_data)
               
               temp_file = File.join(Dir.tmpdir, "diagram_#{idx}_#{Time.now.to_i}.png")
               File.binwrite(temp_file, decoded_image)
+              
+              # MAXIMIZED: Use full page width and maximum available height
+              available_height = pdf.cursor - 60  # Leave space for footer
+              pdf.image temp_file, fit: [pdf.bounds.width, available_height], position: :center
+              
+              File.delete(temp_file) if File.exist?(temp_file)
             elsif File.exist?(image_data)
-              temp_file = image_data
-            end
-            
-            if temp_file && File.exist?(temp_file)
-              # Get image dimensions to determine if rotation needed
-              img_info = Prawn::Images::PNG.new(File.binread(temp_file))
-              img_width = img_info.width
-              img_height = img_info.height
-              is_landscape = img_width > img_height
-              
-              # A4 page dimensions (portrait)
-              page_width = pdf.bounds.width
-              page_height = pdf.cursor - 60
-              
-              # MAXIMIZED: Use full page dimensions with rotation if needed
-              if is_landscape
-                # Rotate page to landscape for landscape images
-                pdf.rotate(90, origin: [0, 0]) do
-                  # In rotated space, swap width/height
-                  rotated_width = page_height
-                  rotated_height = page_width
-                  pdf.image temp_file, fit: [rotated_width, rotated_height], position: :center
-                end
-              else
-                # Portrait image on portrait page - normal
-                pdf.image temp_file, fit: [page_width, page_height], position: :center
-              end
-              
-              # Clean up temp file if we created it
-              if image_data.is_a?(String) && image_data.start_with?('data:image')
-                File.delete(temp_file) if File.exist?(temp_file)
-              end
+              available_height = pdf.cursor - 60
+              pdf.image image_data, fit: [pdf.bounds.width, available_height], position: :center
             end
           rescue => e
             puts "WARNING: Could not embed diagram image: #{e.message}"
-            puts "Backtrace: #{e.backtrace.first(3).join("\n")}"
             pdf.fill_color 'FFE6E6'
             pdf.fill_rectangle [pdf.bounds.left, pdf.cursor], pdf.bounds.width, 40
             pdf.fill_color '000000'
@@ -741,8 +714,6 @@ module AutoNestCut
         pdf.move_down 15
         
         begin
-          temp_file = nil
-          
           if view_image.is_a?(String) && view_image.start_with?('data:image')
             base64_data = view_image.sub(/^data:image\/[^;]+;base64,/, '')
             decoded_image = Base64.decode64(base64_data)
@@ -750,43 +721,18 @@ module AutoNestCut
             safe_view_name = view_name_utf8.gsub(/[^a-zA-Z0-9_-]/, '_')
             temp_file = File.join(Dir.tmpdir, "assembly_#{safe_view_name}_#{Time.now.to_i}.png")
             File.binwrite(temp_file, decoded_image)
+            
+            # MAXIMIZED: Use full page width and maximum available height
+            available_height = pdf.cursor - 60  # Leave space for footer
+            pdf.image temp_file, fit: [pdf.bounds.width, available_height], position: :center
+            
+            File.delete(temp_file) if File.exist?(temp_file)
           elsif File.exist?(view_image)
-            temp_file = view_image
-          end
-          
-          if temp_file && File.exist?(temp_file)
-            # Get image dimensions to determine if rotation needed
-            img_info = Prawn::Images::PNG.new(File.binread(temp_file))
-            img_width = img_info.width
-            img_height = img_info.height
-            is_landscape = img_width > img_height
-            
-            # A4 page dimensions (portrait)
-            page_width = pdf.bounds.width
-            page_height = pdf.cursor - 60
-            
-            # MAXIMIZED: Use full page dimensions
-            if is_landscape
-              # Rotate page to landscape for landscape images
-              pdf.rotate(90, origin: [0, 0]) do
-                # In rotated space, swap width/height
-                rotated_width = page_height
-                rotated_height = page_width
-                pdf.image temp_file, fit: [rotated_width, rotated_height], position: :center
-              end
-            else
-              # Portrait image on portrait page - normal
-              pdf.image temp_file, fit: [page_width, page_height], position: :center
-            end
-            
-            # Clean up temp file if we created it
-            if view_image.is_a?(String) && view_image.start_with?('data:image')
-              File.delete(temp_file) if File.exist?(temp_file)
-            end
+            available_height = pdf.cursor - 60
+            pdf.image view_image, fit: [pdf.bounds.width, available_height], position: :center
           end
         rescue => e
           puts "WARNING: Could not embed assembly view: #{e.message}"
-          puts "Backtrace: #{e.backtrace.first(3).join("\n")}"
           pdf.fill_color 'FFE6E6'
           pdf.fill_rectangle [pdf.bounds.left, pdf.cursor], pdf.bounds.width, 40
           pdf.fill_color '000000'
