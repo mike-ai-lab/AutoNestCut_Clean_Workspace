@@ -1,31 +1,30 @@
 /**
  * CLEAN PDF EXPORT IMPLEMENTATION
- * Completely new implementation to replace corrupted professional_pdf_export.js
- * Focuses on rendering cutting diagrams and assembly views correctly
+ * Fixes rasterization issue by using native PDF text vectors.
  */
 
 async function exportToPDFClean() {
     try {
         console.log('=== CLEAN PDF EXPORT STARTED ===');
-        showProgressOverlay('Generating PDF Report...');
+        showProgressOverlay('Generating Professional PDF...');
         
-        // Use html2pdf if available, otherwise fallback to simple approach
-        if (typeof html2pdf === 'undefined') {
-            console.log('html2pdf not available, using simple HTML export');
-            exportSimplePDF();
-            return;
-        }
-        
-        if (!g_reportData || !g_boardsData) {
-            throw new Error('No report data available');
+        // Ensure jsPDF is available (usually bundled with html2pdf or loaded separately)
+        if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
+            // Fallback: Check if html2pdf carries jspdf
+            if (typeof html2pdf !== 'undefined' && html2pdf.worker) {
+                 // Try to access it via internal reference if needed, or error out
+            }
         }
 
-        // Create PDF
+        // Initialize PDF - Use 'p' for portrait, 'mm' for units, 'a4' for format
+        const { jsPDF } = window.jspdf || window; 
+        if (!jsPDF) throw new Error("jsPDF library not found. Please ensure html2pdf.bundle.min.js is loaded.");
+
         const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
             format: 'a4',
-            compress: false
+            compress: true
         });
 
         const pageWidth = pdf.internal.pageSize.getWidth();
@@ -33,21 +32,25 @@ async function exportToPDFClean() {
         const margin = 15;
         let yPos = margin;
 
-        // PAGE 1: TITLE PAGE
-        console.log('Adding title page...');
+        // 1. TITLE PAGE (Vector Text)
         addTitlePageClean(pdf, pageWidth, pageHeight, margin);
+        
+        // 2. CUTTING DIAGRAMS (Images - Unavoidable for Canvas, but high res)
         pdf.addPage();
         yPos = margin;
-
-        // PAGE 2+: CUTTING DIAGRAMS (MAIN FOCUS)
-        console.log('Adding cutting diagrams...');
         yPos = addCuttingDiagramsClean(pdf, pageWidth, pageHeight, margin, yPos);
 
-        // PAGE N: SUMMARY
+        // 3. PROJECT SUMMARY (Vector Text)
         pdf.addPage();
         yPos = margin;
-        console.log('Adding summary...');
         addSummaryPageClean(pdf, pageWidth, pageHeight, margin, yPos);
+
+        // 4. CUT LIST (Vector Text)
+        if (g_reportData.parts_placed || g_reportData.parts) {
+            pdf.addPage();
+            yPos = margin;
+            addCutListPageClean(pdf, pageWidth, pageHeight, margin, yPos);
+        }
 
         // Save PDF
         const filename = `AutoNestCut_Report_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -55,160 +58,129 @@ async function exportToPDFClean() {
         
         hideProgressOverlay();
         showSuccessMessage(`PDF exported successfully: ${filename}`);
-        console.log('=== CLEAN PDF EXPORT COMPLETED ===');
 
     } catch (error) {
         hideProgressOverlay();
         console.error('PDF Export Error:', error);
-        showError(`PDF Export Failed: ${error.message}`);
+        // Fallback to simple HTML export if PDF fails
+        if (confirm(`PDF Generation failed: ${error.message}\n\nDo you want to download the HTML report instead?`)) {
+            exportSimplePDF();
+        }
     }
 }
 
 function addTitlePageClean(pdf, pageWidth, pageHeight, margin) {
     const centerX = pageWidth / 2;
-    let yPos = pageHeight / 3;
+    let yPos = 60;
 
-    // Title
-    pdf.setFontSize(28);
-    pdf.setFont('Helvetica', 'bold');
-    pdf.text('AutoNestCut Report', centerX, yPos, { align: 'center' });
+    // Main Title
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(26);
+    pdf.setTextColor(0, 102, 204); // Blue branding
+    pdf.text('Cut List & Nesting Report', centerX, yPos, { align: 'center' });
 
-    yPos += 20;
+    yPos += 15;
     pdf.setFontSize(14);
-    pdf.setFont('Helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text('Professional Manufacturing Analysis', centerX, yPos, { align: 'center' });
+
+    // Project Name
+    yPos += 40;
+    pdf.setFontSize(18);
+    pdf.setTextColor(0, 0, 0);
     pdf.text(g_reportData.summary?.project_name || 'Untitled Project', centerX, yPos, { align: 'center' });
 
-    yPos += 30;
+    // Details Block
+    yPos += 40;
     pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'normal');
     
-    const titleInfo = [
-        ['Client:', g_reportData.summary?.client_name || 'N/A'],
-        ['Prepared by:', g_reportData.summary?.prepared_by || 'N/A'],
+    const leftColX = margin + 40;
+    const valueColX = margin + 90;
+
+    const details = [
+        ['Client:', g_reportData.summary?.client_name || '-'],
+        ['Prepared by:', g_reportData.summary?.prepared_by || '-'],
         ['Date:', new Date().toLocaleDateString()],
-        ['Total Parts:', g_reportData.summary?.total_parts_instances || 0],
-        ['Material Sheets:', g_reportData.summary?.total_boards || 0],
-        ['Efficiency:', `${formatNumber(g_reportData.summary?.overall_efficiency || 0, 1)}%`]
+        ['Time:', new Date().toLocaleTimeString()],
+        ['Currency:', g_reportData.summary?.currency || 'USD']
     ];
 
-    titleInfo.forEach(([label, value]) => {
-        pdf.setFont('Helvetica', 'bold');
-        pdf.text(label, margin + 20, yPos);
-        pdf.setFont('Helvetica', 'normal');
-        pdf.text(String(value), margin + 60, yPos);
-        yPos += 8;
+    details.forEach(([label, value]) => {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(label, leftColX, yPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(String(value), valueColX, yPos);
+        yPos += 10;
     });
 }
 
 function addCuttingDiagramsClean(pdf, pageWidth, pageHeight, margin, startY) {
     let yPos = startY;
-    const contentWidth = pageWidth - (2 * margin);
-    const maxDiagramHeight = 120;
-
-    // Section title
+    
     pdf.setFontSize(16);
-    pdf.setFont('Helvetica', 'bold');
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 102, 204);
     pdf.text('Cutting Diagrams', margin, yPos);
-    yPos += 12;
-
-    // Divider line
-    pdf.setDrawColor(100);
+    yPos += 10;
+    
+    // Line separator
+    pdf.setDrawColor(200, 200, 200);
     pdf.line(margin, yPos, pageWidth - margin, yPos);
-    yPos += 8;
+    yPos += 10;
 
     const diagramsContainer = document.getElementById('diagramsContainer');
-    if (!diagramsContainer) {
-        pdf.setFontSize(10);
-        pdf.text('No diagrams container found', margin, yPos);
-        return yPos;
-    }
+    if (!diagramsContainer) return yPos;
 
-    const canvases = diagramsContainer.querySelectorAll('canvas');
-    console.log(`Found ${canvases.length} canvases to export`);
-
-    if (canvases.length === 0) {
-        pdf.setFontSize(10);
-        pdf.text('No cutting diagrams available', margin, yPos);
-        return yPos;
-    }
-
+    const canvases = Array.from(diagramsContainer.querySelectorAll('canvas'));
+    
     canvases.forEach((canvas, index) => {
-        try {
-            console.log(`Processing canvas ${index + 1}/${canvases.length}`);
+        // Redraw to ensure fresh content
+        if (canvas.drawCanvas) canvas.drawCanvas();
 
-            // Ensure canvas is rendered
-            if (canvas.drawCanvas && typeof canvas.drawCanvas === 'function') {
-                console.log(`  - Calling drawCanvas for canvas ${index}`);
-                canvas.drawCanvas();
-            }
+        const boardData = g_boardsData[index];
+        const title = boardData ? `${boardData.material} - Sheet ${index + 1}` : `Sheet ${index + 1}`;
 
-            // Get canvas dimensions
-            const canvasWidth = canvas.width;
-            const canvasHeight = canvas.height;
-            console.log(`  - Canvas dimensions: ${canvasWidth}x${canvasHeight}`);
+        // Check page space
+        if (yPos + 100 > pageHeight - margin) {
+            pdf.addPage();
+            yPos = margin;
+        }
 
-            // Convert to image data
-            const imageData = canvas.toDataURL('image/png');
-            
-            if (!imageData || imageData.length < 100) {
-                console.warn(`  - Canvas ${index} produced invalid image data (length: ${imageData?.length || 0})`);
-                return;
-            }
+        // Header
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(title, margin, yPos);
+        yPos += 6;
 
-            console.log(`  - Image data generated (${(imageData.length / 1024).toFixed(2)} KB)`);
-
-            // Check if we need a new page
-            if (yPos + maxDiagramHeight > pageHeight - margin) {
-                console.log(`  - Adding new page (yPos: ${yPos}, needed: ${maxDiagramHeight})`);
-                pdf.addPage();
-                yPos = margin;
-            }
-
-            // Add diagram label
-            pdf.setFontSize(12);
-            pdf.setFont('Helvetica', 'bold');
-            const boardData = g_boardsData[index];
-            const boardLabel = boardData ? `${boardData.material} Board ${index + 1}` : `Sheet ${index + 1}`;
-            pdf.text(boardLabel, margin, yPos);
-            yPos += 8;
-
-            // Add board info
-            if (boardData) {
-                pdf.setFontSize(9);
-                pdf.setFont('Helvetica', 'normal');
-                const reportUnits = window.currentUnits || 'mm';
-                const width = boardData.stock_width / window.unitFactors[reportUnits];
-                const height = boardData.stock_height / window.unitFactors[reportUnits];
-                const efficiency = boardData.efficiency_percentage || 0;
-                const waste = boardData.waste_percentage || 0;
-                
-                pdf.text(`Size: ${formatNumber(width, 1)}×${formatNumber(height, 1)} ${reportUnits} | Efficiency: ${formatNumber(efficiency, 1)}% | Waste: ${formatNumber(waste, 1)}%`, margin, yPos);
-                yPos += 6;
-            }
-
-            // Calculate image dimensions to fit page
-            const maxWidth = contentWidth;
-            const maxHeight = pageHeight - yPos - margin - 10;
-            
-            let imgWidth = maxWidth;
-            let imgHeight = (canvasHeight / canvasWidth) * imgWidth;
-            
-            if (imgHeight > maxHeight) {
-                imgHeight = maxHeight;
-                imgWidth = (canvasWidth / canvasHeight) * imgHeight;
-            }
-
-            console.log(`  - Adding image to PDF (${imgWidth.toFixed(1)}x${imgHeight.toFixed(1)} mm)`);
-
-            // Add image to PDF
-            pdf.addImage(imageData, 'PNG', margin, yPos, imgWidth, imgHeight);
-            yPos += imgHeight + 10;
-
-        } catch (error) {
-            console.error(`Error processing canvas ${index}:`, error);
+        // Info string
+        if (boardData) {
             pdf.setFontSize(10);
-            pdf.setFont('Helvetica', 'normal');
-            pdf.text(`Error rendering diagram ${index + 1}: ${error.message}`, margin, yPos);
-            yPos += 10;
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(80, 80, 80);
+            const eff = formatNumber(boardData.efficiency_percentage || 0, 1);
+            pdf.text(`Efficiency: ${eff}% | Waste: ${formatNumber(100-eff, 1)}%`, margin, yPos);
+            yPos += 8;
+        }
+
+        // Image
+        try {
+            const imgData = canvas.toDataURL('image/png', 1.0); // Max quality
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfImgWidth = pageWidth - (margin * 2);
+            const pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
+
+            // If image is too tall for remaining page, push to next page
+            if (yPos + pdfImgHeight > pageHeight - margin) {
+                pdf.addPage();
+                yPos = margin + 10; // Margin + top padding
+            }
+
+            pdf.addImage(imgData, 'PNG', margin, yPos, pdfImgWidth, pdfImgHeight);
+            yPos += pdfImgHeight + 15;
+        } catch (e) {
+            console.error('Canvas export error:', e);
         }
     });
 
@@ -217,334 +189,131 @@ function addCuttingDiagramsClean(pdf, pageWidth, pageHeight, margin, startY) {
 
 function addSummaryPageClean(pdf, pageWidth, pageHeight, margin, startY) {
     let yPos = startY;
-    const contentWidth = pageWidth - (2 * margin);
-
-    // Section title
+    
     pdf.setFontSize(16);
-    pdf.setFont('Helvetica', 'bold');
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 102, 204);
     pdf.text('Project Summary', margin, yPos);
-    yPos += 12;
+    yPos += 15;
 
-    // Divider line
-    pdf.setDrawColor(100);
-    pdf.line(margin, yPos, pageWidth - margin, yPos);
-    yPos += 8;
-
-    pdf.setFontSize(11);
-    pdf.setFont('Helvetica', 'normal');
-
-    const reportUnits = window.currentUnits || 'mm';
-    const reportPrecision = window.currentPrecision ?? 1;
-    const currency = g_reportData.summary?.currency || window.defaultCurrency || 'USD';
-    const currencySymbol = window.currencySymbols?.[currency] || currency;
-
+    // Define table content
     const summaryData = [
-        ['Total Parts:', g_reportData.summary?.total_parts_instances || 0],
-        ['Unique Components:', g_reportData.summary?.total_unique_part_types || 0],
-        ['Material Sheets:', g_reportData.summary?.total_boards || 0],
-        ['Overall Efficiency:', `${formatNumber(g_reportData.summary?.overall_efficiency || 0, 1)}%`],
-        ['Total Project Weight:', `${formatNumber(g_reportData.summary?.total_project_weight_kg || 0, 2)} kg`],
-        ['Total Project Cost:', `${currencySymbol}${formatNumber(g_reportData.summary?.total_project_cost || 0, 2)}`]
+        ['Metric', 'Value'],
+        ['Total Parts', String(g_reportData.summary?.total_parts_instances || 0)],
+        ['Total Boards', String(g_reportData.summary?.total_boards || 0)],
+        ['Overall Efficiency', `${formatNumber(g_reportData.summary?.overall_efficiency || 0, 1)}%`],
+        ['Total Weight', `${formatNumber(g_reportData.summary?.total_project_weight_kg || 0, 2)} kg`],
+        ['Total Cost', `${g_reportData.summary?.currency || '$'} ${formatNumber(g_reportData.summary?.total_project_cost || 0, 2)}`]
     ];
 
-    summaryData.forEach(([label, value]) => {
-        pdf.setFont('Helvetica', 'bold');
-        pdf.text(label, margin, yPos);
-        pdf.setFont('Helvetica', 'normal');
-        pdf.text(String(value), margin + 80, yPos);
-        yPos += 8;
-    });
+    // Simple Table Renderer (Vector Text)
+    drawSimpleTable(pdf, summaryData, margin, yPos, pageWidth - (margin*2));
+    
+    // Move down based on table size approx
+    yPos += (summaryData.length * 10) + 20;
 
-    // Materials section
-    yPos += 15;
-    pdf.setFontSize(14);
-    pdf.setFont('Helvetica', 'bold');
+    // Materials Table
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 102, 204);
     pdf.text('Materials Used', margin, yPos);
-    yPos += 10;
+    yPos += 15;
 
-    if (g_reportData.unique_board_types && g_reportData.unique_board_types.length > 0) {
-        pdf.setFontSize(9);
-        pdf.setFont('Helvetica', 'normal');
-
-        g_reportData.unique_board_types.forEach(board => {
-            if (yPos > pageHeight - margin - 15) {
-                pdf.addPage();
-                yPos = margin;
-            }
-
-            const boardWidth = board.stock_width / window.unitFactors[reportUnits];
-            const boardHeight = board.stock_height / window.unitFactors[reportUnits];
-            const boardSymbol = window.currencySymbols?.[board.currency || currency] || (board.currency || currency);
-
-            pdf.text(`• ${board.material}: ${formatNumber(boardWidth, 1)}×${formatNumber(boardHeight, 1)} ${reportUnits} | Count: ${board.count} | Price: ${boardSymbol}${formatNumber(board.price_per_sheet || 0, 2)}`, margin + 5, yPos);
-            yPos += 6;
+    const materialsData = [['Material', 'Sheets', 'Price/Sheet', 'Total']];
+    if (g_reportData.unique_board_types) {
+        g_reportData.unique_board_types.forEach(b => {
+            materialsData.push([
+                b.material,
+                String(b.count),
+                formatNumber(b.price_per_sheet, 2),
+                formatNumber(b.total_cost, 2)
+            ]);
         });
     }
+
+    drawSimpleTable(pdf, materialsData, margin, yPos, pageWidth - (margin*2));
 }
 
-// Helper functions
-function formatNumber(value, decimals = 2) {
-    if (typeof value !== 'number' || isNaN(value)) {
-        return '-';
+function addCutListPageClean(pdf, pageWidth, pageHeight, margin, startY) {
+    let yPos = startY;
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 102, 204);
+    pdf.text('Part List', margin, yPos);
+    yPos += 15;
+
+    const headers = ['Part', 'W x H (mm)', 'Mat.', 'Qty', 'Sheet'];
+    const colWidths = [50, 40, 50, 20, 20]; // approx mm widths
+    
+    // Draw Header
+    drawRow(pdf, headers, margin, yPos, colWidths, true);
+    yPos += 10;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
+    pdf.setTextColor(0, 0, 0);
+
+    const parts = g_reportData.unique_part_types || [];
+    parts.forEach(part => {
+        if (yPos > pageHeight - margin) {
+            pdf.addPage();
+            yPos = margin;
+            drawRow(pdf, headers, margin, yPos, colWidths, true); // Re-draw header
+            yPos += 10;
+        }
+
+        const rowData = [
+            part.name,
+            `${Math.round(part.width)} x ${Math.round(part.height)}`,
+            part.material,
+            String(part.total_quantity),
+            '-'
+        ];
+        drawRow(pdf, rowData, margin, yPos, colWidths, false);
+        yPos += 8;
+    });
+}
+
+// Helper to draw a row of text vectors
+function drawRow(pdf, cells, x, y, widths, isHeader) {
+    let currentX = x;
+    if (isHeader) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFillColor(240, 240, 240);
+        pdf.rect(x, y - 6, widths.reduce((a,b)=>a+b,0), 10, 'F');
+        pdf.setTextColor(0,0,0);
+    } else {
+        pdf.setFont('helvetica', 'normal');
     }
-    return parseFloat(value).toFixed(decimals);
+
+    cells.forEach((cell, i) => {
+        pdf.text(String(cell).substring(0, 25), currentX + 2, y); // Clip long text
+        currentX += widths[i] || 30;
+    });
 }
 
-function showProgressOverlay(message) {
-    const overlay = document.createElement('div');
-    overlay.id = 'progressOverlay';
-    overlay.innerHTML = `
-        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-            <div style="width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid #007cba; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-            <div style="color: white; margin-top: 20px; font-size: 16px; font-weight: 500;">${message}</div>
-            <style>
-                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            </style>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-}
-
-function hideProgressOverlay() {
-    const overlay = document.getElementById('progressOverlay');
-    if (overlay) overlay.remove();
-}
-
-function showSuccessMessage(message) {
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center;';
+function drawSimpleTable(pdf, data, x, y, width) {
+    const rowHeight = 10;
+    const colWidth = width / data[0].length;
     
-    const dialog = document.createElement('div');
-    dialog.style.cssText = 'background: white; padding: 30px; border-radius: 8px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);';
-    
-    dialog.innerHTML = `
-        <div style="text-align: center;">
-            <div style="width: 60px; height: 60px; background: #e8f5e9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2">
-                    <polyline points="20 6 9 17 4 12"/>
-                </svg>
-            </div>
-            <h3 style="margin: 0 0 12px 0; color: #28a745; font-size: 20px;">Success!</h3>
-            <p style="margin: 0 0 20px 0; color: #555; font-size: 14px; line-height: 1.6;">${message}</p>
-            <button onclick="this.closest('[style*=\'position: fixed\']').remove()" style="background: #28a745; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">Close</button>
-        </div>
-    `;
-    
-    modal.appendChild(dialog);
-    document.body.appendChild(modal);
-}
-
-function showError(message) {
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center;';
-    
-    const dialog = document.createElement('div');
-    dialog.style.cssText = 'background: white; padding: 30px; border-radius: 8px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);';
-    
-    dialog.innerHTML = `
-        <div style="text-align: center;">
-            <div style="width: 60px; height: 60px; background: #fee; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d73a49" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="8" x2="12" y2="12"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-            </div>
-            <h3 style="margin: 0 0 12px 0; color: #d73a49; font-size: 20px;">Error</h3>
-            <p style="margin: 0 0 20px 0; color: #555; font-size: 14px; line-height: 1.6;">${message}</p>
-            <button onclick="this.closest('[style*=\'position: fixed\']').remove()" style="background: #d73a49; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">Close</button>
-        </div>
-    `;
-    
-    modal.appendChild(dialog);
-    document.body.appendChild(modal);
-}
-
-/**
- * FALLBACK: Export HTML report that can be printed to PDF
- * This works within SketchUp extension environment
- */
-function exportSimplePDF() {
-    try {
-        console.log('=== SIMPLE PDF EXPORT (HTML REPORT) ===');
-        
-        if (!g_reportData || !g_boardsData) {
-            throw new Error('No report data available');
+    data.forEach((row, i) => {
+        const isHeader = i === 0;
+        if (isHeader) {
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFillColor(240, 240, 240);
+            pdf.rect(x, y - 6, width, rowHeight, 'F');
+        } else {
+            pdf.setFont('helvetica', 'normal');
         }
-
-        const reportUnits = window.currentUnits || 'mm';
-        const reportPrecision = window.currentPrecision ?? 1;
-        const currency = g_reportData.summary?.currency || window.defaultCurrency || 'USD';
-        const currencySymbol = window.currencySymbols?.[currency] || currency;
-
-        // Build HTML content
-        let htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>AutoNestCut Report</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; background: white; }
-        .page-break { page-break-after: always; margin-bottom: 40px; }
-        .title-page { text-align: center; padding: 60px 20px; }
-        .title-page h1 { font-size: 32px; margin-bottom: 20px; color: #333; }
-        .title-page h2 { font-size: 18px; margin-bottom: 40px; color: #666; }
-        .title-info { text-align: left; max-width: 600px; margin: 0 auto; }
-        .title-info p { margin: 10px 0; font-size: 14px; }
-        .title-info strong { display: inline-block; width: 150px; }
-        h2 { font-size: 20px; margin: 30px 0 15px 0; color: #333; border-bottom: 2px solid #007cba; padding-bottom: 10px; }
-        h3 { font-size: 16px; margin: 20px 0 10px 0; color: #555; }
-        .diagram-section { margin: 20px 0; page-break-inside: avoid; }
-        .diagram-section img { max-width: 100%; height: auto; border: 1px solid #ddd; margin: 10px 0; }
-        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background-color: #f5f5f5; font-weight: bold; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        .summary-item { margin: 10px 0; font-size: 14px; }
-        .summary-item strong { display: inline-block; width: 200px; }
-        @media print { body { padding: 0; } .page-break { margin-bottom: 0; } }
-    </style>
-</head>
-<body>
-`;
-
-        // TITLE PAGE
-        htmlContent += `
-    <div class="title-page page-break">
-        <h1>AutoNestCut Report</h1>
-        <h2>${g_reportData.summary?.project_name || 'Untitled Project'}</h2>
-        <div class="title-info">
-            <p><strong>Client:</strong> ${g_reportData.summary?.client_name || 'N/A'}</p>
-            <p><strong>Prepared by:</strong> ${g_reportData.summary?.prepared_by || 'N/A'}</p>
-            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
-            <p><strong>Total Parts:</strong> ${g_reportData.summary?.total_parts_instances || 0}</p>
-            <p><strong>Material Sheets:</strong> ${g_reportData.summary?.total_boards || 0}</p>
-            <p><strong>Overall Efficiency:</strong> ${formatNumber(g_reportData.summary?.overall_efficiency || 0, 1)}%</p>
-        </div>
-    </div>
-`;
-
-        // CUTTING DIAGRAMS
-        htmlContent += `<h2>Cutting Diagrams</h2>`;
         
-        const diagramsContainer = document.getElementById('diagramsContainer');
-        if (diagramsContainer) {
-            const canvases = diagramsContainer.querySelectorAll('canvas');
-            
-            canvases.forEach((canvas, index) => {
-                try {
-                    // Ensure canvas is rendered
-                    if (canvas.drawCanvas && typeof canvas.drawCanvas === 'function') {
-                        canvas.drawCanvas();
-                    }
-                    
-                    const imageData = canvas.toDataURL('image/png');
-                    const boardData = g_boardsData[index];
-                    const boardLabel = boardData ? `${boardData.material} Board ${index + 1}` : `Sheet ${index + 1}`;
-                    
-                    htmlContent += `
-    <div class="diagram-section page-break">
-        <h3>${boardLabel}</h3>
-`;
-                    
-                    if (boardData) {
-                        const width = boardData.stock_width / window.unitFactors[reportUnits];
-                        const height = boardData.stock_height / window.unitFactors[reportUnits];
-                        const efficiency = boardData.efficiency_percentage || 0;
-                        const waste = boardData.waste_percentage || 0;
-                        
-                        htmlContent += `
-        <p style="font-size: 12px; color: #666;">
-            Size: ${formatNumber(width, 1)}×${formatNumber(height, 1)} ${reportUnits} | 
-            Efficiency: ${formatNumber(efficiency, 1)}% | 
-            Waste: ${formatNumber(waste, 1)}%
-        </p>
-`;
-                    }
-                    
-                    htmlContent += `
-        <img src="${imageData}" alt="Cutting diagram for ${boardLabel}" style="max-width: 100%; height: auto; border: 1px solid #ddd;">
-    </div>
-`;
-                } catch (error) {
-                    console.error(`Error processing canvas ${index}:`, error);
-                    htmlContent += `<p style="color: red;">Error rendering diagram ${index + 1}</p>`;
-                }
-            });
-        }
-
-        // SUMMARY PAGE
-        htmlContent += `
-    <div class="page-break">
-        <h2>Project Summary</h2>
-        <div class="summary-item"><strong>Total Parts:</strong> ${g_reportData.summary?.total_parts_instances || 0}</div>
-        <div class="summary-item"><strong>Unique Components:</strong> ${g_reportData.summary?.total_unique_part_types || 0}</div>
-        <div class="summary-item"><strong>Material Sheets:</strong> ${g_reportData.summary?.total_boards || 0}</div>
-        <div class="summary-item"><strong>Overall Efficiency:</strong> ${formatNumber(g_reportData.summary?.overall_efficiency || 0, 1)}%</div>
-        <div class="summary-item"><strong>Total Project Weight:</strong> ${formatNumber(g_reportData.summary?.total_project_weight_kg || 0, 2)} kg</div>
-        <div class="summary-item"><strong>Total Project Cost:</strong> ${currencySymbol}${formatNumber(g_reportData.summary?.total_project_cost || 0, 2)}</div>
+        row.forEach((cell, j) => {
+            pdf.text(String(cell), x + (j * colWidth) + 2, y);
+        });
         
-        <h2>Materials Used</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Material</th>
-                    <th>Dimensions (${reportUnits})</th>
-                    <th>Count</th>
-                    <th>Price/Sheet</th>
-                    <th>Total Cost</th>
-                </tr>
-            </thead>
-            <tbody>
-`;
-
-        if (g_reportData.unique_board_types && g_reportData.unique_board_types.length > 0) {
-            g_reportData.unique_board_types.forEach(board => {
-                const boardWidth = board.stock_width / window.unitFactors[reportUnits];
-                const boardHeight = board.stock_height / window.unitFactors[reportUnits];
-                const boardSymbol = window.currencySymbols?.[board.currency || currency] || (board.currency || currency);
-                
-                htmlContent += `
-                <tr>
-                    <td>${board.material}</td>
-                    <td>${formatNumber(boardWidth, 1)}×${formatNumber(boardHeight, 1)}</td>
-                    <td>${board.count}</td>
-                    <td>${boardSymbol}${formatNumber(board.price_per_sheet || 0, 2)}</td>
-                    <td>${boardSymbol}${formatNumber((board.price_per_sheet || 0) * board.count, 2)}</td>
-                </tr>
-`;
-            });
-        }
-
-        htmlContent += `
-            </tbody>
-        </table>
-    </div>
-</body>
-</html>
-`;
-
-        // Create blob and download
-        const blob = new Blob([htmlContent], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `AutoNestCut_Report_${new Date().toISOString().split('T')[0]}.html`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        // Horizontal line
+        pdf.setDrawColor(220);
+        pdf.line(x, y + 2, x + width, y + 2);
         
-        hideProgressOverlay();
-        showSuccessMessage('Report HTML downloaded! Open it in your browser and use Print > Save as PDF to create the PDF file.');
-
-    } catch (error) {
-        hideProgressOverlay();
-        console.error('Simple PDF Export Error:', error);
-        showError(`PDF Export Failed: ${error.message}`);
-    }
+        y += rowHeight;
+    });
 }
-
-console.log('✓ Clean PDF Export module loaded');

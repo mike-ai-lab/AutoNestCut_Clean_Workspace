@@ -339,54 +339,69 @@ module AutoNestCut
       @dialog.add_action_callback("print_pdf") do |action_context, html_or_data|
         begin
           puts "\n" + "="*80
-          puts "DEBUG: print_pdf callback STARTED"
+          puts "DEBUG: print_pdf callback STARTED - Using Ruby PDF Exporter"
           puts "="*80
           
-          html_content = nil
+          report_data = nil
+          assembly_data = nil
+          diagram_images = []
+          diagrams_data = []
           
           begin
-            report_data = JSON.parse(html_or_data, symbolize_names: true)
+            # Force UTF-8 encoding on incoming data
+            utf8_data = html_or_data.force_encoding('UTF-8')
+            parsed_data = JSON.parse(utf8_data, symbolize_names: true)
             puts "DEBUG: ✓ JSON parsed successfully!"
             
-            assembly_data = report_data[:assembly_data]
-            diagram_images = report_data[:diagram_images] || []
+            # Recursively convert all strings to UTF-8
+            report_data = deep_encode_utf8(parsed_data[:report])
+            diagrams_data = deep_encode_utf8(parsed_data[:diagrams] || [])
+            assembly_data = deep_encode_utf8(parsed_data[:assembly_data])
+            diagram_images = deep_encode_utf8(parsed_data[:diagram_images] || [])
             
-            puts "DEBUG: Generating printable HTML with #{diagram_images.length} diagram images..."
-            html_content = generate_simple_printable_html(
-              report_data[:report],
-              report_data[:diagrams],
-              assembly_data,
-              diagram_images
-            )
-            puts "DEBUG: ✓ HTML generated, length: #{html_content.length}"
+            puts "DEBUG: Report data keys: #{report_data.keys.inspect if report_data}"
+            puts "DEBUG: Diagrams count: #{diagrams_data.length}"
+            puts "DEBUG: Diagram images count: #{diagram_images.length}"
+            puts "DEBUG: Assembly data present: #{!assembly_data.nil?}"
             
           rescue JSON::ParserError => je
             puts "DEBUG: ✗ JSON parsing failed: #{je.message}"
-            if html_or_data.is_a?(String) && (html_or_data.strip.start_with?('<!DOCTYPE') || html_or_data.strip.start_with?('<html'))
-              html_content = html_or_data
-            else
-              raise "Invalid data format: #{je.message}"
-            end
+            raise "Invalid data format for PDF export: #{je.message}"
           end
           
-          print_dialog = UI::HtmlDialog.new(
-            dialog_title: "AutoNestCut PDF Preview",
-            preferences_key: "AutoNestCut_PDF_Preview",
-            scrollable: true,
-            resizable: true,
-            width: 900,
-            height: 800
-          )
+          # Use ReportPdfExporter to generate PDF with vector text
+          require_relative '../exporters/report_pdf_exporter'
           
-          print_dialog.set_html(html_content)
-          print_dialog.show
-          puts "="*80
-          puts "DEBUG: print_pdf callback COMPLETED"
-          puts "="*80
+          pdf_exporter = ReportPdfExporter.new
+          pdf_exporter.set_report_data(report_data)
+          pdf_exporter.set_diagrams_data(diagrams_data)
+          pdf_exporter.set_assembly_data(assembly_data) if assembly_data
+          
+          # Add diagram images
+          diagram_images.each_with_index do |img_data, idx|
+            pdf_exporter.add_diagram_image(idx, img_data[:image] || img_data['image'])
+          end
+          
+          # Generate PDF file
+          pdf_path = pdf_exporter.export_to_pdf
+          
+          if pdf_path && File.exist?(pdf_path)
+            puts "DEBUG: ✓ PDF generated successfully at: #{pdf_path}"
+            puts "="*80
+            puts "DEBUG: print_pdf callback COMPLETED"
+            puts "="*80
+            
+            # Open the PDF file
+            UI.openURL("file:///#{pdf_path}")
+            UI.messagebox("PDF exported successfully!\n\nLocation: #{pdf_path}\n\nThe PDF has been opened in your default PDF viewer.")
+          else
+            raise "PDF file was not created"
+          end
+          
         rescue => e
           puts "ERROR in print_pdf: #{e.message}"
           puts e.backtrace.join("\n")
-          UI.messagebox("Error generating PDF preview: #{e.message}")
+          UI.messagebox("Error generating PDF: #{e.message}")
         end
       end
       
@@ -880,6 +895,22 @@ module AutoNestCut
     end
 
     private
+
+    # Helper method to recursively convert all strings in a data structure to UTF-8
+    def deep_encode_utf8(obj)
+      case obj
+      when String
+        # Force encoding to UTF-8, replacing invalid characters
+        obj.encode('UTF-8', invalid: :replace, undef: :replace, replace: '?')
+      when Hash
+        obj.transform_keys { |k| deep_encode_utf8(k) }
+           .transform_values { |v| deep_encode_utf8(v) }
+      when Array
+        obj.map { |item| deep_encode_utf8(item) }
+      else
+        obj
+      end
+    end
 
     # CRITICAL: Remap components to auto-created materials if they exceed standard material dimensions
     # DETERMINISTIC AUTO-MATERIAL BINDING SYSTEM

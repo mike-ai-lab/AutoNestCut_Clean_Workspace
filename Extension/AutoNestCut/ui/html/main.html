@@ -248,6 +248,8 @@
             z-index: 1001;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="languages.js"></script>
 </head>
 <body>
@@ -1930,7 +1932,13 @@
         }
         
         function exportToPDF() {
-            showPDFPreview();
+            // Use the clean JavaScript PDF export instead of Ruby backend
+            if (typeof exportToPDFClean === 'function') {
+                exportToPDFClean();
+            } else {
+                // Fallback to old method
+                showPDFPreview();
+            }
         }
 
         function showError(message) {
@@ -4684,6 +4692,721 @@ td .cost-breakdown-wrapper {
             // This is a placeholder for the Ruby integration
             console.log('PDF content ready for export');
         });
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="pdf_export_clean.js"></script>
+    
+    <script>
+        // --- ENHANCED DASHBOARD IMPLEMENTATION ---
+        let dashboardCharts = {};
+        let currentDashboardFilter = 'all'; // Track current material filter
+
+        function renderDashboard() {
+            console.log("Initializing Enhanced Dashboard...");
+            const container = document.getElementById('dashboardContent');
+            if (!container) return;
+
+            // 1. Check if report data exists
+            if (!g_reportData || !g_reportData.summary) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px; color: #656d76; background: white; border-radius: 8px; border: 1px solid #d0d7de;">
+                        <div style="margin-bottom: 15px; opacity: 0.5;">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="3" y1="9" x2="21" y2="9"></line>
+                                <line x1="9" y1="21" x2="9" y2="9"></line>
+                            </svg>
+                        </div>
+                        <h3 style="margin: 0 0 8px 0; color: #24292e;">No Data to Visualize</h3>
+                        <p style="margin: 0;">Please go to the <strong>Configuration</strong> tab and generate a cut list first.</p>
+                    </div>`;
+                return;
+            }
+
+            // 2. Prepare Data from the Global Report Object
+            const summary = g_reportData.summary;
+            const boardTypes = g_reportData.unique_board_types || [];
+            const boards = g_reportData.boards || [];
+            const currency = summary.currency || '$';
+            
+            // Apply filter if set
+            let filteredBoardTypes = boardTypes;
+            let filteredSummary = {...summary};
+            
+            if (currentDashboardFilter !== 'all') {
+                filteredBoardTypes = boardTypes.filter(b => b.material === currentDashboardFilter);
+                // Recalculate summary for filtered data
+                const filteredBoards = boards.filter(b => b.material === currentDashboardFilter);
+                filteredSummary.total_boards = filteredBoards.length;
+                filteredSummary.total_project_cost = filteredBoardTypes.reduce((sum, b) => sum + (b.total_cost || 0), 0);
+            }
+            
+            // Prepare Arrays for Charts
+            const labels = filteredBoardTypes.map(b => b.material);
+            const costs = filteredBoardTypes.map(b => b.total_cost || 0);
+            const sheetCounts = filteredBoardTypes.map(b => b.count || 0);
+            
+            // Calculate parts per material
+            const partCounts = g_reportData.unique_part_types ? 
+                g_reportData.unique_part_types.reduce((acc, part) => {
+                    if (currentDashboardFilter === 'all' || part.material === currentDashboardFilter) {
+                        acc[part.material] = (acc[part.material] || 0) + part.total_quantity;
+                    }
+                    return acc;
+                }, {}) : {};
+            const partCountData = labels.map(l => partCounts[l] || 0);
+
+            // Calculate waste metrics
+            const totalWasteArea = boards.reduce((sum, board) => {
+                if (currentDashboardFilter === 'all' || board.material === currentDashboardFilter) {
+                    return sum + (board.waste_area || 0);
+                }
+                return sum;
+            }, 0);
+            
+            const totalUsedArea = boards.reduce((sum, board) => {
+                if (currentDashboardFilter === 'all' || board.material === currentDashboardFilter) {
+                    return sum + (board.used_area || 0);
+                }
+                return sum;
+            }, 0);
+            
+            const wastePercentage = totalUsedArea > 0 ? ((totalWasteArea / (totalUsedArea + totalWasteArea)) * 100) : 0;
+            const wasteCost = (filteredSummary.total_project_cost * wastePercentage) / 100;
+            
+            // Calculate carbon footprint (rough estimate: 0.5 kg CO2 per m² of waste)
+            const carbonFootprint = (totalWasteArea / 1000000) * 0.5; // Convert mm² to m², then to kg CO2
+
+            // Styling Constants (Matches your App Theme)
+            const colors = ['#007cba', '#28a745', '#6f42c1', '#fd7e14', '#e83e8c', '#20c997', '#ffc107', '#17a2b8'];
+            const transparentColors = colors.map(c => c + 'CC');
+            
+            // Build material filter options
+            const materialOptions = ['<option value="all">All Materials</option>'];
+            boardTypes.forEach(b => {
+                materialOptions.push(`<option value="${b.material}" ${currentDashboardFilter === b.material ? 'selected' : ''}>${b.material}</option>`);
+            });
+
+            // 3. Inject Dashboard HTML Structure
+            container.innerHTML = `
+                <style>
+                    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #d0d7de; }
+                    .dashboard-title { font-size: 20px; font-weight: 700; color: #24292e; display: flex; align-items: center; gap: 10px; }
+                    .dashboard-controls { display: flex; gap: 12px; align-items: center; }
+                    .filter-select { padding: 8px 32px 8px 12px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px; background: white; cursor: pointer; }
+                    .export-btn { padding: 8px 16px; background: #007cba; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 6px; transition: background 0.2s; }
+                    .export-btn:hover { background: #005a87; }
+                    
+                    .d-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px; }
+                    .d-card { background: white; border: 1px solid #d0d7de; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: transform 0.2s; }
+                    .d-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+                    .d-card h3 { margin: 0 0 20px 0; font-size: 15px; color: #24292e; border-bottom: 1px solid #eee; padding-bottom: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+                    
+                    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+                    .kpi-card { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #007cba; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: all 0.3s; }
+                    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+                    .kpi-label { font-size: 13px; color: #656d76; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+                    .kpi-value { font-size: 28px; font-weight: 700; color: #24292e; margin-top: 8px; }
+                    .kpi-subtext { font-size: 12px; color: #656d76; margin-top: 4px; }
+                    .chart-container { position: relative; height: 300px; width: 100%; }
+                    
+                    .waste-metric { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+                    .waste-metric:last-child { border-bottom: none; }
+                    .waste-label { font-size: 14px; color: #656d76; font-weight: 500; }
+                    .waste-value { font-size: 16px; color: #24292e; font-weight: 600; }
+                    .waste-value.negative { color: #dc3545; }
+                    
+                    .gantt-container { overflow-x: auto; }
+                    .gantt-row { display: flex; align-items: center; margin-bottom: 8px; }
+                    .gantt-label { width: 150px; font-size: 13px; color: #24292e; font-weight: 500; }
+                    .gantt-bar-container { flex: 1; height: 30px; background: #f6f8fa; border-radius: 4px; position: relative; }
+                    .gantt-bar { height: 100%; background: linear-gradient(90deg, #007cba, #0096e6); border-radius: 4px; display: flex; align-items: center; padding: 0 8px; color: white; font-size: 12px; font-weight: 600; }
+                </style>
+
+                <div class="dashboard-header">
+                    <div class="dashboard-title">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                        Project Dashboard
+                    </div>
+                    <div class="dashboard-controls">
+                        <select class="filter-select" onchange="filterDashboard(this.value)">
+                            ${materialOptions.join('')}
+                        </select>
+                        <button class="export-btn" onclick="exportDashboard()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Export Dashboard
+                        </button>
+                    </div>
+                </div>
+
+                <div class="kpi-row">
+                    <div class="kpi-card" style="border-color: #007cba;">
+                        <div class="kpi-label">Total Project Cost</div>
+                        <div class="kpi-value">${currency}${formatNumber(filteredSummary.total_project_cost, 2)}</div>
+                        <div class="kpi-subtext">${filteredSummary.total_boards} sheets used</div>
+                    </div>
+                    <div class="kpi-card" style="border-color: #28a745;">
+                        <div class="kpi-label">Material Efficiency</div>
+                        <div class="kpi-value">${formatNumber(summary.overall_efficiency, 1)}%</div>
+                        <div class="kpi-subtext">${formatNumber(100 - summary.overall_efficiency, 1)}% waste</div>
+                    </div>
+                    <div class="kpi-card" style="border-color: #fd7e14;">
+                        <div class="kpi-label">Total Waste Cost</div>
+                        <div class="kpi-value">${currency}${formatNumber(wasteCost, 2)}</div>
+                        <div class="kpi-subtext">${formatNumber(totalWasteArea / 1000000, 2)} m² wasted</div>
+                    </div>
+                    <div class="kpi-card" style="border-color: #6f42c1;">
+                        <div class="kpi-label">Carbon Footprint</div>
+                        <div class="kpi-value">${formatNumber(carbonFootprint, 2)} kg</div>
+                        <div class="kpi-subtext">CO₂ from waste</div>
+                    </div>
+                </div>
+
+                <div class="d-grid">
+                    <div class="d-card">
+                        <h3>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 3h18v18H3z"></path>
+                                <path d="M3 9h18M9 21V9"></path>
+                            </svg>
+                            Waste Analysis
+                        </h3>
+                        <div>
+                            <div class="waste-metric">
+                                <span class="waste-label">Total Waste Area</span>
+                                <span class="waste-value negative">${formatNumber(totalWasteArea / 1000000, 2)} m²</span>
+                            </div>
+                            <div class="waste-metric">
+                                <span class="waste-label">Waste Percentage</span>
+                                <span class="waste-value negative">${formatNumber(wastePercentage, 1)}%</span>
+                            </div>
+                            <div class="waste-metric">
+                                <span class="waste-label">Waste Cost</span>
+                                <span class="waste-value negative">${currency}${formatNumber(wasteCost, 2)}</span>
+                            </div>
+                            <div class="waste-metric">
+                                <span class="waste-label">Used Area</span>
+                                <span class="waste-value">${formatNumber(totalUsedArea / 1000000, 2)} m²</span>
+                            </div>
+                            <div class="waste-metric">
+                                <span class="waste-label">Total Sheet Area</span>
+                                <span class="waste-value">${formatNumber((totalUsedArea + totalWasteArea) / 1000000, 2)} m²</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-card">
+                        <h3>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="20" x2="18" y2="10"></line>
+                                <line x1="12" y1="20" x2="12" y2="4"></line>
+                                <line x1="6" y1="20" x2="6" y2="14"></line>
+                            </svg>
+                            Overall Efficiency vs Waste
+                        </h3>
+                        <div class="chart-container" style="height: 250px; width: 250px; margin: 0 auto;">
+                            <canvas id="efficiencyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid">
+                    <div class="d-card">
+                        <h3>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                            Material Cost Distribution
+                        </h3>
+                        <div id="costTreemap" style="height: 350px; position: relative;"></div>
+                    </div>
+                    <div class="d-card">
+                        <h3>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                            </svg>
+                            Sheet Usage by Material
+                        </h3>
+                        <div class="chart-container" style="height: 350px;">
+                            <canvas id="sheetsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid">
+                    <div class="d-card">
+                        <h3>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                <path d="M2 12h20"></path>
+                            </svg>
+                            Part Quantity by Material
+                        </h3>
+                        <div class="chart-container">
+                            <canvas id="partsChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="d-card">
+                        <h3>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            Production Timeline
+                        </h3>
+                        <div class="gantt-container" id="ganttContainer">
+                            ${generateProductionGantt(filteredBoardTypes)}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-card" style="grid-column: 1 / -1;">
+                    <h3>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                        </svg>
+                        Cut Sequences Timeline
+                    </h3>
+                    <div class="gantt-container" id="cutSequencesGantt" style="max-height: 500px; overflow-y: auto;">
+                        ${generateCutSequencesGantt(boards)}
+                    </div>
+                </div>
+            `;
+
+            // 4. Render Charts
+            renderTreemap('costTreemap', labels, costs, currency, colors);
+            
+            createChart('efficiencyChart', 'doughnut', ['Efficiency', 'Waste'], 
+                [summary.overall_efficiency, 100 - summary.overall_efficiency], 
+                'Percentage', ['#28a745', '#dc3545']);
+                
+            createChart('sheetsChart', 'horizontalBar', labels, sheetCounts, 'Sheets Count', colors);
+            
+            createChart('partsChart', 'pie', labels, partCountData, 'Parts Count', transparentColors);
+        }
+
+        // Generate Production Timeline Gantt Chart
+        function generateProductionGantt(boardTypes) {
+            if (!boardTypes || boardTypes.length === 0) {
+                return '<p style="color: #656d76; text-align: center; padding: 20px;">No production data available</p>';
+            }
+            
+            // Estimate production time: 5 minutes per sheet + 2 minutes per cut
+            let html = '';
+            let currentTime = 0;
+            const maxTime = boardTypes.reduce((sum, b) => sum + (b.count * 7), 0); // Rough estimate
+            
+            boardTypes.forEach((board, index) => {
+                const productionTime = board.count * 7; // 7 minutes per sheet
+                const percentage = (productionTime / maxTime) * 100;
+                const startPercentage = (currentTime / maxTime) * 100;
+                
+                html += `
+                    <div class="gantt-row">
+                        <div class="gantt-label">${board.material}</div>
+                        <div class="gantt-bar-container">
+                            <div class="gantt-bar" style="width: ${percentage}%; margin-left: ${startPercentage}%;">
+                                ${board.count} sheets (~${productionTime} min)
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                currentTime += productionTime;
+            });
+            
+            return html;
+        }
+
+        // Generate Cut Sequences Gantt Chart - PROPER VERSION
+        function generateCutSequencesGantt(boards) {
+            if (!boards || boards.length === 0) {
+                return '<p style="color: #656d76; text-align: center; padding: 20px;">No cut sequence data available</p>';
+            }
+            
+            const colors = ['#007cba', '#28a745', '#6f42c1', '#fd7e14', '#e83e8c', '#20c997', '#ffc107', '#17a2b8'];
+            let html = '';
+            
+            // Create a separate gantt chart for each board
+            boards.forEach((board, boardIndex) => {
+                const boardColor = colors[boardIndex % colors.length];
+                const materialName = board.material || `Board ${boardIndex + 1}`;
+                const partsCount = board.parts_count || 0;
+                
+                if (partsCount === 0) return;
+                
+                // Calculate steps for this board
+                const totalSteps = 1 + (partsCount * 3); // 1 setup + 3 operations per part
+                
+                html += `
+                    <div style="margin-bottom: 32px; padding: 20px; background: white; border: 1px solid #e1e5e9; border-radius: 8px;">
+                        <h4 style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #24292e; display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 12px; height: 12px; background: ${boardColor}; border-radius: 2px;"></div>
+                            ${materialName} - ${partsCount} parts
+                        </h4>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                `;
+                
+                let stepNumber = 0;
+                
+                // Setup step
+                html += `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="min-width: 40px; text-align: right; font-size: 12px; color: #656d76; font-weight: 600;">
+                            ${++stepNumber}
+                        </div>
+                        <div style="flex: 1; height: 32px; background: ${boardColor}20; border-left: 4px solid ${boardColor}; border-radius: 4px; display: flex; align-items: center; padding: 0 12px; font-size: 13px; font-weight: 500; color: #24292e;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${boardColor}" stroke-width="2" style="margin-right: 8px;">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            </svg>
+                            Setup Material - Prepare ${board.width}mm × ${board.height}mm sheet
+                        </div>
+                    </div>
+                `;
+                
+                // Operations for each part
+                for (let i = 0; i < partsCount; i++) {
+                    const partNum = i + 1;
+                    
+                    // Cut Length
+                    html += `
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="min-width: 40px; text-align: right; font-size: 12px; color: #656d76; font-weight: 600;">
+                                ${++stepNumber}
+                            </div>
+                            <div style="flex: 1; height: 32px; background: ${boardColor}40; border-left: 4px solid ${boardColor}; border-radius: 4px; display: flex; align-items: center; padding: 0 12px; font-size: 13px; color: #24292e;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${boardColor}" stroke-width="2" style="margin-right: 8px;">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                                Part ${partNum} - Cut Length
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Cut Width
+                    html += `
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="min-width: 40px; text-align: right; font-size: 12px; color: #656d76; font-weight: 600;">
+                                ${++stepNumber}
+                            </div>
+                            <div style="flex: 1; height: 32px; background: ${boardColor}60; border-left: 4px solid ${boardColor}; border-radius: 4px; display: flex; align-items: center; padding: 0 12px; font-size: 13px; color: #24292e;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${boardColor}" stroke-width="2" style="margin-right: 8px;">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <polyline points="5 12 12 19 19 12"></polyline>
+                                </svg>
+                                Part ${partNum} - Cut Width
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Edge Banding
+                    html += `
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="min-width: 40px; text-align: right; font-size: 12px; color: #656d76; font-weight: 600;">
+                                ${++stepNumber}
+                            </div>
+                            <div style="flex: 1; height: 32px; background: ${boardColor}80; border-left: 4px solid ${boardColor}; border-radius: 4px; display: flex; align-items: center; padding: 0 12px; font-size: 13px; color: #24292e;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${boardColor}" stroke-width="2" style="margin-right: 8px;">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <path d="M3 9h18"></path>
+                                </svg>
+                                Part ${partNum} - Apply Edge Banding
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += `
+                        </div>
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e1e5e9; font-size: 12px; color: #656d76;">
+                            Total Steps: ${totalSteps} | Estimated Time: ~${totalSteps * 2} minutes
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return html || '<p style="color: #656d76; text-align: center; padding: 20px;">No operations to display</p>';
+        }
+
+        // Generate Gantt Chart HTML (old function - keeping for compatibility)
+
+        // Generate Gantt Chart HTML (old function - keeping for compatibility)
+        function generateGanttChart(boardTypes) {
+            if (!boardTypes || boardTypes.length === 0) {
+                return '<p style="color: #656d76; text-align: center; padding: 20px;">No production data available</p>';
+            }
+            
+            // Estimate production time: 5 minutes per sheet + 2 minutes per cut
+            let html = '';
+            let currentTime = 0;
+            const maxTime = boardTypes.reduce((sum, b) => sum + (b.count * 7), 0); // Rough estimate
+            
+            boardTypes.forEach((board, index) => {
+                const productionTime = board.count * 7; // 7 minutes per sheet
+                const percentage = (productionTime / maxTime) * 100;
+                const startPercentage = (currentTime / maxTime) * 100;
+                
+                html += `
+                    <div class="gantt-row">
+                        <div class="gantt-label">${board.material}</div>
+                        <div class="gantt-bar-container">
+                            <div class="gantt-bar" style="width: ${percentage}%; margin-left: ${startPercentage}%;">
+                                ${board.count} sheets (~${productionTime} min)
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                currentTime += productionTime;
+            });
+            
+            return html;
+        }
+
+        // Filter dashboard by material
+        function filterDashboard(material) {
+            currentDashboardFilter = material;
+            renderDashboard();
+        }
+
+        // Export dashboard as image
+        function exportDashboard() {
+            const dashboardContent = document.getElementById('dashboardContent');
+            if (!dashboardContent) return;
+            
+            // Show loading indicator
+            const exportBtn = event.target.closest('.export-btn');
+            const originalText = exportBtn.innerHTML;
+            exportBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg> Exporting...';
+            exportBtn.disabled = true;
+            
+            // Use html2canvas to capture the dashboard
+            html2canvas(dashboardContent, {
+                scale: 2,
+                backgroundColor: '#f6f8fa',
+                logging: false
+            }).then(canvas => {
+                // Convert to blob and download
+                canvas.toBlob(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `AutoNestCut_Dashboard_${new Date().toISOString().split('T')[0]}.png`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                    
+                    // Restore button
+                    exportBtn.innerHTML = originalText;
+                    exportBtn.disabled = false;
+                });
+            }).catch(error => {
+                console.error('Export failed:', error);
+                alert('Failed to export dashboard. Please try again.');
+                exportBtn.innerHTML = originalText;
+                exportBtn.disabled = false;
+            });
+        }
+
+        // Render Treemap for cost distribution
+        function renderTreemap(containerId, labels, costs, currency, colors) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            // Clear container
+            container.innerHTML = '';
+            
+            // Calculate total for percentages
+            const total = costs.reduce((sum, cost) => sum + cost, 0);
+            if (total === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #656d76; padding: 40px;">No cost data available</p>';
+                return;
+            }
+            
+            // Create treemap boxes
+            let html = '<div style="display: flex; flex-wrap: wrap; height: 100%; gap: 4px;">';
+            
+            labels.forEach((label, index) => {
+                const cost = costs[index];
+                const percentage = (cost / total) * 100;
+                const color = colors[index % colors.length];
+                
+                // Calculate box size based on percentage
+                const width = Math.sqrt(percentage) * 10; // Proportional sizing
+                
+                html += `
+                    <div style="
+                        flex: ${percentage};
+                        min-width: ${width}%;
+                        background: ${color};
+                        padding: 12px;
+                        border-radius: 4px;
+                        color: white;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-items: center;
+                        text-align: center;
+                        font-size: 13px;
+                        font-weight: 600;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        transition: transform 0.2s, box-shadow 0.2s;
+                        cursor: pointer;
+                    " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';">
+                        <div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px;">${label.substring(0, 20)}${label.length > 20 ? '...' : ''}</div>
+                        <div style="font-size: 18px; font-weight: 700;">${currency}${formatNumber(cost, 0)}</div>
+                        <div style="font-size: 11px; opacity: 0.9; margin-top: 4px;">${formatNumber(percentage, 1)}%</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Render Treemap for cost visualization
+        function renderTreemap(containerId, labels, costs, currency, colors) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            // Calculate total for percentages
+            const total = costs.reduce((sum, cost) => sum + cost, 0);
+            if (total === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #656d76; padding: 40px;">No cost data available</p>';
+                return;
+            }
+            
+            // Create treemap data with percentages
+            const treemapData = labels.map((label, i) => ({
+                label: label,
+                cost: costs[i],
+                percentage: (costs[i] / total) * 100,
+                color: colors[i % colors.length]
+            })).sort((a, b) => b.cost - a.cost);
+            
+            // Simple treemap layout using flexbox
+            let html = '<div style="display: flex; flex-wrap: wrap; height: 100%; gap: 4px;">';
+            
+            treemapData.forEach(item => {
+                const width = Math.sqrt(item.percentage) * 10; // Scale for better visual
+                const minWidth = Math.max(width, 15); // Minimum width for readability
+                
+                html += `
+                    <div style="
+                        flex: ${item.percentage};
+                        min-width: ${minWidth}%;
+                        background: ${item.color};
+                        padding: 12px;
+                        border-radius: 6px;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-items: center;
+                        color: white;
+                        font-weight: 600;
+                        text-align: center;
+                        cursor: pointer;
+                        transition: transform 0.2s, box-shadow 0.2s;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';">
+                        <div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;">${item.label.substring(0, 25)}</div>
+                        <div style="font-size: 18px; font-weight: 700;">${currency}${formatNumber(item.cost, 0)}</div>
+                        <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">${formatNumber(item.percentage, 1)}%</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Helper function to create charts cleanly
+        function createChart(canvasId, type, labels, data, label, color) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+            
+            const context = ctx.getContext('2d');
+            
+            // Destroy existing chart if it exists (prevents memory leaks/glitches)
+            if (dashboardCharts[canvasId]) {
+                dashboardCharts[canvasId].destroy();
+            }
+
+            // Handle horizontal bar chart
+            const isHorizontal = type === 'horizontalBar';
+            const chartType = isHorizontal ? 'bar' : type;
+
+            const config = {
+                type: chartType,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        backgroundColor: Array.isArray(color) ? color : (labels.map((_, i) => {
+                            const colors = ['#007cba', '#28a745', '#6f42c1', '#fd7e14', '#e83e8c', '#20c997', '#ffc107', '#17a2b8'];
+                            return colors[i % colors.length];
+                        })),
+                        borderColor: Array.isArray(color) ? '#ffffff' : color,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: isHorizontal ? 'y' : 'x',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: type === 'pie' || type === 'doughnut',
+                            position: type === 'pie' || type === 'doughnut' ? 'right' : 'none',
+                        }
+                    },
+                    scales: (type === 'bar' || isHorizontal) ? {
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: '#f1f1f1' },
+                            ticks: { font: { size: 11 } }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { font: { size: 11 } }
+                        }
+                    } : {}
+                }
+            };
+
+            dashboardCharts[canvasId] = new Chart(context, config);
+        }
+        
+        // Add spin animation for loading indicator
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>

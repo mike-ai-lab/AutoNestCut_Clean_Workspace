@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# encoding: UTF-8
 
 require 'base64'
 require 'json'
@@ -17,22 +18,22 @@ module AutoNestCut
     
     # Set report data
     def set_report_data(report_data)
-      @report_data = report_data || {}
+      @report_data = deep_utf8_encode(report_data || {})
     end
     
     # Set diagrams data
     def set_diagrams_data(diagrams_data)
-      @diagrams_data = diagrams_data || []
+      @diagrams_data = deep_utf8_encode(diagrams_data || [])
     end
     
     # Set assembly data with views
     def set_assembly_data(assembly_data)
-      @assembly_data = assembly_data
+      @assembly_data = deep_utf8_encode(assembly_data)
     end
     
     # Add diagram image (base64 or file path)
     def add_diagram_image(index, image_data)
-      @diagram_images << { index: index, image: image_data }
+      @diagram_images << { index: index, image: deep_utf8_encode(image_data) }
     end
     
     # Generate preview HTML for the report
@@ -54,11 +55,23 @@ module AutoNestCut
         puts "DEBUG: PDF export starting"
         puts "DEBUG: Output path: #{output_path}"
         
+        # Force UTF-8 encoding on output path
+        output_path = output_path.encode('UTF-8', invalid: :replace, undef: :replace, replace: '?')
+        
         # Generate PDF using Prawn with UTF-8 support
         Prawn::Document.generate(output_path, page_size: 'A4', margin: [20, 20, 20, 20]) do |pdf|
-          # Set up Unicode font support
-          setup_pdf_fonts(pdf)
-          render_pdf_content(pdf)
+          # Set default external encoding to UTF-8 for this block
+          old_encoding = Encoding.default_external
+          Encoding.default_external = Encoding::UTF_8
+          
+          begin
+            # Set up Unicode font support
+            setup_pdf_fonts(pdf)
+            render_pdf_content(pdf)
+          ensure
+            # Restore original encoding
+            Encoding.default_external = old_encoding
+          end
         end
         
         puts "PDF exported successfully: #{output_path}"
@@ -75,20 +88,41 @@ module AutoNestCut
     
     private
     
+    # Deep UTF-8 encoding for nested data structures
+    def deep_utf8_encode(obj)
+      case obj
+      when String
+        ensure_utf8(obj)
+      when Symbol
+        obj
+      when Hash
+        obj.transform_keys { |k| deep_utf8_encode(k) }
+           .transform_values { |v| deep_utf8_encode(v) }
+      when Array
+        obj.map { |item| deep_utf8_encode(item) }
+      else
+        obj
+      end
+    end
+    
     # Helper method to ensure strings are UTF-8 encoded for Prawn
     def ensure_utf8(value)
       case value
       when String
-        # If string is US-ASCII or other encoding, force UTF-8
-        if value.encoding != Encoding::UTF_8
-          value.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '?')
+        # Force UTF-8 encoding with aggressive replacement
+        if value.encoding == Encoding::UTF_8
+          # Already UTF-8, but check if valid
+          value.valid_encoding? ? value : value.encode('UTF-8', invalid: :replace, undef: :replace, replace: '?')
         else
-          value
+          # Convert from other encoding to UTF-8
+          value.encode('UTF-8', invalid: :replace, undef: :replace, replace: '?')
         end
+      when Symbol
+        ensure_utf8(value.to_s)
       when Numeric, TrueClass, FalseClass, NilClass
         value
       else
-        value.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '?')
+        ensure_utf8(value.to_s)
       end
     end
     
@@ -522,7 +556,8 @@ module AutoNestCut
         x = pdf.bounds.left + (idx * col_width)
         # Fix #10: Ensure UTF-8 encoding for all text
         cell_text = ensure_utf8(cell).to_s
-        pdf.text_box cell_text, at: [x + 2, pdf.cursor + 15], width: col_width - 4, height: 18, overflow: :truncate
+        # FIX: Changed 'pdf.cursor + 15' to 'pdf.cursor - 5' to position text INSIDE the rectangle
+        pdf.text_box cell_text, at: [x + 2, pdf.cursor - 5], width: col_width - 4, height: 18, overflow: :truncate
       end
       pdf.font current_font  # Fix #2: Reset to current font
       pdf.move_down 20
@@ -540,7 +575,8 @@ module AutoNestCut
           header.each_with_index do |cell, idx|
             x = pdf.bounds.left + (idx * col_width)
             cell_text = ensure_utf8(cell).to_s
-            pdf.text_box cell_text, at: [x + 2, pdf.cursor + 15], width: col_width - 4, height: 18, overflow: :truncate
+            # FIX: Corrected cursor position here as well
+            pdf.text_box cell_text, at: [x + 2, pdf.cursor - 5], width: col_width - 4, height: 18, overflow: :truncate
           end
           pdf.font current_font
           pdf.move_down 20
@@ -550,7 +586,8 @@ module AutoNestCut
           x = pdf.bounds.left + (idx * col_width)
           # Fix #10: Ensure UTF-8 encoding for all text
           cell_text = ensure_utf8(cell).to_s
-          pdf.text_box cell_text, at: [x + 2, pdf.cursor + 10], width: col_width - 4, height: 16, overflow: :truncate
+          # FIX: Adjusted row text position
+          pdf.text_box cell_text, at: [x + 2, pdf.cursor - 2], width: col_width - 4, height: 16, overflow: :truncate
         end
         pdf.move_down 16
       end
