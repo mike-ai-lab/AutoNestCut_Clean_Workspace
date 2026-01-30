@@ -1203,10 +1203,10 @@ function selectPartInReportViewer(part) {
             const partMaterialNormalized = partMaterial.toLowerCase();
             const groupMaterialNormalized = groupMaterialStr.toLowerCase();
             
-            console.log(`    - Comparing materials: "${partMaterialNormalized}" vs "${groupMaterialNormalized}"`);
+            console.log(`    - Comparing materials: "${partMaterialBase}" vs "${groupMaterialBase}"`);
             
-            // Check if materials match (exact match on FULL material string including unique ID)
-            const materialMatches = (partMaterialNormalized === groupMaterialNormalized);
+            // Check if base materials match (ignoring unique IDs)
+            const materialMatches = (partMaterialBase === groupMaterialBase);
             
             if (materialMatches) {
                 console.log(`    - ✓ Material matches`);
