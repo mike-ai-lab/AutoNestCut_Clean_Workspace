@@ -413,7 +413,8 @@ module AutoNestCut
         
         # Extract geometry for this component
         faces = []
-        collect_component_faces(part, part.transformation, faces)
+        part_materials = []
+        collect_component_faces(part, part.transformation, faces, part_materials)
         
         # Get the actual part name
         part_name = if part.is_a?(Sketchup::ComponentInstance)
@@ -425,8 +426,34 @@ module AutoNestCut
         end
         part_name = "Part" if part_name.nil? || part_name.empty?
         
+        # Get material name - prioritize actual face materials over component material
+        material_name = nil
+        
+        # First, try to get material from the part itself
+        if part.respond_to?(:material) && part.material
+          material_name = part.material.name
+          puts "DEBUG: Part '#{part_name}' has component material: #{material_name}"
+        end
+        
+        # If no component material, use the most common face material
+        if material_name.nil? && part_materials.any?
+          # Count material occurrences
+          material_counts = part_materials.compact.each_with_object(Hash.new(0)) { |mat, counts| counts[mat] += 1 }
+          material_name = material_counts.max_by { |_, count| count }&.first if material_counts.any?
+          puts "DEBUG: Part '#{part_name}' using most common face material: #{material_name} (from #{material_counts.inspect})"
+        end
+        
+        # Only use "Default Material" as last resort
+        if material_name.nil? || material_name.empty?
+          material_name = "Default Material"
+          puts "DEBUG: Part '#{part_name}' has no materials, using Default Material"
+        end
+        
+        puts "DEBUG: Part '#{part_name}' final material: #{material_name} (from #{part_materials.compact.uniq.length} unique face materials)"
+        
         parts << {
           name: part_name,
+          material: material_name,
           explode_vector: [axis_vector.x, axis_vector.z, -axis_vector.y],
           faces: faces
         }
@@ -435,30 +462,93 @@ module AutoNestCut
       { parts: parts }
     end
     
-    def collect_component_faces(entity, transformation, faces)
+    def collect_component_faces(entity, transformation, faces, material_list = [])
       entities = entity.is_a?(Sketchup::Group) ? entity.entities : entity.definition.entities
       current_transform = transformation
       
       entities.each do |e|
         if e.is_a?(Sketchup::Face)
           vertices = []
-          e.outer_loop.vertices.each do |v|
+          uvs = []
+          
+          # Get material for this face
+          face_material = e.material || e.back_material
+          if face_material
+            material_list << face_material.name
+          end
+          
+          e.outer_loop.vertices.each_with_index do |v, idx|
             pt = v.position.transform(current_transform)
             vertices << {
               x: pt.x.to_mm / 100.0,
               y: pt.y.to_mm / 100.0,
               z: pt.z.to_mm / 100.0
             }
+            
+            # Generate UV coordinates
+            # If the face has a texture, use its UV coordinates
+            if face_material && face_material.texture
+              begin
+                uv_helper = e.get_UVHelper(true, true, face_material.texture)
+                if uv_helper
+                  uv_point = uv_helper.get_front_UVQ(v.position)
+                  uvs << { x: uv_point.x, y: uv_point.y }
+                else
+                  # Fallback: planar mapping based on face normal
+                  uvs << generate_planar_uv(v.position, e.normal)
+                end
+              rescue => ex
+                puts "WARNING: Failed to get UV for vertex: #{ex.message}"
+                uvs << generate_planar_uv(v.position, e.normal)
+              end
+            else
+              # No texture: generate simple planar UVs
+              uvs << generate_planar_uv(v.position, e.normal)
+            end
           end
           
-          color = e.material ? (e.material.color.to_i & 0xFFFFFF) : 0x74b9ff
-          faces << { vertices: vertices, color: color }
+          color = face_material ? (face_material.color.to_i & 0xFFFFFF) : 0x74b9ff
+          material_name = face_material ? face_material.name : nil
+          
+          faces << { 
+            vertices: vertices, 
+            uvs: uvs,
+            color: color,
+            material: material_name
+          }
           
         elsif e.is_a?(Sketchup::Group)
-          collect_component_faces(e, current_transform * e.transformation, faces)
+          collect_component_faces(e, current_transform * e.transformation, faces, material_list)
         elsif e.is_a?(Sketchup::ComponentInstance)
-          collect_component_faces(e, current_transform * e.transformation, faces)
+          collect_component_faces(e, current_transform * e.transformation, faces, material_list)
         end
+      end
+    end
+    
+    # Generate simple planar UV coordinates based on face normal
+    def generate_planar_uv(position, normal)
+      # Safety check
+      return { x: 0.0, y: 0.0 } if position.nil? || normal.nil?
+      
+      # Handle both Geom::Point3d and Hash types
+      pos_x = position.respond_to?(:x) ? position.x.to_mm : (position[:x] || 0)
+      pos_y = position.respond_to?(:y) ? position.y.to_mm : (position[:y] || 0)
+      pos_z = position.respond_to?(:z) ? position.z.to_mm : (position[:z] || 0)
+      
+      # Choose the two axes most perpendicular to the normal
+      abs_x = normal.x.abs
+      abs_y = normal.y.abs
+      abs_z = normal.z.abs
+      
+      if abs_z > abs_x && abs_z > abs_y
+        # Face is mostly horizontal (XY plane)
+        { x: pos_x / 1000.0, y: pos_y / 1000.0 }
+      elsif abs_y > abs_x
+        # Face is mostly vertical (XZ plane)
+        { x: pos_x / 1000.0, y: pos_z / 1000.0 }
+      else
+        # Face is mostly vertical (YZ plane)
+        { x: pos_y / 1000.0, y: pos_z / 1000.0 }
       end
     end
     

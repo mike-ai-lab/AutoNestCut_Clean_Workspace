@@ -1197,35 +1197,62 @@
         }
         
         function toggleTexture() {
+            console.log('=== TOGGLE TEXTURE ===');
+            console.log('Current textureMode:', textureMode);
+            console.log('isAssemblyMode:', isAssemblyMode);
+            
             textureMode = !textureMode;
+            console.log('New textureMode:', textureMode);
             
             if (isAssemblyMode) {
-                // FIX: Handle Assembly Mode Textures
-                assemblyMeshes.forEach(group => {
+                console.log('Assembly Mode - Processing', assemblyMeshes.length, 'meshes');
+                
+                // Handle Assembly Mode Textures
+                assemblyMeshes.forEach((group, idx) => {
                     const mesh = group.children[0]; // Access mesh inside group
-                    if (textureMode) {
-                        mesh.material.color.setHex(0xFFFFFF); 
-                    } else {
-                        mesh.material.color.setHex(0xcccccc); // Revert to base gray
-                        mesh.material.map = null;
-                        mesh.material.needsUpdate = true;
+                    if (mesh && mesh.material) {
+                        if (textureMode) {
+                            // Prepare material for texture display
+                            mesh.material.transparent = false;
+                            mesh.material.opacity = 1.0;
+                            mesh.material.color.setHex(0xFFFFFF);
+                            console.log(`Mesh ${idx} prepared for texture:`, group.userData.partName);
+                        } else {
+                            // Revert to base shaded mode
+                            mesh.material.map = null;
+                            mesh.material.transparent = true;
+                            mesh.material.opacity = 0.85;
+                            mesh.material.color.setHex(0xcccccc);
+                            mesh.material.needsUpdate = true;
+                            console.log(`Mesh ${idx} reverted to shaded:`, group.userData.partName);
+                        }
                     }
                 });
                 
-                // If turning on, try to load texture for the currently selected part
+                // If turning on, load textures for all unique materials
                 if (textureMode) {
-                    const selectedName = document.getElementById('selectedPartName').textContent;
-                    const selectedGroup = assemblyMeshes.find(m => m.userData.partName === selectedName);
-                    if (selectedGroup && selectedGroup.userData.materialName) {
-                         // Request texture for this material
-                         if (typeof callRuby === 'function') {
-                             callRuby('get_material_texture', selectedGroup.userData.materialName);
-                         }
-                    }
+                    const uniqueMaterials = new Set();
+                    assemblyMeshes.forEach(group => {
+                        if (group.userData.materialName) {
+                            uniqueMaterials.add(group.userData.materialName);
+                        }
+                    });
+                    
+                    console.log('Unique materials found:', Array.from(uniqueMaterials));
+                    
+                    // Request textures for all unique materials
+                    uniqueMaterials.forEach(materialName => {
+                        if (typeof callRuby === 'function') {
+                            console.log('Requesting texture for:', materialName);
+                            callRuby('get_material_texture', materialName);
+                        } else {
+                            console.error('callRuby function not available!');
+                        }
+                    });
                 }
                 renderOnce();
             } else {
-                // ... (Keep existing Single Mode logic)
+                // Single Mode logic
                 if (!canvas3DCurrentMesh) return;
                 
                 if (textureMode) {
@@ -1298,60 +1325,273 @@
             }
         }
         
-        function applyTextureToMesh(textureData) {
-            if (!textureData) return;
-
-            if (currentTexture) {
-                currentTexture.dispose();
-                currentTexture = null;
+        // Global texture cache: materialName -> THREE.Texture
+        let textureCache = {};
+        
+        function applyMaterialToMesh(materialData) {
+            console.log('=== APPLY MATERIAL TO MESH ===');
+            console.log('materialData:', materialData);
+            console.log('isAssemblyMode:', isAssemblyMode);
+            
+            if (!materialData || !materialData.name) {
+                console.error('No material data provided!');
+                return;
             }
 
-            const loader = new THREE.TextureLoader();
-            currentTexture = loader.load(
-                textureData,
-                (texture) => {
-                    texture.wrapS = THREE.RepeatWrapping;
-                    texture.wrapT = THREE.RepeatWrapping;
-                    
-                    if (isAssemblyMode) {
-                        // FIX: Assembly Mode Application
-                        // Apply to all meshes that match the selected component's material
-                        const selectedName = document.getElementById('selectedPartName').textContent;
-                        const selectedGroup = assemblyMeshes.find(m => m.userData.partName === selectedName);
+            const materialName = materialData.name;
+            const hasTexture = materialData.has_texture && materialData.texture;
+            const color = materialData.color || 0xcccccc;
+            const alpha = materialData.alpha !== undefined ? materialData.alpha : 1.0;
+            
+            console.log('Material:', materialName, 'hasTexture:', hasTexture, 'color:', color.toString(16), 'alpha:', alpha);
+
+            if (hasTexture) {
+                // Load texture
+                const loader = new THREE.TextureLoader();
+                console.log('Loading texture with THREE.TextureLoader...');
+                
+                loader.load(
+                    materialData.texture,
+                    (texture) => {
+                        console.log('✓ Texture loaded successfully for material:', materialName);
+                        console.log('Texture size:', texture.image.width, 'x', texture.image.height);
                         
-                        if (selectedGroup) {
-                            const targetMaterial = selectedGroup.userData.materialName;
+                        texture.wrapS = THREE.RepeatWrapping;
+                        texture.wrapT = THREE.RepeatWrapping;
+                        
+                        textureCache[materialName] = texture;
+                        
+                        applyMaterialProperties(materialName, { texture, color, alpha, hasTexture: true });
+                    },
+                    undefined,
+                    (error) => {
+                        console.error('✗ Error loading texture for', materialName, ':', error);
+                    }
+                );
+            } else {
+                // No texture, just apply color and opacity
+                console.log('No texture, applying color and opacity only');
+                applyMaterialProperties(materialName, { color, alpha, hasTexture: false });
+            }
+        }
+        
+        function applyMaterialProperties(materialName, props) {
+            if (isAssemblyMode) {
+                console.log('Applying material properties in assembly mode for:', materialName);
+                
+                let appliedCount = 0;
+                assemblyMeshes.forEach((group, idx) => {
+                    const mesh = group.children[0];
+                    if (mesh && mesh.isMesh && mesh.material) {
+                        if (group.userData.materialName === materialName) {
+                            console.log(`Mesh ${idx} (${group.userData.partName}): Applying material properties`);
                             
-                            assemblyMeshes.forEach(group => {
-                                if (group.userData.materialName === targetMaterial) {
-                                    const mesh = group.children[0];
-                                    if (mesh.isMesh) {
-                                        // Scale texture roughly (assuming 1000mm repeat)
-                                        // Since we don't have per-part dims easily accessible here without calculation, use fixed repeat
-                                        texture.repeat.set(1, 1); 
+                            if (props.hasTexture && props.texture) {
+                                // Apply texture
+                                props.texture.repeat.set(1, 1);
+                                mesh.material.map = props.texture;
+                                mesh.material.color.setHex(0xFFFFFF);
+                                mesh.material.transparent = props.alpha < 1.0;
+                                mesh.material.opacity = props.alpha;
+                            } else {
+                                // Apply color and opacity only
+                                mesh.material.map = null;
+                                mesh.material.color.setHex(props.color);
+                                mesh.material.transparent = props.alpha < 1.0;
+                                mesh.material.opacity = props.alpha;
+                            }
+                            
+                            mesh.material.needsUpdate = true;
+                            appliedCount++;
+                        }
+                    }
+                });
+                
+                console.log(`Material applied to ${appliedCount} meshes with material: ${materialName}`);
+                renderOnce();
+            } else {
+                // Single Mode
+                console.log('Applying material in single mode');
+                if (canvas3DCurrentMesh && canvas3DCurrentMesh.material) {
+                    if (props.hasTexture && props.texture) {
+                        const comp = allComponentsData[currentComponentIndex];
+                        props.texture.repeat.set(comp.width / 1000, comp.height / 1000);
+                        canvas3DCurrentMesh.material.map = props.texture;
+                        canvas3DCurrentMesh.material.color.setHex(0xFFFFFF);
+                    } else {
+                        canvas3DCurrentMesh.material.map = null;
+                        canvas3DCurrentMesh.material.color.setHex(props.color);
+                    }
+                    canvas3DCurrentMesh.material.transparent = props.alpha < 1.0;
+                    canvas3DCurrentMesh.material.opacity = props.alpha;
+                    canvas3DCurrentMesh.material.needsUpdate = true;
+                    renderOnce();
+                }
+            }
+        }
+        
+        // Keep old function for backward compatibility
+        function applyTextureToMesh(textureData, materialName) {
+            applyMaterialToMesh({
+                name: materialName,
+                texture: textureData,
+                has_texture: true,
+                color: 0xcccccc,
+                alpha: 1.0
+            });
+        }
+        
+        // NEW: Handle both textured and non-textured materials
+        function applyMaterialToMesh(materialProps) {
+            console.log('=== APPLY MATERIAL TO MESH ===');
+            console.log('Material properties:', materialProps);
+            console.log('isAssemblyMode:', isAssemblyMode);
+            
+            if (!materialProps || !materialProps.name) {
+                console.error('No material properties provided!');
+                return;
+            }
+            
+            const materialName = materialProps.name;
+            const hasTexture = materialProps.has_texture;
+            const color = materialProps.color;
+            const alpha = materialProps.alpha;
+            
+            if (hasTexture && materialProps.texture) {
+                // Material has a texture - load and apply it
+                console.log('Material has texture - loading...');
+                const loader = new THREE.TextureLoader();
+                
+                loader.load(
+                    materialProps.texture,
+                    (texture) => {
+                        console.log('✓ Texture loaded successfully for material:', materialName);
+                        console.log('Texture size:', texture.image.width, 'x', texture.image.height);
+                        
+                        texture.wrapS = THREE.RepeatWrapping;
+                        texture.wrapT = THREE.RepeatWrapping;
+                        
+                        // Store in cache
+                        textureCache[materialName] = texture;
+                        
+                        if (isAssemblyMode) {
+                            // Assembly Mode: Apply texture ONLY to meshes with matching material
+                            console.log('Applying texture in assembly mode to meshes with material:', materialName);
+                            
+                            let appliedCount = 0;
+                            assemblyMeshes.forEach((group, idx) => {
+                                const mesh = group.children[0];
+                                if (mesh && mesh.isMesh && mesh.material) {
+                                    // CRITICAL: Only apply if material matches
+                                    if (group.userData.materialName === materialName) {
+                                        const hasUVs = mesh.geometry.attributes.uv !== undefined;
+                                        console.log(`Mesh ${idx} (${group.userData.partName}):`, 
+                                            'hasUVs:', hasUVs,
+                                            'material:', group.userData.materialName,
+                                            '✓ APPLYING TEXTURE');
+                                        
+                                        if (!hasUVs) {
+                                            console.warn(`Mesh ${idx} has no UV coordinates!`);
+                                        }
+                                        
+                                        texture.repeat.set(1, 1);
                                         
                                         mesh.material.map = texture;
                                         mesh.material.color.setHex(0xFFFFFF);
+                                        mesh.material.transparent = alpha < 1.0;
+                                        mesh.material.opacity = alpha;
                                         mesh.material.needsUpdate = true;
+                                        
+                                        // STORE ORIGINAL MATERIAL PROPERTIES for restoration during selection
+                                        group.userData.originalMaterial = {
+                                            color: 0xFFFFFF,
+                                            opacity: alpha,
+                                            transparent: alpha < 1.0,
+                                            map: texture
+                                        };
+                                        
+                                        appliedCount++;
                                     }
                                 }
                             });
-                        }
-                        renderOnce();
-                    } else {
-                        // ... (Keep existing Single Mode logic)
-                        if (canvas3DCurrentMesh && canvas3DCurrentMesh.material) {
-                            const comp = allComponentsData[currentComponentIndex];
-                            texture.repeat.set(comp.width / 1000, comp.height / 1000);
                             
-                            canvas3DCurrentMesh.material.map = texture;
-                            canvas3DCurrentMesh.material.color.setHex(0xFFFFFF);
-                            canvas3DCurrentMesh.material.needsUpdate = true;
+                            console.log(`Texture applied to ${appliedCount} meshes with material: ${materialName}`);
                             renderOnce();
+                        } else {
+                            // Single Mode: Apply to current mesh
+                            console.log('Applying texture in single mode');
+                            if (canvas3DCurrentMesh && canvas3DCurrentMesh.material) {
+                                const comp = allComponentsData[currentComponentIndex];
+                                texture.repeat.set(comp.width / 1000, comp.height / 1000);
+                                
+                                canvas3DCurrentMesh.material.map = texture;
+                                canvas3DCurrentMesh.material.color.setHex(0xFFFFFF);
+                                canvas3DCurrentMesh.material.transparent = alpha < 1.0;
+                                canvas3DCurrentMesh.material.opacity = alpha;
+                                canvas3DCurrentMesh.material.needsUpdate = true;
+                                console.log('✓ Texture applied to single mesh');
+                                renderOnce();
+                            }
                         }
+                    },
+                    undefined,
+                    (error) => {
+                        console.error('✗ Error loading texture for', materialName, ':', error);
+                    }
+                );
+            } else {
+                // Material has NO texture - apply color and opacity only
+                console.log('Material has no texture - applying color and opacity');
+                console.log('Color:', color.toString(16), 'Alpha:', alpha);
+                
+                if (isAssemblyMode) {
+                    // Assembly Mode: Apply color/opacity ONLY to meshes with matching material
+                    let appliedCount = 0;
+                    assemblyMeshes.forEach((group, idx) => {
+                        const mesh = group.children[0];
+                        if (mesh && mesh.isMesh && mesh.material) {
+                            // CRITICAL: Only apply if material matches
+                            if (group.userData.materialName === materialName) {
+                                console.log(`Mesh ${idx} (${group.userData.partName}): Applying color/opacity for ${materialName}`);
+                                
+                                // Remove any existing texture
+                                mesh.material.map = null;
+                                
+                                // Apply color and opacity
+                                mesh.material.color.setHex(color);
+                                mesh.material.transparent = alpha < 1.0;
+                                mesh.material.opacity = alpha;
+                                mesh.material.needsUpdate = true;
+                                
+                                // STORE ORIGINAL MATERIAL PROPERTIES for restoration during selection
+                                group.userData.originalMaterial = {
+                                    color: color,
+                                    opacity: alpha,
+                                    transparent: alpha < 1.0,
+                                    map: null
+                                };
+                                
+                                appliedCount++;
+                            }
+                        }
+                    });
+                    
+                    console.log(`Color/opacity applied to ${appliedCount} meshes with material: ${materialName}`);
+                    renderOnce();
+                } else {
+                    // Single Mode: Apply to current mesh
+                    console.log('Applying color/opacity in single mode');
+                    if (canvas3DCurrentMesh && canvas3DCurrentMesh.material) {
+                        canvas3DCurrentMesh.material.map = null;
+                        canvas3DCurrentMesh.material.color.setHex(color);
+                        canvas3DCurrentMesh.material.transparent = alpha < 1.0;
+                        canvas3DCurrentMesh.material.opacity = alpha;
+                        canvas3DCurrentMesh.material.needsUpdate = true;
+                        console.log('✓ Color/opacity applied to single mesh');
+                        renderOnce();
                     }
                 }
-            );
+            }
         }
         
         function reloadCurrentComponent() {
@@ -1645,6 +1885,21 @@
             renderOnce();
         }
 
+        let viewer3DAutoOffTimer = null;
+
+        function resetAutoOffTimer() {
+            if (viewer3DAutoOffTimer) {
+                clearTimeout(viewer3DAutoOffTimer);
+            }
+            if (viewer3DActive) {
+                viewer3DAutoOffTimer = setTimeout(() => {
+                    if (viewer3DActive) {
+                        toggle3DViewer();
+                    }
+                }, 120000); // 2 minutes
+            }
+        }
+
         function toggle3DViewer() {
             viewer3DActive = !viewer3DActive;
             const canvas = document.getElementById('parts3DCanvas');
@@ -1679,6 +1934,7 @@
                 }
                 
                 animate3DCanvas();
+                resetAutoOffTimer();
             } else {
                 canvas.style.display = 'none';
                 placeholder.style.display = 'none';
@@ -1696,6 +1952,11 @@
                 document.getElementById('selectedPartName').textContent = 'None';
                 document.getElementById('selectedPartDims').textContent = '-';
                 document.getElementById('selectedPartVolume').textContent = '-';
+                
+                if (viewer3DAutoOffTimer) {
+                    clearTimeout(viewer3DAutoOffTimer);
+                    viewer3DAutoOffTimer = null;
+                }
             }
         }
         
@@ -1747,11 +2008,11 @@
                 if (faces.length === 0) return;
 
                 const positions = [];
-                const uvs = []; // FIX: Array to store UVs
+                const uvs = [];
 
                 faces.forEach(face => {
                     const vertices = face.vertices;
-                    const faceUVs = face.uvs; // FIX: Get UVs from face data
+                    const faceUVs = face.uvs;
                     if (!vertices || vertices.length < 3) return;
                     
                     // Triangulate and swap Y/Z
@@ -1760,11 +2021,16 @@
                         positions.push(vertices[i].x, vertices[i].z, -vertices[i].y);
                         positions.push(vertices[i + 1].x, vertices[i + 1].z, -vertices[i + 1].y);
                         
-                        // FIX: Push UVs if available
+                        // Push UVs if available
                         if (faceUVs && faceUVs.length === vertices.length) {
                             uvs.push(faceUVs[0].x, faceUVs[0].y);
                             uvs.push(faceUVs[i].x, faceUVs[i].y);
                             uvs.push(faceUVs[i + 1].x, faceUVs[i + 1].y);
+                        } else {
+                            // Fallback: generate simple UVs
+                            uvs.push(0, 0);
+                            uvs.push(0.5, 0);
+                            uvs.push(0.5, 0.5);
                         }
                     }
                 });
@@ -1773,12 +2039,14 @@
 
                 const geometry = new THREE.BufferGeometry();
                 geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-                // FIX: Add UV attribute
+                
+                // Always add UV attribute for texture support
                 if (uvs.length > 0) {
                     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
                 }
                 geometry.computeVertexNormals();
 
+                // Create material ready for textures
                 const material = new THREE.MeshStandardMaterial({ 
                     color: 0xcccccc,
                     metalness: 0.1,
@@ -1802,14 +2070,24 @@
                 
                 group.userData = {
                     partName: partData.name,
-                    materialName: partData.material,
+                    materialName: partData.material || "Default Material",
                     explodeVector: new THREE.Vector3(...(partData.explode_vector || [0, 0, 0])),
-                    originalPosition: group.position.clone() // Will be updated after centering
+                    originalPosition: group.position.clone(), // Will be updated after centering
+                    // Store initial material properties for restoration during selection
+                    originalMaterial: {
+                        color: 0xcccccc,
+                        opacity: 0.85,
+                        transparent: true,
+                        map: null
+                    },
+                    // Store original edge properties
+                    originalEdgeColor: 0x666666
                 };
                 
                 // Debug: Log explode vector for first part only
                 if (partIndex === 0) {
                     console.log(`First part explode vector:`, partData.explode_vector);
+                    console.log(`First part material:`, partData.material);
                 }
                 
                 canvas3DScene.add(group);
@@ -1976,9 +2254,12 @@
         }
         
         function selectPart(row, name, width, height, thickness) {
+            // Auto-turn on 3D viewer when clicking a part
             if (!viewer3DActive) {
-                console.log('3D Viewer is OFF. Turn it on to view components.');
-                return;
+                toggle3DViewer();
+            } else {
+                // Reset auto-off timer on interaction
+                resetAutoOffTimer();
             }
             
             // Highlight UI Row
@@ -1997,15 +2278,35 @@
                 console.log('Selected part name:', name);
                 console.log('Total assembly meshes:', assemblyMeshes.length);
                 
-                // Reset all components to normal appearance
+                // Reset all components to their ORIGINAL material appearance
                 assemblyMeshes.forEach(group => {
                     const mesh = group.children[0];
                     if (mesh && mesh.material) {
-                        mesh.material.color.setHex(0xcccccc);
-                        mesh.material.opacity = 0.85;
-                        mesh.material.transparent = true;
+                        // Restore original material properties from userData
+                        const originalMaterial = group.userData.originalMaterial;
+                        if (originalMaterial) {
+                            mesh.material.color.setHex(originalMaterial.color);
+                            mesh.material.opacity = originalMaterial.opacity;
+                            mesh.material.transparent = originalMaterial.transparent;
+                            mesh.material.map = originalMaterial.map || null;
+                        } else {
+                            // Fallback if no original material stored
+                            mesh.material.color.setHex(0xcccccc);
+                            mesh.material.opacity = 0.85;
+                            mesh.material.transparent = true;
+                        }
                         mesh.material.emissive.setHex(0x000000);
                         mesh.material.emissiveIntensity = 0;
+                        mesh.material.needsUpdate = true;
+                    }
+                    
+                    // Reset edge/wireframe color to original
+                    const wireframe = group.children[1];
+                    if (wireframe && wireframe.material) {
+                        const originalEdgeColor = group.userData.originalEdgeColor || 0x666666;
+                        wireframe.material.color.setHex(originalEdgeColor);
+                        wireframe.material.linewidth = 1;
+                        wireframe.material.needsUpdate = true;
                     }
                 });
                 
@@ -2016,16 +2317,46 @@
                         highlightCount++;
                         const mesh = group.children[0];
                         if (mesh && mesh.material) {
-                            mesh.material.color.setHex(0x4CAF50); // Green highlight
-                            mesh.material.opacity = 1.0;
-                            mesh.material.transparent = false;
+                            console.log(`Highlighting mesh ${highlightCount}:`, {
+                                partName: group.userData.partName,
+                                hasTexture: mesh.material.map !== null,
+                                currentColor: mesh.material.color.getHex().toString(16),
+                                currentOpacity: mesh.material.opacity
+                            });
+                            
+                            // Multi-layered highlight for better visibility:
+                            // 1. Emissive glow (works on all materials)
                             mesh.material.emissive.setHex(0x66FF66); // Bright green glow
-                            mesh.material.emissiveIntensity = 0.5;
+                            mesh.material.emissiveIntensity = 0.8; // Increased intensity
+                            
+                            // 2. Slightly brighten the material (subtle)
+                            if (!mesh.material.map) {
+                                // Only brighten non-textured materials
+                                const currentColor = mesh.material.color.getHex();
+                                const r = Math.min(255, ((currentColor >> 16) & 0xFF) + 30);
+                                const g = Math.min(255, ((currentColor >> 8) & 0xFF) + 30);
+                                const b = Math.min(255, (currentColor & 0xFF) + 30);
+                                mesh.material.color.setRGB(r/255, g/255, b/255);
+                            }
+                            
+                            mesh.material.needsUpdate = true;
+                        }
+                        
+                        // 3. Highlight edges/wireframe with bright green
+                        const wireframe = group.children[1];
+                        if (wireframe && wireframe.material) {
+                            wireframe.material.color.setHex(0x00FF00); // Bright green edges
+                            wireframe.material.linewidth = 3; // Thicker lines
+                            wireframe.material.needsUpdate = true;
                         }
                     }
                 });
                 
                 console.log('Highlighted', highlightCount, 'instances');
+                if (highlightCount === 0) {
+                    console.warn('⚠️ No instances highlighted! Part name:', name);
+                    console.warn('Available part names:', assemblyMeshes.map(g => g.userData.partName));
+                }
                 renderOnce();
             } else {
                 // FALLBACK: Single Part Mode

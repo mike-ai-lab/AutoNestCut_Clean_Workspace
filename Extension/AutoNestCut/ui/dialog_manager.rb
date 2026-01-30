@@ -765,6 +765,14 @@ module AutoNestCut
       @dialog.add_action_callback("get_material_texture") do |action_context, material_name|
         begin
           puts "DEBUG: Texture requested for material: #{material_name}"
+          
+          # Handle "Default Material" case - skip texture loading
+          if material_name == "Default Material" || material_name.nil? || material_name.empty?
+            puts "DEBUG: Skipping texture for Default Material (no material assigned)"
+            @dialog.execute_script("console.log('No material assigned to component - skipping texture');")
+            next
+          end
+          
           model = Sketchup.active_model
           material = model.materials[material_name]
           
@@ -772,13 +780,20 @@ module AutoNestCut
             puts "DEBUG: Material found: #{material.name}"
             puts "DEBUG: Material has texture: #{material.texture ? 'YES' : 'NO'}"
             puts "DEBUG: Material color: #{material.color}"
+            puts "DEBUG: Material alpha: #{material.alpha}"
+            
+            # Prepare material properties
+            material_props = {
+              name: material.name,
+              color: material.color.to_i & 0xFFFFFF,
+              alpha: material.alpha,
+              has_texture: material.texture ? true : false
+            }
             
             if material.texture
               puts "DEBUG: Texture width: #{material.texture.width}"
               puts "DEBUG: Texture height: #{material.texture.height}"
               puts "DEBUG: Texture filename: #{material.texture.filename}"
-              puts "DEBUG: Texture image_width: #{material.texture.image_width}"
-              puts "DEBUG: Texture image_height: #{material.texture.image_height}"
               
               # Try to write texture to temp file
               temp_dir = File.join(ENV['TEMP'] || ENV['TMP'] || '/tmp', 'autonestcut_textures')
@@ -787,7 +802,6 @@ module AutoNestCut
               
               success = material.texture.write(temp_file)
               puts "DEBUG: Texture write success: #{success}"
-              puts "DEBUG: Temp file exists: #{File.exist?(temp_file)}"
               
               if success && File.exist?(temp_file)
                 require 'base64'
@@ -797,17 +811,23 @@ module AutoNestCut
                 data_uri = "data:image/png;base64,#{base64_data}"
                 puts "DEBUG: Texture data URI length: #{data_uri.length}"
                 
-                json_data = { texture: data_uri }.to_json
-                @dialog.execute_script("if(window.applyTextureToMesh){applyTextureToMesh(#{json_data}.texture);}else{console.error('applyTextureToMesh not defined');}")
+                material_props[:texture] = data_uri
+                
+                json_data = material_props.to_json
+                @dialog.execute_script("if(window.applyMaterialToMesh){applyMaterialToMesh(#{json_data});}else{console.error('applyMaterialToMesh not defined');}")
                 
                 File.delete(temp_file) if File.exist?(temp_file)
               else
                 puts "DEBUG: Failed to write texture to temp file"
-                @dialog.execute_script("console.log('Failed to extract texture');")
+                # Still send material properties without texture
+                json_data = material_props.to_json
+                @dialog.execute_script("if(window.applyMaterialToMesh){applyMaterialToMesh(#{json_data});}else{console.error('applyMaterialToMesh not defined');}")
               end
             else
-              puts "DEBUG: Material has no texture, only color"
-              @dialog.execute_script("console.log('Material has no texture, only color: #{material_name}');")
+              puts "DEBUG: Material has no texture, sending color/opacity only"
+              # Send material properties without texture
+              json_data = material_props.to_json
+              @dialog.execute_script("if(window.applyMaterialToMesh){applyMaterialToMesh(#{json_data});}else{console.error('applyMaterialToMesh not defined');}")
             end
           else
             puts "DEBUG: Material not found: #{material_name}"
