@@ -1434,7 +1434,36 @@ module AutoNestCut
 
       @nesting_thread = Thread.new do
         begin
-          nester = Nester.new
+          puts "\n" + "="*80
+          puts "DEBUG: NESTING THREAD STARTED AT #{Time.now}"
+          puts "="*80
+          
+          # Try to use C++ nester if available, fallback to Ruby
+          begin
+            require_relative '../processors/cpp_nester'
+            use_cpp = CppNester.available?
+          rescue LoadError => e
+            puts "DEBUG: Failed to load cpp_nester: #{e.message}"
+            use_cpp = false
+          rescue => e
+            puts "DEBUG: Error checking C++ availability: #{e.message}"
+            use_cpp = false
+          end
+          
+          puts "DEBUG: C++ solver available? #{use_cpp}"
+          
+          if use_cpp
+            puts "="*80
+            puts "DEBUG: ✓✓✓ USING C++ NESTER (HIGH-PERFORMANCE MODE) ✓✓✓"
+            puts "="*80
+            nester = CppNester.new
+          else
+            puts "="*80
+            puts "DEBUG: ✗✗✗ USING RUBY NESTER (SLOW MODE) ✗✗✗"
+            puts "="*80
+            nester = Nester.new
+          end
+          
           boards_result = []
           
           nester_progress_callback = lambda do |message, percentage|

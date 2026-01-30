@@ -1,0 +1,51 @@
+{
+  "boards": [
+    {
+      "material": "Plywood_18mm",
+      "width": 2440,
+      "height": 1220
+    }
+  ],
+  "parts": [
+    {
+      "id": "shelf_1",
+      "material": "Plywood_18mm",
+      "width": 800,
+      "height": 300,
+      "grain_direction": "any"
+    },
+    {
+      "id": "shelf_2",
+      "material": "Plywood_18mm",
+      "width": 800,
+      "height": 300,
+      "grain_direction": "any"
+    },
+    {
+      "id": "side_panel_1",
+      "material": "Plywood_18mm",
+      "width": 600,
+      "height": 2000,
+      "grain_direction": "vertical"
+    },
+    {
+      "id": "side_panel_2",
+      "material": "Plywood_18mm",
+      "width": 600,
+      "height": 2000,
+      "grain_direction": "vertical"
+    },
+    {
+      "id": "back_panel",
+      "material": "Plywood_18mm",
+      "width": 1600,
+      "height": 2000,
+      "grain_direction": "any"
+    }
+  ],
+  "settings": {
+    "kerf": 3.0,
+    "allow_rotation": true,
+    "timeout_ms": 60000
+  }
+}

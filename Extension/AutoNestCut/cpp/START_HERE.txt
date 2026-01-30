@@ -1,0 +1,63 @@
+================================================================================
+  AutoNestCut C++ Solver - Quick Start Guide
+================================================================================
+
+STEP 1: Install C++ Compiler (One-time setup)
+----------------------------------------------
+
+Option A - AUTOMATIC (Recommended):
+  1. Right-click "install_mingw.ps1"
+  2. Select "Run with PowerShell"
+  3. Follow prompts
+  4. Close and reopen your terminal
+
+Option B - MANUAL:
+  1. Open "SETUP_GUIDE.md" for detailed instructions
+  2. Install MinGW-w64 or Visual Studio Build Tools
+  3. Add to PATH
+  4. Restart terminal
+
+
+STEP 2: Build the Solver
+-------------------------
+
+  1. Open Command Prompt (cmd.exe)
+  2. Navigate to this directory:
+     cd Extension\AutoNestCut\cpp
+  3. Run:
+     build_mingw.bat
+  4. Wait for "Build successful!" message
+
+
+STEP 3: Test It
+---------------
+
+  Run:
+    nester.exe test_input.json test_output.json
+  
+  Should complete in < 100ms and create test_output.json
+
+
+STEP 4: Integration (I'll handle this)
+---------------------------------------
+
+  Once the build works, I'll modify your Ruby code to use the C++ solver
+  automatically. You won't need to do anything else!
+
+
+TROUBLESHOOTING
+---------------
+
+Problem: "g++ is not recognized"
+Solution: Install MinGW (see SETUP_GUIDE.md), restart terminal
+
+Problem: Build fails
+Solution: Make sure you're in the cpp/ directory, check SETUP_GUIDE.md
+
+Problem: Need help
+Solution: Let me know what error you see, I'll fix it!
+
+
+================================================================================
+  Questions? Just tell me what error you see and I'll help!
+================================================================================

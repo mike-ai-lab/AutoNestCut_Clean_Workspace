@@ -1,0 +1,33 @@
+{
+  "placements": [
+    {
+      "part_id": "shelf_1",
+      "board_id": 1,
+      "x": 0,
+      "y": 0,
+      "rotation": 0
+    },
+    {
+      "part_id": "shelf_2",
+      "board_id": 1,
+      "x": 803,
+      "y": 0,
+      "rotation": 0
+    }
+  ],
+  "boards": [
+    {
+      "id": 1,
+      "material": "Plywood_18mm",
+      "width": 2440,
+      "height": 1220,
+      "parts_count": 2,
+      "used_area": 480000,
+      "waste_percentage": 83.8753
+    }
+  ],
+  "stats": {
+    "time_ms": 7,
+    "boards_used": 1
+  }
+}
