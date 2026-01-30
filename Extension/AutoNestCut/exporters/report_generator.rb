@@ -402,30 +402,31 @@ module AutoNestCut
       sub_parts = entities.select { |e| e.is_a?(Sketchup::Group) || e.is_a?(Sketchup::ComponentInstance) }
       
       sub_parts.each do |part|
-        # Calculate explode vector
-        center = part.bounds.center
-        raw_vector = center - parent_center
+        # Calculate explode vector - MUST use transformed bounds center
+        part_global_center = part.bounds.center.transform(part.transformation)
+        raw_vector = part_global_center - parent_center
         raw_vector = Geom::Vector3d.new(0, 0, 1) if raw_vector.length == 0
         
-        # Find dominant axis
-        abs_x, abs_y, abs_z = raw_vector.x.abs, raw_vector.y.abs, raw_vector.z.abs
-        axis_vector = Geom::Vector3d.new(0, 0, 0)
-        
-        if abs_x >= abs_y && abs_x >= abs_z
-          axis_vector.x = raw_vector.x
-        elsif abs_y >= abs_x && abs_y >= abs_z
-          axis_vector.y = raw_vector.y
-        else
-          axis_vector.z = raw_vector.z
-        end
+        # Use the FULL normalized vector, not just dominant axis
+        axis_vector = raw_vector.clone
         axis_vector.normalize!
         
         # Extract geometry for this component
         faces = []
         collect_component_faces(part, part.transformation, faces)
         
+        # Get the actual part name
+        part_name = if part.is_a?(Sketchup::ComponentInstance)
+          part.definition.name
+        elsif part.is_a?(Sketchup::Group)
+          part.name
+        else
+          "Part"
+        end
+        part_name = "Part" if part_name.nil? || part_name.empty?
+        
         parts << {
-          name: part.name.empty? ? "Part" : part.name,
+          name: part_name,
           explode_vector: [axis_vector.x, axis_vector.z, -axis_vector.y],
           faces: faces
         }
