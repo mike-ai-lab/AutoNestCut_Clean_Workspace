@@ -81,6 +81,8 @@ module AutoNestCut
     # Finds the best position for a part on the board using the free rectangles strategy.
     # It prefers the bottom-leftmost available space.
     def find_best_position(part, kerf_width = 0)
+      method_start = Time.now
+      
       # Special case: if the part exactly matches the board dimensions and the board is empty,
       # allow it to be placed without kerf spacing (exact-fit parts)
       if @parts_on_board.empty? && 
@@ -92,7 +94,9 @@ module AutoNestCut
       effective_part_width = part.width + kerf_width
       effective_part_height = part.height + kerf_width
 
+      iterations = 0
       @free_rectangles.each do |fr_x, fr_y, fr_w, fr_h|
+        iterations += 1
         # Check if the part (with kerf) fits within the current free rectangle
         if effective_part_width <= fr_w && effective_part_height <= fr_h
           # If it fits, the bottom-left corner of the free rectangle is a candidate position.
@@ -103,9 +107,18 @@ module AutoNestCut
           # Also do a final check against overall board boundaries (redundant if free_rects are always within bounds,
           # but a good safeguard, especially for edge cases).
           if can_fit_part_within_board_bounds?(part, candidate_x, candidate_y, kerf_width)
+            total_time = Time.now - method_start
+            if total_time > 0.05 # Log if it takes more than 50ms
+              puts "DEBUG: find_best_position took #{(total_time * 1000).round(0)}ms (#{iterations} iterations, #{@free_rectangles.length} free rects)"
+            end
             return [candidate_x, candidate_y] # Return the first valid position found
           end
         end
+      end
+      
+      total_time = Time.now - method_start
+      if total_time > 0.05
+        puts "DEBUG: find_best_position FAILED took #{(total_time * 1000).round(0)}ms (#{iterations} iterations, #{@free_rectangles.length} free rects)"
       end
       nil # No suitable position found
     end

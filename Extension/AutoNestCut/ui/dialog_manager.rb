@@ -1273,25 +1273,39 @@ module AutoNestCut
     
     # Gets cached boards with thread safety and validation
     def get_cached_boards(cache_key)
-      @cache_mutex.synchronize do
+      cache_start = Time.now
+      puts "DEBUG: [get_cached_boards] Checking cache for key: #{cache_key[0..8]}..."
+      
+      result = @cache_mutex.synchronize do
         cache_entry = @nesting_cache[cache_key]
-        return nil unless cache_entry
+        
+        if cache_entry.nil?
+          puts "DEBUG: [get_cached_boards] Cache miss, took #{((Time.now - cache_start) * 1000).round(1)}ms"
+          return nil
+        end
         
         boards = cache_entry[:boards]
         
         # Validate cached data
+        validate_start = Time.now
         unless validate_cached_boards(boards)
           puts "WARNING: Invalid cached data for key #{cache_key}, removing from cache"
           @nesting_cache.delete(cache_key)
+          puts "DEBUG: [get_cached_boards] Validation failed, took #{((Time.now - cache_start) * 1000).round(1)}ms"
           return nil
         end
+        validate_time = ((Time.now - validate_start) * 1000).round(1)
+        puts "DEBUG: [get_cached_boards] Validation took #{validate_time}ms"
         
         # Update access time for LRU
         cache_entry[:access_time] = Time.now
         
-        puts "✓ Cache hit for key: #{cache_key[0..8]}... (#{boards.length} boards)"
+        total_time = ((Time.now - cache_start) * 1000).round(1)
+        puts "✓ Cache hit for key: #{cache_key[0..8]}... (#{boards.length} boards) - took #{total_time}ms"
         boards
       end
+      
+      result
     end
     
     # Stores boards in cache with thread safety and LRU eviction
@@ -1350,10 +1364,18 @@ module AutoNestCut
 
     # Generates a unique, stable hash key for the given parts and settings
     def generate_cache_key(parts_by_material_hash, settings)
+      key_start = Time.now
+      puts "DEBUG: [generate_cache_key] Starting cache key generation..."
+      
       # Return a distinct key for empty parts to avoid accidental cache hits
-      return Digest::MD5.hexdigest("EMPTY_PARTS_#{Time.now.to_i}") if parts_by_material_hash.nil? || parts_by_material_hash.empty?
+      if parts_by_material_hash.nil? || parts_by_material_hash.empty?
+        result = Digest::MD5.hexdigest("EMPTY_PARTS_#{Time.now.to_i}")
+        puts "DEBUG: [generate_cache_key] Empty parts, took #{((Time.now - key_start) * 1000).round(1)}ms"
+        return result
+      end
 
       # Create a canonical representation of parts_by_material
+      serialize_start = Time.now
       serialized_parts = parts_by_material_hash.map do |material, parts_array|
         [material.to_s, parts_array.map do |part_entry|
           part_type = part_entry.is_a?(Hash) && part_entry.key?(:part_type) ? part_entry[:part_type] : part_entry
@@ -1366,8 +1388,11 @@ module AutoNestCut
           }
         end.sort_by { |p| [p[:name], p[:width], p[:height], p[:thickness], p[:total_quantity]] }]
       end.sort_by(&:first).to_json
+      serialize_time = ((Time.now - serialize_start) * 1000).round(1)
+      puts "DEBUG: [generate_cache_key] Serialization took #{serialize_time}ms"
 
       # Extract only nesting-relevant settings that affect the *nesting pattern* or *outcome*
+      settings_start = Time.now
       nesting_stock_materials = if settings['stock_materials']
                                   settings['stock_materials'].transform_values do |material_data|
                                     material_data.reject { |k, _v| k == 'price' || k == 'currency' } # Remove price and currency from cache key
@@ -1382,9 +1407,19 @@ module AutoNestCut
         'allow_rotation' => settings['allow_rotation']
         # Add any other settings from Config that directly influence the nesting result
       }.to_json
+      settings_time = ((Time.now - settings_start) * 1000).round(1)
+      puts "DEBUG: [generate_cache_key] Settings processing took #{settings_time}ms"
 
       # Combine and hash
-      Digest::MD5.hexdigest(serialized_parts + nesting_settings)
+      hash_start = Time.now
+      result = Digest::MD5.hexdigest(serialized_parts + nesting_settings)
+      hash_time = ((Time.now - hash_start) * 1000).round(1)
+      
+      total_time = ((Time.now - key_start) * 1000).round(1)
+      puts "DEBUG: [generate_cache_key] Hash generation took #{hash_time}ms"
+      puts "DEBUG: [generate_cache_key] TOTAL TIME: #{total_time}ms"
+      
+      result
     end
 
     def process_with_async_nesting(settings)
@@ -1422,36 +1457,113 @@ module AutoNestCut
       else
         # --- CACHE MISS ---
         puts "✗ Cache miss for key: #{current_cache_key[0..8]}..."
-        start_nesting_background_thread(current_cache_key) # Pass key to store results later
-        start_nesting_progress_watcher
+        puts "="*80
+        puts "DEBUG: RUNNING NESTING ON MAIN THREAD (NO THREADING)"
+        puts "="*80
+        
+        # Run nesting synchronously on main thread for debugging
+        run_nesting_synchronously(current_cache_key)
+      end
+    end
+    
+    # Run nesting synchronously on main thread (for debugging)
+    def run_nesting_synchronously(cache_key)
+      begin
+        puts "DEBUG: Starting synchronous nesting..."
+        
+        # FORCE USE RUBY NESTER - C++ integration has bugs with part duplication
+        puts "="*80
+        puts "✓ USING RUBY NESTER (Reliable & Accurate)"
+        puts "="*80
+        nester = Nester.new
+        
+        progress_callback = lambda do |message, percentage|
+          @dialog.execute_script("updateProgressOverlay('#{message}', #{percentage})")
+        end
+        
+        @dialog.execute_script("updateProgressOverlay('Starting optimization...', 5)")
+        
+        boards_result = nester.optimize_boards(@parts_by_material, @settings, progress_callback)
+        
+        puts "DEBUG: Nesting complete, #{boards_result.length} boards"
+        
+        # Store in cache
+        store_cached_boards(cache_key, boards_result)
+        @last_processed_cache_key = cache_key
+        
+        # Generate report
+        generate_report_and_show_tab(boards_result)
+        @dialog.execute_script("hideProgressOverlay()")
+        
+      rescue => e
+        puts "ERROR: Synchronous nesting failed: #{e.message}"
+        puts e.backtrace.join("\n")
+        @dialog.execute_script("hideProgressOverlay()")
+        @dialog.execute_script("alert('Nesting failed: #{e.message}')")
       end
     end
 
     # Starts the heavy nesting computation in a separate background thread
     def start_nesting_background_thread(cache_key)
-      parts_by_material_for_thread = @parts_by_material.dup
+      puts "DEBUG: [start_nesting_background_thread] Preparing thread data..."
+      thread_prep_start = Time.now
+      
+      # CRITICAL: Serialize ALL data BEFORE creating the thread
+      # SketchUp objects cannot be accessed from background threads!
+      puts "DEBUG: Serializing parts_by_material for thread safety..."
+      serialize_start = Time.now
+      
+      parts_by_material_for_thread = {}
+      @parts_by_material.each do |material, types_and_quantities|
+        parts_by_material_for_thread[material] = types_and_quantities.map do |entry|
+          part_type = entry[:part_type]
+          {
+            part_type: part_type, # Keep the Part object reference (it's already serialized)
+            total_quantity: entry[:total_quantity]
+          }
+        end
+      end
+      
+      serialize_time = ((Time.now - serialize_start) * 1000).round(1)
+      puts "DEBUG: Serialization took #{serialize_time}ms"
+      
       settings_for_thread = @settings.dup
+      
+      thread_prep_time = ((Time.now - thread_prep_start) * 1000).round(1)
+      puts "DEBUG: [start_nesting_background_thread] Thread data prep took #{thread_prep_time}ms"
+      puts "DEBUG: [start_nesting_background_thread] Creating thread NOW..."
 
       @nesting_thread = Thread.new do
         begin
+          thread_start = Time.now
           puts "\n" + "="*80
           puts "DEBUG: NESTING THREAD STARTED AT #{Time.now}"
           puts "="*80
           
           # Try to use C++ nester if available, fallback to Ruby
+          puts "DEBUG: Attempting to load cpp_nester..."
+          load_start = Time.now
           begin
             require_relative '../processors/cpp_nester'
+            load_time = ((Time.now - load_start) * 1000).round(1)
+            puts "DEBUG: cpp_nester loaded in #{load_time}ms"
+            
+            check_start = Time.now
             use_cpp = CppNester.available?
+            check_time = ((Time.now - check_start) * 1000).round(1)
+            puts "DEBUG: C++ availability check took #{check_time}ms"
           rescue LoadError => e
             puts "DEBUG: Failed to load cpp_nester: #{e.message}"
             use_cpp = false
           rescue => e
             puts "DEBUG: Error checking C++ availability: #{e.message}"
+            puts "DEBUG: Backtrace: #{e.backtrace.first(3).join("\n")}"
             use_cpp = false
           end
           
           puts "DEBUG: C++ solver available? #{use_cpp}"
           
+          nester_create_start = Time.now
           if use_cpp
             puts "="*80
             puts "DEBUG: ✓✓✓ USING C++ NESTER (HIGH-PERFORMANCE MODE) ✓✓✓"
@@ -1463,6 +1575,8 @@ module AutoNestCut
             puts "="*80
             nester = Nester.new
           end
+          nester_create_time = ((Time.now - nester_create_start) * 1000).round(1)
+          puts "DEBUG: Nester object created in #{nester_create_time}ms"
           
           boards_result = []
           
@@ -1473,19 +1587,29 @@ module AutoNestCut
           end
 
           @nesting_queue.push({ type: :progress, message: "Starting optimization...", percentage: 5 })
+          
+          puts "DEBUG: Calling nester.optimize_boards NOW..."
+          optimize_start = Time.now
           boards_result = nester.optimize_boards(parts_by_material_for_thread, settings_for_thread, nester_progress_callback)
+          optimize_time = ((Time.now - optimize_start) * 1000).round(1)
+          puts "DEBUG: optimize_boards completed in #{optimize_time}ms"
           
           if @processing_cancelled
             @nesting_queue.push({ type: :cancelled })
           else
             @nesting_queue.push({ type: :complete, boards: boards_result, cache_key: cache_key })
           end
+          
+          total_thread_time = ((Time.now - thread_start) * 1000).round(1)
+          puts "DEBUG: Total thread execution time: #{total_thread_time}ms"
 
         rescue StandardError => e
           puts "Background nesting thread error: #{e.message}\n#{e.backtrace.join("\n")}"
           @nesting_queue.push({ type: :error, message: "Nesting calculation failed: #{e.message}" })
         end
       end
+      
+      puts "DEBUG: [start_nesting_background_thread] Thread created and started"
     end
 
     # Starts a UI timer to periodically check the queue for messages from the background thread

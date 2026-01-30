@@ -26,8 +26,14 @@ module AutoNestCut
       
       report_progress("Preparing nesting data...", 5)
       
+      prep_start = Time.now
+      puts "DEBUG: [CppNester] Starting JSON preparation..."
+      
       # Convert Ruby data to JSON format for C++
       input_data = prepare_input_json(part_types_by_material_and_quantities, settings)
+      
+      prep_time = Time.now - prep_start
+      puts "DEBUG: [CppNester] JSON preparation took #{prep_time.round(2)}s"
       
       # Create temp files for IPC
       temp_dir = Dir.tmpdir
@@ -36,26 +42,42 @@ module AutoNestCut
       
       begin
         # Write input JSON
+        write_start = Time.now
         File.write(input_file, input_data.to_json)
+        write_time = Time.now - write_start
+        puts "DEBUG: [CppNester] JSON write took #{write_time.round(2)}s"
         
         report_progress("Running C++ nesting solver...", 10)
         
-        # Call C++ executable
+        # Call C++ executable with timeout
         command = "\"#{@cpp_exe_path}\" \"#{input_file}\" \"#{output_file}\""
         
         puts "\n" + "="*80
-        puts "DEBUG: Calling C++ Nester"
+        puts "DEBUG: [CppNester] Calling C++ solver"
         puts "="*80
         puts "Command: #{command}"
+        puts "Input file size: #{File.size(input_file)} bytes"
         
-        # Execute and capture output
+        # Execute with 30 second timeout
+        require 'timeout'
         start_time = Time.now
-        output = `#{command} 2>&1`
-        exit_code = $?.exitstatus
+        output = ""
+        exit_code = 0
+        
+        begin
+          Timeout.timeout(30) do
+            output = `#{command} 2>&1`
+            exit_code = $?.exitstatus
+          end
+        rescue Timeout::Error
+          puts "ERROR: C++ solver timed out after 30 seconds!"
+          raise StandardError, "C++ solver timed out - falling back to Ruby nester"
+        end
+        
         elapsed = Time.now - start_time
         
         puts "Exit code: #{exit_code}"
-        puts "Elapsed time: #{elapsed.round(2)}s"
+        puts "C++ execution time: #{elapsed.round(2)}s"
         puts "Output:\n#{output}"
         puts "="*80
         
@@ -172,12 +194,21 @@ module AutoNestCut
     end
     
     def reconstruct_boards(result_json, part_types_by_material_and_quantities, settings)
+      puts "DEBUG: [reconstruct_boards] Starting reconstruction..."
+      puts "DEBUG: [reconstruct_boards] Boards in JSON: #{result_json['boards'].length}"
+      puts "DEBUG: [reconstruct_boards] Placements in JSON: #{result_json['placements'].length}"
+      
       # Group placements by board_id
       placements_by_board = {}
       result_json['placements'].each do |placement|
         board_id = placement['board_id']
         placements_by_board[board_id] ||= []
         placements_by_board[board_id] << placement
+      end
+      
+      puts "DEBUG: [reconstruct_boards] Placements per board:"
+      placements_by_board.each do |board_id, placements|
+        puts "  Board #{board_id}: #{placements.length} parts"
       end
       
       # Reconstruct Board objects
@@ -188,6 +219,8 @@ module AutoNestCut
         stock_width = board_data['width']
         stock_height = board_data['height']
         
+        puts "DEBUG: [reconstruct_boards] Creating board #{board_id} for material #{material}"
+        
         board = Board.new(material, stock_width, stock_height)
         
         # Add parts to board using stored instances
@@ -197,26 +230,32 @@ module AutoNestCut
           part_instance = @part_instances[part_id]
           
           if part_instance
+            # CRITICAL: Create a NEW instance for each placement!
+            # The same part_id should NOT be reused across boards
+            placed_part = part_instance.create_placed_instance
+            
             # Apply placement data
-            part_instance.x = placement['x']
-            part_instance.y = placement['y']
+            placed_part.x = placement['x']
+            placed_part.y = placement['y']
             rotation = placement['rotation']
-            part_instance.rotated = (rotation == 90 || rotation == 270)
+            placed_part.rotated = (rotation == 90 || rotation == 270)
             
             # If rotated, swap dimensions
-            if part_instance.rotated && rotation == 90
-              part_instance.width, part_instance.height = part_instance.height, part_instance.width
+            if placed_part.rotated && rotation == 90
+              placed_part.width, placed_part.height = placed_part.height, placed_part.width
             end
             
-            board.parts_on_board << part_instance
+            board.parts_on_board << placed_part
           else
             puts "WARNING: Could not find part instance for ID: #{part_id}"
           end
         end
         
+        puts "DEBUG: [reconstruct_boards] Board #{board_id} has #{board.parts_on_board.length} parts"
         boards << board
       end
       
+      puts "DEBUG: [reconstruct_boards] Total boards created: #{boards.length}"
       boards
     end
   end

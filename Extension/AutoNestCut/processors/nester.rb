@@ -134,24 +134,47 @@ module AutoNestCut
     end
 
     def try_place_part_on_board(part_instance, board, kerf_width, allow_rotation)
+      method_start = Time.now
+      
       # Store original dimensions to revert if rotation doesn't work
       original_width = part_instance.width
       original_height = part_instance.height
       original_rotated_state = part_instance.rotated
 
       # Try current orientation
+      find_start = Time.now
       position = board.find_best_position(part_instance, kerf_width)
+      find_time = Time.now - find_start
+      
       if position
+        add_start = Time.now
         board.add_part(part_instance, position[0], position[1], kerf_width) # Pass kerf_width to add_part
+        add_time = Time.now - add_start
+        
+        total_time = Time.now - method_start
+        if total_time > 0.1 # Log if it takes more than 100ms
+          puts "DEBUG: try_place_part took #{(total_time * 1000).round(0)}ms (find: #{(find_time * 1000).round(0)}ms, add: #{(add_time * 1000).round(0)}ms)"
+        end
         return true
       end
 
       # Try rotated orientation if allowed and not already rotated
       if allow_rotation && part_instance.can_rotate? && !part_instance.rotated
         part_instance.rotate! # This should swap width/height and set rotated=true
+        
+        find_start = Time.now
         position = board.find_best_position(part_instance, kerf_width)
+        find_time = Time.now - find_start
+        
         if position
+          add_start = Time.now
           board.add_part(part_instance, position[0], position[1], kerf_width) # Pass kerf_width to add_part
+          add_time = Time.now - add_start
+          
+          total_time = Time.now - method_start
+          if total_time > 0.1
+            puts "DEBUG: try_place_part (rotated) took #{(total_time * 1000).round(0)}ms (find: #{(find_time * 1000).round(0)}ms, add: #{(add_time * 1000).round(0)}ms)"
+          end
           return true
         else
           # If rotated part doesn't fit, revert to original state
@@ -160,6 +183,11 @@ module AutoNestCut
           part_instance.height = original_height
           part_instance.rotated = original_rotated_state
         end
+      end
+      
+      total_time = Time.now - method_start
+      if total_time > 0.1
+        puts "DEBUG: try_place_part FAILED took #{(total_time * 1000).round(0)}ms"
       end
       false
     end
