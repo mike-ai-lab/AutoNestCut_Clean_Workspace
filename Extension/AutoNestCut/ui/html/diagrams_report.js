@@ -1163,6 +1163,8 @@ function selectPartInReportViewer(part) {
     ].filter(id => id); // Remove null/undefined values
     
     console.log('🔍 Search identifiers:', searchIdentifiers);
+    console.log('🔍 Part dimensions: width=' + part.width + ', height=' + part.height + ', thickness=' + part.thickness);
+    console.log('🔍 Part material: "' + part.material + '"');
     
     // Find and highlight ALL matching parts (there might be multiple instances)
     let foundCount = 0;
@@ -1176,32 +1178,43 @@ function selectPartInReportViewer(part) {
         console.log(`    - partName: "${groupPartName}"`);
         console.log(`    - materialName: "${groupMaterial}"`);
         
-        // Try to match using any of the search identifiers
+        // CRITICAL: Match using name AND material AND dimensions
         let isMatch = false;
         let matchReason = '';
         
+        // First check if name matches
+        let nameMatches = false;
         for (const identifier of searchIdentifiers) {
             if (groupPartName === identifier) {
-                isMatch = true;
-                matchReason = `partName matches "${identifier}"`;
+                nameMatches = true;
                 break;
             }
         }
         
-        // Also try matching by dimensions and material (for components with same dimensions)
-        if (!isMatch && part.width && part.height && part.material) {
-            // Check if this group's name contains dimension info that matches
-            // This is a fallback for when names don't match exactly
-            const partWidthMM = parseFloat(part.width);
-            const partHeightMM = parseFloat(part.height);
-            const partMaterial = String(part.material).toLowerCase();
-            const groupMaterialLower = String(groupMaterial).toLowerCase();
+        if (nameMatches) {
+            console.log(`    - ✓ Name matches`);
             
-            // Check if materials match (case-insensitive partial match)
-            if (partMaterial && groupMaterialLower.includes(partMaterial) || partMaterial.includes(groupMaterialLower)) {
-                // Materials match, now check if name suggests same dimensions
-                // This is a heuristic - you might need to adjust based on your naming convention
-                console.log(`    - Material match candidate: "${partMaterial}" vs "${groupMaterialLower}"`);
+            // Now verify material matches (CRITICAL for distinguishing same-named parts)
+            const partMaterial = String(part.material || '').trim();
+            const groupMaterialStr = String(groupMaterial || '').trim();
+            
+            // Compare full material strings INCLUDING unique IDs in parentheses
+            // This ensures parts with same base material but different IDs don't match
+            const partMaterialNormalized = partMaterial.toLowerCase();
+            const groupMaterialNormalized = groupMaterialStr.toLowerCase();
+            
+            console.log(`    - Comparing materials: "${partMaterialNormalized}" vs "${groupMaterialNormalized}"`);
+            
+            // Check if materials match (exact match on FULL material string including unique ID)
+            const materialMatches = (partMaterialNormalized === groupMaterialNormalized);
+            
+            if (materialMatches) {
+                console.log(`    - ✓ Material matches`);
+                isMatch = true;
+                matchReason = `name + material match`;
+            } else {
+                console.log(`    - ✗ Material MISMATCH: "${partMaterial}" != "${groupMaterialStr}"`);
+                console.log(`    - ✗ This is NOT the correct part (same name, different material)`);
             }
         }
         
