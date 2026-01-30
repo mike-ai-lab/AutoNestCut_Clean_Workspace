@@ -1312,7 +1312,53 @@ function renderAssemblyViews(assemblyData) {
         </div>
         
         <h3 style="color: #555; margin-top: 30px;">3D Interactive Model</h3>
-        <div id="assemblyViewer" style="width: 100%; height: 500px; border: 1px solid #ddd; background: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"></div>
+        <div style="background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; overflow: hidden;">
+            <div style="padding: 16px 20px; background: #2323FF; color: #ffffff; font-size: 16px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+                <span>3D Assembly Viewer</span>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="toggleReportGrid()" style="background: #1a8cff; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">GRID</button>
+                    <button onclick="toggleReportTexture()" style="background: #1a8cff; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">TEX</button>
+                    <button onclick="setReportView('iso')" style="background: #1a8cff; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">ISO</button>
+                    <button onclick="toggleReport3DViewer()" id="reportViewer3DPowerBtn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M12 2v10M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div style="background: #1a1a1a; position: relative; height: 500px;">
+                <canvas id="reportAssembly3DCanvas" style="display: none; width: 100%; height: 100%;"></canvas>
+                <div id="reportExplodeControls" style="display: none; position: absolute; right: 60px; top: 50%; transform: translateY(-50%); height: 60%; flex-direction: column; align-items: center; gap: 10px; z-index: 100; background: rgba(255, 255, 255, 0.9); padding: 15px 8px; border-radius: 30px;">
+                    <span style="writing-mode: vertical-rl; font-size: 11px; font-weight: 700; color: #4a4a4a;">EXPLODE</span>
+                    <input type="range" min="0" max="100" value="0" id="reportExplodeSlider" oninput="updateReportExplosion(this.value)" style="writing-mode: vertical-lr; direction: rtl; width: 6px; height: 100%; cursor: ns-resize;">
+                </div>
+                <div id="reportViewControls" style="display: none; position: absolute; right: 10px; top: 10px; flex-direction: column; gap: 4px; z-index: 100;">
+                    <button onclick="toggleReportProjection()" style="background: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 6px; opacity: 0.9; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,1)'" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.9)'" title="Toggle Perspective">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                    </button>
+                    <button onclick="setReportView('top')" style="background: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 6px; opacity: 0.9; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,1)'" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.9)'" title="Top View">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                    </button>
+                    <button onclick="setReportView('front')" style="background: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 6px; opacity: 0.9; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,1)'" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.9)'" title="Front View">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="1"/></svg>
+                    </button>
+                    <button onclick="setReportView('right')" style="background: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 6px; opacity: 0.9; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,1)'" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.9)'" title="Right View">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2"><rect x="8" y="3" width="8" height="18" rx="1"/></svg>
+                    </button>
+                    <button onclick="setReportView('iso')" style="background: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 6px; opacity: 0.9; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,1)'" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.9)'" title="Isometric View">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/><path d="M12 22V12M12 12L3 7M12 12l9-5"/></svg>
+                    </button>
+                </div>
+                <div id="reportViewer3DOffScreen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; color: #4a4a4a; padding: 40px; height: 100%;">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#4a4a4a" stroke-width="1.5" style="margin-bottom: 16px;">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/>
+                        <path d="M8 21h8M12 17v4"/>
+                    </svg>
+                    <p style="font-size: 14px; margin: 0;">3D Viewer is OFF</p>
+                    <p style="font-size: 12px; margin: 8px 0 0 0; opacity: 0.7;">Click power button to turn on</p>
+                </div>
+            </div>
+        </div>
     </div>
     
     <style>
@@ -1322,11 +1368,10 @@ function renderAssemblyViews(assemblyData) {
     
     container.innerHTML = html;
     
-    // Initialize 3D viewer if geometry data is available
-    if (assemblyData.geometry && assemblyData.geometry.faces) {
-        setTimeout(() => {
-            initAssemblyViewer(assemblyData.geometry);
-        }, 100);
+    // Initialize 3D viewer with assembly geometry data
+    if (assemblyData.geometry && assemblyData.geometry.parts) {
+        console.log('DEBUG: Initializing report 3D viewer with geometry data');
+        window.reportAssemblyData = assemblyData.geometry;
     }
 }
 
@@ -1413,6 +1458,395 @@ function openImageModal(imgElement) {
     document.addEventListener('keydown', handleEscape);
     
     document.body.appendChild(modal);
+}
+
+// Report 3D Viewer Control Functions
+function toggleReport3DViewer() {
+    const canvas = document.getElementById('reportAssembly3DCanvas');
+    const offScreen = document.getElementById('reportViewer3DOffScreen');
+    const controls = document.getElementById('reportViewControls');
+    const explodeControls = document.getElementById('reportExplodeControls');
+    const powerBtn = document.getElementById('reportViewer3DPowerBtn');
+    
+    if (!canvas || !offScreen) return;
+    
+    const isOff = canvas.style.display === 'none';
+    
+    if (isOff) {
+        canvas.style.display = 'block';
+        offScreen.style.display = 'none';
+        if (controls) controls.style.display = 'flex';
+        if (explodeControls) explodeControls.style.display = 'flex';
+        if (powerBtn) powerBtn.style.background = 'rgba(76, 175, 80, 0.3)';
+        
+        if (!window.reportAssemblyScene && window.reportAssemblyData) {
+            initReportAssemblyViewer();
+        }
+    } else {
+        canvas.style.display = 'none';
+        offScreen.style.display = 'flex';
+        if (controls) controls.style.display = 'none';
+        if (explodeControls) explodeControls.style.display = 'none';
+        if (powerBtn) powerBtn.style.background = 'rgba(255,255,255,0.2)';
+    }
+}
+
+function toggleReportDimensions() {
+    if (window.reportShowDimensions !== undefined) {
+        window.reportShowDimensions = !window.reportShowDimensions;
+    }
+}
+
+function toggleReportRotation() {
+    if (window.reportAutoRotate !== undefined) {
+        window.reportAutoRotate = !window.reportAutoRotate;
+        if (window.reportControls) window.reportControls.autoRotate = window.reportAutoRotate;
+    }
+}
+
+function toggleReportGrid() {
+    if (window.reportShowGrid !== undefined) {
+        window.reportShowGrid = !window.reportShowGrid;
+        if (window.reportGridHelper) window.reportGridHelper.visible = window.reportShowGrid;
+    }
+}
+
+function toggleReportTexture() {
+    console.log('🎨 TEX button clicked');
+    console.log('🎨 Current reportShowTextures:', window.reportShowTextures);
+    console.log('🎨 reportAssemblyGroups count:', window.reportAssemblyGroups ? window.reportAssemblyGroups.length : 'undefined');
+    
+    if (window.reportShowTextures !== undefined) {
+        window.reportShowTextures = !window.reportShowTextures;
+        console.log('🎨 Toggled reportShowTextures to:', window.reportShowTextures);
+        
+        // Apply texture toggle to all meshes
+        if (window.reportAssemblyGroups) {
+            window.reportAssemblyGroups.forEach((group, idx) => {
+                group.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        const hasStoredTexture = child.userData.originalMaterial && child.userData.originalMaterial.map;
+                        console.log(`🎨 Group ${idx} mesh - has map:`, !!child.material.map, 'has stored texture:', hasStoredTexture);
+                        
+                        if (window.reportShowTextures) {
+                            // Show texture if available
+                            if (hasStoredTexture) {
+                                child.material.map = child.userData.originalMaterial.map;
+                                child.material.color.setHex(0xFFFFFF);
+                                child.material.needsUpdate = true;
+                                console.log(`✅ Enabled texture for group ${idx}`);
+                            } else {
+                                console.log(`⚠️ No texture available for group ${idx}`);
+                            }
+                        } else {
+                            // Hide texture, show color only
+                            child.material.map = null;
+                            child.material.color.setHex(0xcccccc);
+                            child.material.needsUpdate = true;
+                            console.log(`❌ Disabled texture for group ${idx}`);
+                        }
+                    }
+                });
+            });
+        } else {
+            console.log('❌ reportAssemblyGroups not found!');
+        }
+    } else {
+        console.log('❌ reportShowTextures is undefined!');
+    }
+}
+
+function toggleReportProjection() {
+    if (!window.reportCamera || !window.reportControls) return;
+    const canvas = document.getElementById('reportAssembly3DCanvas');
+    if (!canvas) return;
+    
+    // Store current position and target
+    const currentPos = window.reportCamera.position.clone();
+    const currentTarget = window.reportControls.target.clone();
+    
+    const aspect = canvas.clientWidth / canvas.clientHeight;
+    if (window.reportCamera.isPerspectiveCamera) {
+        const frustumSize = 1000;
+        window.reportCamera = new THREE.OrthographicCamera(frustumSize * aspect / -2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / -2, 0.1, 10000);
+    } else {
+        window.reportCamera = new THREE.PerspectiveCamera(75, aspect, 0.1, 10000);
+    }
+    
+    // Restore position and target
+    window.reportCamera.position.copy(currentPos);
+    window.reportControls.object = window.reportCamera;
+    window.reportControls.target.copy(currentTarget);
+    window.reportControls.update();
+}
+
+function setReportView(view) {
+    if (!window.reportCamera || !window.reportControls || !window.reportAssemblyBounds) return;
+    
+    const distance = window.reportAssemblyBounds.size * 2.5;
+    const center = window.reportAssemblyBounds.center;
+    
+    switch(view) {
+        case 'top':
+            window.reportCamera.position.set(center.x, distance, center.z);
+            break;
+        case 'front':
+            window.reportCamera.position.set(center.x, center.y, distance);
+            break;
+        case 'right':
+            window.reportCamera.position.set(distance, center.y, center.z);
+            break;
+        case 'iso':
+            window.reportCamera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
+            break;
+    }
+    
+    window.reportControls.target.copy(center);
+    window.reportControls.update();
+}
+
+function updateReportExplosion(value) {
+    if (!window.reportAssemblyGroups || window.reportAssemblyGroups.length === 0) return;
+    const t = value / 100;
+    const explosionDistance = 300;
+    
+    window.reportAssemblyGroups.forEach(group => {
+        if (group.userData.explodeVector && group.userData.originalPosition) {
+            const vec = group.userData.explodeVector;
+            const orig = group.userData.originalPosition;
+            
+            // Apply explosion: original position + (explode vector * t * distance)
+            group.position.set(
+                orig.x + vec.x * t * explosionDistance,
+                orig.y + vec.y * t * explosionDistance,
+                orig.z + vec.z * t * explosionDistance
+            );
+        }
+    });
+}
+
+function initReportAssemblyViewer() {
+    const canvas = document.getElementById('reportAssembly3DCanvas');
+    if (!canvas || !window.reportAssemblyData) return;
+    console.log('Initializing report assembly viewer...');
+    
+    // Initialize THREE.js scene with LIGHT background
+    window.reportAssemblyScene = new THREE.Scene();
+    window.reportAssemblyScene.background = new THREE.Color(0xf0f0f0); // Light gray background
+    
+    window.reportCamera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 10000);
+    window.reportCamera.position.set(500, 500, 500);
+    
+    window.reportRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+    window.reportRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    window.reportRenderer.setPixelRatio(window.devicePixelRatio);
+    
+    window.reportControls = new THREE.OrbitControls(window.reportCamera, canvas);
+    window.reportControls.enableDamping = true;
+    window.reportControls.dampingFactor = 0.1;
+    
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    window.reportAssemblyScene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(100, 100, 100);
+    window.reportAssemblyScene.add(directionalLight);
+    
+    window.reportGridHelper = new THREE.GridHelper(2000, 20, 0xcccccc, 0xe0e0e0); // Light grid colors
+    window.reportAssemblyScene.add(window.reportGridHelper);
+    
+    window.reportShowGrid = true;
+    window.reportShowTextures = true;
+    window.reportShowDimensions = false;
+    window.reportAutoRotate = false;
+    
+    window.reportAssemblyGroups = [];
+    
+    // Render assembly using EXACT same logic as config tab
+    const geometryData = window.reportAssemblyData;
+    if (!geometryData || !geometryData.parts || geometryData.parts.length === 0) {
+        console.warn('No geometry parts to render');
+        return;
+    }
+    
+    console.log('Rendering assembly:', geometryData.parts.length, 'components');
+    
+    let allBounds = null;
+    
+    // Render each component as separate mesh
+    geometryData.parts.forEach((partData, partIndex) => {
+        const faces = partData.faces || [];
+        if (faces.length === 0) return;
+        
+        const positions = [];
+        const uvs = [];
+        const colors = [];
+        let hasTexture = false;
+        let texturePath = null;
+        
+        // Check if any face has a texture
+        faces.forEach(face => {
+            if (face.texture) {
+                hasTexture = true;
+                texturePath = face.texture;
+            }
+        });
+        
+        faces.forEach(face => {
+            const vertices = face.vertices;
+            const faceUVs = face.uvs;
+            if (!vertices || vertices.length < 3) return;
+            
+            // Triangulate and swap Y/Z
+            for (let i = 1; i < vertices.length - 1; i++) {
+                positions.push(vertices[0].x, vertices[0].z, -vertices[0].y);
+                positions.push(vertices[i].x, vertices[i].z, -vertices[i].y);
+                positions.push(vertices[i + 1].x, vertices[i + 1].z, -vertices[i + 1].y);
+                
+                // Push UVs if available
+                if (faceUVs && faceUVs.length === vertices.length) {
+                    uvs.push(faceUVs[0].x, faceUVs[0].y);
+                    uvs.push(faceUVs[i].x, faceUVs[i].y);
+                    uvs.push(faceUVs[i + 1].x, faceUVs[i + 1].y);
+                } else {
+                    uvs.push(0, 0);
+                    uvs.push(0.5, 0);
+                    uvs.push(0.5, 0.5);
+                }
+            }
+        });
+        
+        if (positions.length === 0) return;
+        
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        
+        if (uvs.length > 0) {
+            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        }
+        geometry.computeVertexNormals();
+        
+        const material = new THREE.MeshStandardMaterial({ 
+            color: 0xcccccc,
+            metalness: 0.1,
+            roughness: 0.6,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.85,
+            emissive: 0x000000,
+            emissiveIntensity: 1.0
+        });
+        
+        const mesh = new THREE.Mesh(geometry, material);
+        
+        const edges = new THREE.EdgesGeometry(geometry, 15);
+        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x666666 });
+        const wireframe = new THREE.LineSegments(edges, edgeMaterial);
+        
+        const group = new THREE.Group();
+        group.add(mesh);
+        group.add(wireframe);
+        
+        group.userData = {
+            partName: partData.name,
+            materialName: partData.material || "Default Material",
+            explodeVector: new THREE.Vector3(...(partData.explode_vector || [0, 0, 0])),
+            originalPosition: null, // Will be set after centering
+            originalMaterial: {
+                color: 0xcccccc,
+                opacity: 0.85,
+                transparent: true,
+                map: null
+            },
+            originalEdgeColor: 0x666666,
+            texturePath: texturePath
+        };
+        
+        // Load texture if available
+        if (hasTexture && texturePath) {
+            console.log(`Loading texture for ${partData.name}: ${texturePath}`);
+            const loader = new THREE.TextureLoader();
+            loader.load(
+                texturePath,
+                (texture) => {
+                    console.log(`✓ Texture loaded for ${partData.name}`);
+                    texture.wrapS = THREE.RepeatWrapping;
+                    texture.wrapT = THREE.RepeatWrapping;
+                    mesh.material.map = texture;
+                    mesh.material.color.setHex(0xFFFFFF);
+                    mesh.material.needsUpdate = true;
+                    
+                    // Store texture in BOTH group userData AND mesh userData for toggle
+                    group.userData.originalMaterial.map = texture;
+                    mesh.userData.originalMaterial = mesh.userData.originalMaterial || {};
+                    mesh.userData.originalMaterial.map = texture;
+                    
+                    console.log(`✓ Stored texture in userData for ${partData.name}`);
+                },
+                undefined,
+                (error) => {
+                    console.error(`✗ Failed to load texture for ${partData.name}:`, error);
+                }
+            );
+        }
+        
+        if (partIndex === 0) {
+            console.log(`First part explode vector:`, partData.explode_vector);
+            console.log(`First part material:`, partData.material);
+            console.log(`First part has texture:`, hasTexture);
+        }
+        
+        window.reportAssemblyScene.add(group);
+        window.reportAssemblyGroups.push(group);
+        
+        const box = new THREE.Box3().setFromObject(group);
+        if (!allBounds) {
+            allBounds = box;
+        } else {
+            allBounds.union(box);
+        }
+    });
+    
+    if (window.reportAssemblyGroups.length === 0) {
+        console.warn('No valid parts rendered');
+        return;
+    }
+    
+    // Center camera on all parts
+    const center = allBounds.getCenter(new THREE.Vector3());
+    const size = allBounds.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    
+    // Center all parts and store their centered position as the original
+    window.reportAssemblyGroups.forEach(group => {
+        group.position.sub(center);
+        group.userData.originalPosition = group.position.clone();
+    });
+    
+    const distance = maxDim * 2.5;
+    window.reportCamera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
+    window.reportCamera.lookAt(0, 0, 0);
+    window.reportControls.target.set(0, 0, 0);
+    window.reportControls.update();
+    
+    // Store bounds for view functions
+    window.reportAssemblyBounds = {
+        min: allBounds.min,
+        max: allBounds.max,
+        center: new THREE.Vector3(0, 0, 0),
+        size: maxDim
+    };
+    
+    console.log('Assembly rendered:', window.reportAssemblyGroups.length, 'components');
+    
+    function animate() {
+        requestAnimationFrame(animate);
+        window.reportControls.update();
+        window.reportRenderer.render(window.reportAssemblyScene, window.reportCamera);
+    }
+    animate();
+    
+    console.log('Report assembly viewer initialized');
 }
 
 function initAssemblyViewer(geometryData) {

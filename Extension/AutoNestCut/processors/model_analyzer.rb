@@ -143,6 +143,29 @@ module AutoNestCut
       end
       puts "================================\n"
       
+      # CRITICAL: Generate unique names for unnamed parts
+      puts "\n🔧 GENERATING UNIQUE NAMES FOR UNNAMED PARTS..."
+      global_part_counter = 1
+      part_types_by_material.each do |material_name, parts_array|
+        parts_array.each do |part_data|
+          part = part_data[:part_type]
+          original_name = part.name
+          
+          puts "🔍 Checking part: '#{original_name.inspect}'"
+          
+          # Check if name is nil, empty, "Part", or starts with "Unnamed"
+          if original_name.nil? || original_name.empty? || original_name == "Part" || original_name.start_with?("Unnamed")
+            new_name = "Part_#{global_part_counter}"
+            part.name = new_name
+            global_part_counter += 1
+            puts "✅ Renamed '#{original_name}' → '#{new_name}'"
+          else
+            puts "⚠️ Keeping original name '#{original_name}'"
+          end
+        end
+      end
+      puts "🔧 UNIQUE NAME GENERATION COMPLETE\n"
+      
       # Check for material mismatches and generate warnings
       warnings = []
       @original_components.each do |comp|

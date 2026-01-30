@@ -43,6 +43,7 @@ module AutoNestCut
       overall_total_stock_area = 0
 
       global_part_instance_counter = 1
+      global_part_name_counter = 1  # Counter for generating unique names
 
       boards.each_with_index do |board, board_idx|
         board_number = board_idx + 1
@@ -148,6 +149,22 @@ module AutoNestCut
           part_instance.instance_id = "P#{global_part_instance_counter}"
           global_part_instance_counter += 1
 
+          # Generate unique name if part has no name or generic name
+          part_name = part_instance.name
+          puts "🔍 DEBUG NAME GENERATION: Original part_name = '#{part_name.inspect}'"
+          puts "🔍 DEBUG NAME GENERATION: part_name.nil? = #{part_name.nil?}"
+          puts "🔍 DEBUG NAME GENERATION: part_name.empty? = #{part_name.empty? rescue 'N/A'}"
+          puts "🔍 DEBUG NAME GENERATION: part_name == 'Part' = #{part_name == 'Part'}"
+          puts "🔍 DEBUG NAME GENERATION: part_name.start_with?('Unnamed') = #{part_name.start_with?('Unnamed') rescue false}"
+          
+          if part_name.nil? || part_name.empty? || part_name == "Part" || part_name.start_with?("Unnamed")
+            part_name = "Part_#{global_part_name_counter}"
+            global_part_name_counter += 1
+            puts "✅ DEBUG: Generated unique name '#{part_name}' for unnamed component"
+          else
+            puts "⚠️ DEBUG: Keeping original name '#{part_name}'"
+          end
+
           part_material = part_instance.material
           if part_material == 'No Material' || part_material.nil? || part_material.empty?
             stock_materials_local = current_settings['stock_materials'] || {}
@@ -170,7 +187,7 @@ module AutoNestCut
           
           parts_placed_on_boards << {
             part_unique_id: part_instance.instance_id,
-            name: part_instance.name,
+            name: part_name,  # Use generated unique name
             width: part_instance.width.round(2),
             height: part_instance.height.round(2),
             thickness: part_instance.thickness.round(2),
@@ -186,8 +203,8 @@ module AutoNestCut
             units: units
           }
 
-          unique_part_types_summary[part_instance.name] ||= {
-            name: part_instance.name,
+          unique_part_types_summary[part_name] ||= {  # Use generated unique name
+            name: part_name,  # Use generated unique name
             width: part_instance.width.round(2),
             height: part_instance.height.round(2),
             thickness: part_instance.thickness.round(2),
@@ -401,6 +418,8 @@ module AutoNestCut
       entities = entity.is_a?(Sketchup::ComponentInstance) ? entity.definition.entities : entity.entities
       sub_parts = entities.select { |e| e.is_a?(Sketchup::Group) || e.is_a?(Sketchup::ComponentInstance) }
       
+      part_counter = 1  # Local counter for this assembly
+      
       sub_parts.each do |part|
         # Calculate explode vector - MUST use transformed bounds center
         part_global_center = part.bounds.center.transform(part.transformation)
@@ -424,7 +443,21 @@ module AutoNestCut
         else
           "Part"
         end
-        part_name = "Part" if part_name.nil? || part_name.empty?
+        
+        puts "🔍 DEBUG ASSEMBLY NAME: Original part_name = '#{part_name.inspect}'"
+        puts "🔍 DEBUG ASSEMBLY NAME: part_name.nil? = #{part_name.nil?}"
+        puts "🔍 DEBUG ASSEMBLY NAME: part_name.empty? = #{part_name.empty? rescue 'N/A'}"
+        puts "🔍 DEBUG ASSEMBLY NAME: part_name == 'Part' = #{part_name == 'Part'}"
+        puts "🔍 DEBUG ASSEMBLY NAME: part_name.start_with?('Unnamed') = #{part_name.start_with?('Unnamed') rescue false}"
+        
+        # Generate unique name if empty, "Part", or starts with "Unnamed"
+        if part_name.nil? || part_name.empty? || part_name == "Part" || part_name.start_with?("Unnamed")
+          part_name = "Part_#{part_counter}"
+          puts "✅ DEBUG ASSEMBLY: Generated unique assembly name '#{part_name}' for unnamed component"
+        else
+          puts "⚠️ DEBUG ASSEMBLY: Keeping original name '#{part_name}'"
+        end
+        part_counter += 1
         
         # Get material name - prioritize actual face materials over component material
         material_name = nil
@@ -510,11 +543,30 @@ module AutoNestCut
           color = face_material ? (face_material.color.to_i & 0xFFFFFF) : 0x74b9ff
           material_name = face_material ? face_material.name : nil
           
+          # Extract texture data if available
+          texture_data = nil
+          if face_material && face_material.texture
+            begin
+              temp_dir = File.join(Dir.tmpdir, 'autonestcut_textures')
+              Dir.mkdir(temp_dir) unless Dir.exist?(temp_dir)
+              texture_filename = "#{face_material.name.gsub(/[^\w]/, '_')}_#{face_material.texture.object_id}.png"
+              texture_path = File.join(temp_dir, texture_filename)
+              
+              if face_material.texture.write(texture_path)
+                texture_data = texture_path
+                puts "DEBUG: Exported texture for #{material_name} to #{texture_path}"
+              end
+            rescue => ex
+              puts "WARNING: Failed to export texture for #{material_name}: #{ex.message}"
+            end
+          end
+          
           faces << { 
             vertices: vertices, 
             uvs: uvs,
             color: color,
-            material: material_name
+            material: material_name,
+            texture: texture_data
           }
           
         elsif e.is_a?(Sketchup::Group)

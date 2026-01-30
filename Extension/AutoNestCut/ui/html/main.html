@@ -1553,19 +1553,24 @@
                             // CRITICAL: Only apply if material matches
                             if (group.userData.materialName === materialName) {
                                 console.log(`Mesh ${idx} (${group.userData.partName}): Applying color/opacity for ${materialName}`);
+                                console.log(`  Raw color value:`, color, `(type: ${typeof color})`);
+                                console.log(`  Color as hex:`, '0x' + color.toString(16).padStart(6, '0'));
                                 
                                 // Remove any existing texture
                                 mesh.material.map = null;
                                 
-                                // Apply color and opacity
-                                mesh.material.color.setHex(color);
+                                // Apply color and opacity - ENSURE color is a number
+                                const colorHex = typeof color === 'number' ? color : parseInt(color, 16);
+                                mesh.material.color.setHex(colorHex);
                                 mesh.material.transparent = alpha < 1.0;
                                 mesh.material.opacity = alpha;
                                 mesh.material.needsUpdate = true;
                                 
+                                console.log(`  Applied color:`, mesh.material.color.getHex().toString(16));
+                                
                                 // STORE ORIGINAL MATERIAL PROPERTIES for restoration during selection
                                 group.userData.originalMaterial = {
-                                    color: color,
+                                    color: colorHex,
                                     opacity: alpha,
                                     transparent: alpha < 1.0,
                                     map: null
@@ -2253,7 +2258,7 @@
             renderOnce();
         }
         
-        function selectPart(row, name, width, height, thickness) {
+        function selectPart(row, name, width, height, thickness, partIndex) {
             // Auto-turn on 3D viewer when clicking a part
             if (!viewer3DActive) {
                 toggle3DViewer();
@@ -2273,13 +2278,22 @@
             document.getElementById('selectedPartVolume').textContent = `${volume} m³`;
             
             if (isAssemblyMode) {
-                // ASSEMBLY MODE: Highlight ALL instances with matching name
-                console.log('=== ASSEMBLY SELECTION DEBUG ===');
-                console.log('Selected part name:', name);
-                console.log('Total assembly meshes:', assemblyMeshes.length);
+                // ASSEMBLY MODE: Highlight by INDEX not name (handles unnamed/duplicate names)
+                console.log('=== ASSEMBLY SELECTION DEBUG START ===');
+                console.log('🔍 Selected part name:', name);
+                console.log('🔢 Selected part index:', partIndex);
+                console.log('📊 Total assembly meshes:', assemblyMeshes.length);
+                console.log('🎯 isAssemblyMode:', isAssemblyMode);
+                
+                // Log all available part names for comparison
+                console.log('📋 All part names in assembly:');
+                assemblyMeshes.forEach((group, idx) => {
+                    console.log(`  [${idx}] "${group.userData.partName}" (material: ${group.userData.materialName})`);
+                });
                 
                 // Reset all components to their ORIGINAL material appearance
-                assemblyMeshes.forEach(group => {
+                console.log('🔄 Resetting all meshes to original appearance...');
+                assemblyMeshes.forEach((group, idx) => {
                     const mesh = group.children[0];
                     if (mesh && mesh.material) {
                         // Restore original material properties from userData
@@ -2290,6 +2304,7 @@
                             mesh.material.transparent = originalMaterial.transparent;
                             mesh.material.map = originalMaterial.map || null;
                         } else {
+                            console.warn(`⚠️ Mesh ${idx} has no originalMaterial stored!`);
                             // Fallback if no original material stored
                             mesh.material.color.setHex(0xcccccc);
                             mesh.material.opacity = 0.85;
@@ -2311,52 +2326,113 @@
                 });
                 
                 // Highlight ALL matching components (for multiple instances)
+                console.log('✨ Starting highlight process...');
                 let highlightCount = 0;
-                assemblyMeshes.forEach(group => {
-                    if (group.userData.partName === name) {
-                        highlightCount++;
-                        const mesh = group.children[0];
-                        if (mesh && mesh.material) {
-                            console.log(`Highlighting mesh ${highlightCount}:`, {
-                                partName: group.userData.partName,
-                                hasTexture: mesh.material.map !== null,
-                                currentColor: mesh.material.color.getHex().toString(16),
-                                currentOpacity: mesh.material.opacity
-                            });
-                            
-                            // Multi-layered highlight for better visibility:
-                            // 1. Emissive glow (works on all materials)
-                            mesh.material.emissive.setHex(0x66FF66); // Bright green glow
-                            mesh.material.emissiveIntensity = 0.8; // Increased intensity
-                            
-                            // 2. Slightly brighten the material (subtle)
-                            if (!mesh.material.map) {
-                                // Only brighten non-textured materials
-                                const currentColor = mesh.material.color.getHex();
-                                const r = Math.min(255, ((currentColor >> 16) & 0xFF) + 30);
-                                const g = Math.min(255, ((currentColor >> 8) & 0xFF) + 30);
-                                const b = Math.min(255, (currentColor & 0xFF) + 30);
-                                mesh.material.color.setRGB(r/255, g/255, b/255);
-                            }
-                            
-                            mesh.material.needsUpdate = true;
+                
+                // Use INDEX-based matching if provided, otherwise fall back to name matching
+                if (typeof partIndex === 'number' && partIndex >= 0 && partIndex < assemblyMeshes.length) {
+                    console.log(`🎯 Using INDEX-based matching: ${partIndex}`);
+                    const group = assemblyMeshes[partIndex];
+                    const mesh = group.children[0];
+                    const wireframe = group.children[1];
+                    
+                    highlightCount = 1;
+                    console.log(`🎨 HIGHLIGHTING mesh at index ${partIndex}:`, {
+                        partName: group.userData.partName,
+                        hasMesh: !!mesh,
+                        hasMaterial: !!(mesh && mesh.material),
+                        hasWireframe: !!wireframe,
+                        hasWireframeMaterial: !!(wireframe && wireframe.material)
+                    });
+                    
+                    if (mesh && mesh.material) {
+                        mesh.material.emissive.setHex(0x66FF66);
+                        mesh.material.emissiveIntensity = 0.8;
+                        console.log(`  ✓ Set emissive: 0x66FF66, intensity: 0.8`);
+                        
+                        if (!mesh.material.map) {
+                            const currentColor = mesh.material.color.getHex();
+                            const r = Math.min(255, ((currentColor >> 16) & 0xFF) + 30);
+                            const g = Math.min(255, ((currentColor >> 8) & 0xFF) + 30);
+                            const b = Math.min(255, (currentColor & 0xFF) + 30);
+                            mesh.material.color.setRGB(r/255, g/255, b/255);
+                            console.log(`  ✓ Brightened color to: ${mesh.material.color.getHex().toString(16)}`);
+                        }
+                        mesh.material.needsUpdate = true;
+                    }
+                    
+                    if (wireframe && wireframe.material) {
+                        wireframe.material.color.setHex(0x00FF00);
+                        wireframe.material.linewidth = 3;
+                        wireframe.material.needsUpdate = true;
+                        console.log(`  ✓ Set wireframe: 0x00FF00, linewidth: 3`);
+                    }
+                } else {
+                    // Fallback to NAME-based matching
+                    console.log(`📝 Using NAME-based matching: "${name}"`);
+                    assemblyMeshes.forEach((group, idx) => {
+                        const partName = group.userData.partName;
+                        const matches = partName === name;
+                        
+                        if (idx < 3 || matches) {
+                            console.log(`  Mesh ${idx}: "${partName}" === "${name}" ? ${matches}`);
                         }
                         
-                        // 3. Highlight edges/wireframe with bright green
-                        const wireframe = group.children[1];
-                        if (wireframe && wireframe.material) {
-                            wireframe.material.color.setHex(0x00FF00); // Bright green edges
-                            wireframe.material.linewidth = 3; // Thicker lines
-                            wireframe.material.needsUpdate = true;
+                        if (matches) {
+                            highlightCount++;
+                            const mesh = group.children[0];
+                            const wireframe = group.children[1];
+                            
+                            console.log(`🎨 HIGHLIGHTING mesh ${highlightCount}:`, {
+                                index: idx,
+                                partName: partName,
+                                hasMesh: !!mesh,
+                                hasMaterial: !!(mesh && mesh.material),
+                                hasWireframe: !!wireframe,
+                                hasWireframeMaterial: !!(wireframe && wireframe.material),
+                                hasTexture: mesh && mesh.material ? mesh.material.map !== null : 'N/A',
+                                currentColor: mesh && mesh.material ? mesh.material.color.getHex().toString(16) : 'N/A',
+                                currentOpacity: mesh && mesh.material ? mesh.material.opacity : 'N/A'
+                            });
+                            
+                            if (mesh && mesh.material) {
+                                mesh.material.emissive.setHex(0x66FF66);
+                                mesh.material.emissiveIntensity = 0.8;
+                                console.log(`  ✓ Set emissive: 0x66FF66, intensity: 0.8`);
+                                
+                                if (!mesh.material.map) {
+                                    const currentColor = mesh.material.color.getHex();
+                                    const r = Math.min(255, ((currentColor >> 16) & 0xFF) + 30);
+                                    const g = Math.min(255, ((currentColor >> 8) & 0xFF) + 30);
+                                    const b = Math.min(255, (currentColor & 0xFF) + 30);
+                                    mesh.material.color.setRGB(r/255, g/255, b/255);
+                                    console.log(`  ✓ Brightened color to: ${mesh.material.color.getHex().toString(16)}`);
+                                }
+                                
+                                mesh.material.needsUpdate = true;
+                            } else {
+                                console.error(`  ✗ Mesh or material missing!`);
+                            }
+                            
+                            if (wireframe && wireframe.material) {
+                                wireframe.material.color.setHex(0x00FF00);
+                                wireframe.material.linewidth = 3;
+                                wireframe.material.needsUpdate = true;
+                                console.log(`  ✓ Set wireframe: 0x00FF00, linewidth: 3`);
+                            } else {
+                                console.error(`  ✗ Wireframe or wireframe material missing!`);
+                            }
                         }
-                    }
-                });
-                
-                console.log('Highlighted', highlightCount, 'instances');
-                if (highlightCount === 0) {
-                    console.warn('⚠️ No instances highlighted! Part name:', name);
-                    console.warn('Available part names:', assemblyMeshes.map(g => g.userData.partName));
+                    });
                 }
+                
+                console.log(`✅ Highlighted ${highlightCount} instances`);
+                if (highlightCount === 0) {
+                    console.error('❌ NO INSTANCES HIGHLIGHTED!');
+                    console.error('🔍 Searched for:', name);
+                    console.error('📋 Available names:', assemblyMeshes.map(g => g.userData.partName));
+                }
+                console.log('=== ASSEMBLY SELECTION DEBUG END ===');
                 renderOnce();
             } else {
                 // FALLBACK: Single Part Mode
