@@ -45,6 +45,9 @@ module AutoNestCut
   require_relative 'exporters/assembly_exporter'
   require_relative 'exporters/svg_vector_exporter'
   require_relative 'exporters/view_export_handler'
+  require_relative 'exporters/qr_code_generator'
+  require_relative 'exporters/label_generator'
+  require_relative 'exporters/label_sheet_generator'
   require_relative 'ui/svg_export_ui'
   require_relative 'scheduler'
   require_relative 'supabase_client'
@@ -666,6 +669,7 @@ module AutoNestCut
 
     autonest_menu.add_item('Generate Cut List') { run_extension_feature }
     autonest_menu.add_item('🎯 Flatten for CNC (SVG Export)') { show_svg_export_dialog }
+    autonest_menu.add_item('🏷️ Generate QR Label Sheet') { show_label_sheet_generator }
     autonest_menu.add_separator
     autonest_menu.add_item('Material Stock') { show_material_database }
     autonest_menu.add_separator

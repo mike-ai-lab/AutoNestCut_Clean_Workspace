@@ -629,6 +629,14 @@
                         <circle cx="15" cy="10" r="1"/>
                     </svg>
                 </button>
+                <button class="tab-button icon-btn report-action-btn" id="exportLabelSheetButton" data-translate="export_label_sheet" style="display: none;" title="Export Label Sheet (QR Codes)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                </button>
             </div>
             <div class="tabs">
                 <button class="tab-button active" onclick="showTab('config')" data-translate="configuration">Configuration</button>
@@ -3071,7 +3079,7 @@
             // Configuration tab specific action buttons
             const configActionButtons = ['generateCutListButton', 'refreshSelectionButton', 'cancelButton'];
             // Report tab specific action buttons
-            const reportActionButtons = ['refreshReportButton', 'exportCsvButton', 'exportPdfButton', 'exportHtmlButton', 'copyMarkdownButton', 'exportDrawingsButton'];
+            const reportActionButtons = ['refreshReportButton', 'exportCsvButton', 'exportPdfButton', 'exportHtmlButton', 'copyMarkdownButton', 'exportDrawingsButton', 'exportLabelSheetButton'];
 
             configActionButtons.forEach(id => {
                 const btn = document.getElementById(id);
@@ -3246,12 +3254,30 @@
                 });
             }
             
+            const exportLabelSheetBtn = document.getElementById('exportLabelSheetButton');
+            if (exportLabelSheetBtn) {
+                exportLabelSheetBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    exportLabelSheet();
+                });
+            }
+            
             exportButtonsInitialized = true;
         }
         
         function exportToPDF() {
             // Call showPDFPreview which triggers Ruby PDF export with ReportPdfExporter
             showPDFPreview();
+        }
+        
+        function exportLabelSheet() {
+            if (currentReportData && currentReportData.report) {
+                // Call Ruby to generate label sheet PDF
+                callRuby('export_label_sheet', JSON.stringify(currentReportData.report));
+            } else {
+                alert('No report data available. Please generate a cut list first.');
+            }
         }
 
         function showError(message) {

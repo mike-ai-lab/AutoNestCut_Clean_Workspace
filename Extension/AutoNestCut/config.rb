@@ -36,6 +36,21 @@ module AutoNestCut
       @cached_settings ||= load_global_settings
       # Ensure auto_create_materials setting exists (default: true)
       @cached_settings['auto_create_materials'] = true unless @cached_settings.key?('auto_create_materials')
+      
+      # Ensure label settings exist (default values)
+      unless @cached_settings.key?('label_settings')
+        @cached_settings['label_settings'] = {
+          'enabled' => true,
+          'qr_enabled' => true,
+          'show_in_pdf' => true,
+          'show_in_ui' => false,  # Don't clutter UI diagrams
+          'qr_size' => 20,
+          'label_position' => 'auto',
+          'label_style' => 'compact',
+          'font_size' => 10
+        }
+      end
+      
       @cached_settings
     end
   end

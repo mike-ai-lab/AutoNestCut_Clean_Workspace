@@ -286,6 +286,26 @@ module AutoNestCut
         end
       end
 
+      # Export Label Sheet (QR Codes)
+      @dialog.add_action_callback("export_label_sheet") do |action_context, report_data_json|
+        begin
+          if report_data_json && !report_data_json.empty?
+            if report_data_json.is_a?(String)
+              report_data = JSON.parse(report_data_json, symbolize_names: true)
+            else
+              report_data = report_data_json
+            end
+            export_label_sheet(report_data, Config.get_cached_settings)
+          else
+            UI.messagebox("Error exporting label sheet: No report data available")
+          end
+        rescue => e
+          UI.messagebox("Error exporting label sheet: #{e.message}")
+          puts "ERROR: Label sheet export failed: #{e.message}"
+          puts e.backtrace.join("\n")
+        end
+      end
+
 
     @dialog.add_action_callback("export_to_pdf") do |action_context, html_content|
       begin
@@ -390,18 +410,15 @@ module AutoNestCut
             pdf_exporter.add_diagram_image(idx, img_data[:image] || img_data['image'])
           end
           
-          # Generate PDF file
-          pdf_path = pdf_exporter.export_to_pdf
+          # Generate PDF file with PREVIEW MODE enabled
+          pdf_path = pdf_exporter.export_to_pdf(nil, true)  # true = preview mode
           
           if pdf_path && File.exist?(pdf_path)
             puts "DEBUG: ✓ PDF generated successfully at: #{pdf_path}"
             puts "="*80
             puts "DEBUG: print_pdf callback COMPLETED"
             puts "="*80
-            
-            # Open the PDF file
-            UI.openURL("file:///#{pdf_path}")
-            UI.messagebox("PDF exported successfully!\n\nLocation: #{pdf_path}\n\nThe PDF has been opened in your default PDF viewer.")
+            # Preview dialog will handle the rest
           else
             raise "PDF file was not created"
           end
@@ -2020,6 +2037,57 @@ module AutoNestCut
           end
         end
         counter += 1
+      end
+    end
+
+    def export_label_sheet(report_data, global_settings)
+      require_relative '../exporters/label_sheet_generator'
+      
+      begin
+        # Extract parts from report data - SAME AS CSV EXPORT
+        parts = []
+        unique_part_types = report_data[:unique_part_types] || []
+        
+        puts "DEBUG: Found #{unique_part_types.length} unique part types"
+        
+        # Generate one label per part instance (not per type)
+        part_counter = 1
+        unique_part_types.each do |part_type|
+          quantity = part_type[:total_quantity] || 1
+          quantity.times do |i|
+            # Create shorter, cleaner part ID
+            base_name = (part_type[:name] || "Part").gsub(/[^a-zA-Z0-9]/, '_')
+            short_name = base_name.length > 15 ? base_name[0...15] : base_name
+            
+            parts << {
+              part_id: "P#{part_counter}",  # Simple sequential ID
+              name: part_type[:name] || "Part",
+              width: part_type[:width] || 0,
+              height: part_type[:height] || 0,
+              thickness: part_type[:thickness] || 0,
+              material: part_type[:material] || "Unknown",
+              board_number: part_type[:board_number] || 1
+            }
+            part_counter += 1
+          end
+        end
+        
+        puts "DEBUG: Generated #{parts.length} labels total"
+        
+        if parts.empty?
+          UI.messagebox("No parts found in report data. Please generate a cut list first.")
+          return
+        end
+
+        # Generate label sheet with PREVIEW MODE enabled
+        generator = AutoNestCut::LabelSheetGenerator.new
+        generator.generate_label_sheet(parts, nil, true)  # true = preview mode
+        
+      rescue => e
+        UI.messagebox("Error exporting label sheet: #{e.message}")
+        puts "ERROR: Label sheet export failed: #{e.message}"
+        puts e.backtrace.join("\n")
+        return
       end
     end
 

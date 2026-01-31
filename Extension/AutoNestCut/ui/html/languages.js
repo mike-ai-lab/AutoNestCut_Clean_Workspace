@@ -80,6 +80,8 @@ const translations = {
         'clear_highlight': 'Clear Highlight',
         'print_save_pdf': 'Print / Save as PDF',
         'export_csv_report': 'Export CSV Report',
+        'export_pdf_report': 'Export PDF Report',
+        'export_label_sheet': 'Export Label Sheet (QR Codes)',
         'export_interactive_html': 'Export Interactive HTML',
         'refresh_report': 'Refresh Report'
     },
@@ -164,6 +166,8 @@ const translations = {
         'clear_highlight': 'Limpiar Resaltado',
         'print_save_pdf': 'Imprimir / Guardar como PDF',
         'export_csv_report': 'Exportar Informe CSV',
+        'export_pdf_report': 'Exportar Informe PDF',
+        'export_label_sheet': 'Exportar Hoja de Etiquetas (Códigos QR)',
         'export_interactive_html': 'Exportar HTML Interactivo',
         'refresh_report': 'Actualizar Informe'
     },
@@ -248,6 +252,8 @@ const translations = {
         'clear_highlight': 'Effacer Surlignage',
         'print_save_pdf': 'Imprimer / Sauvegarder PDF',
         'export_csv_report': 'Exporter Rapport CSV',
+        'export_pdf_report': 'Exporter Rapport PDF',
+        'export_label_sheet': 'Exporter Feuille d\'Étiquettes (QR Codes)',
         'export_interactive_html': 'Exporter HTML Interactif',
         'refresh_report': 'Actualiser Rapport'
     },
@@ -332,6 +338,8 @@ const translations = {
         'clear_highlight': 'مسح التمييز',
         'print_save_pdf': 'طباعة / حفظ PDF',
         'export_csv_report': 'تصدير تقرير CSV',
+        'export_pdf_report': 'تصدير تقرير PDF',
+        'export_label_sheet': 'تصدير ورقة الملصقات (رموز QR)',
         'export_interactive_html': 'تصدير HTML تفاعلي',
         'refresh_report': 'تحديث التقرير'
     },
@@ -416,6 +424,8 @@ const translations = {
         'clear_highlight': 'Hervorhebung löschen',
         'print_save_pdf': 'Drucken / Als PDF Speichern',
         'export_csv_report': 'CSV-Bericht Exportieren',
+        'export_pdf_report': 'PDF-Bericht Exportieren',
+        'export_label_sheet': 'Etikettenblatt Exportieren (QR-Codes)',
         'export_interactive_html': 'Interaktives HTML Exportieren',
         'refresh_report': 'Bericht Aktualisieren'
     }

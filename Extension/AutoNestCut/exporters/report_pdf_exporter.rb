@@ -48,7 +48,7 @@ module AutoNestCut
     end
     
     # Export to PDF file directly
-    def export_to_pdf(output_path = nil)
+    def export_to_pdf(output_path = nil, preview_mode = false)
       begin
         output_path ||= generate_default_pdf_path
         
@@ -56,6 +56,7 @@ module AutoNestCut
         puts "DEBUG: PDF EXPORT STARTING"
         puts "="*80
         puts "DEBUG: Output path: #{output_path}"
+        puts "DEBUG: Preview mode: #{preview_mode}"
         
         # Debug: Check what data we have
         puts "\nDEBUG: DATA AVAILABILITY CHECK:"
@@ -110,6 +111,12 @@ module AutoNestCut
         puts "\n" + "="*80
         puts "DEBUG: PDF EXPORT COMPLETED SUCCESSFULLY"
         puts "="*80
+        
+        # If preview mode, show preview dialog
+        if preview_mode
+          show_preview_dialog(output_path)
+        end
+        
         return output_path
         
       rescue LoadError
@@ -1411,5 +1418,172 @@ module AutoNestCut
       downloads_path = File.join(ENV['USERPROFILE'] || ENV['HOME'], 'Downloads')
       File.join(downloads_path, "AutoNestCut_Report_#{timestamp}.pdf")
     end
+    
+    # Show preview dialog with export confirmation
+    def show_preview_dialog(pdf_path)
+      dialog = UI::HtmlDialog.new(
+        {
+          :dialog_title => "Report PDF Preview",
+          :preferences_key => "com.autonestcut.report_preview",
+          :scrollable => false,
+          :resizable => true,
+          :width => 1400,
+          :height => 900,
+          :left => 50,
+          :top => 50,
+          :min_width => 800,
+          :min_height => 600,
+          :style => UI::HtmlDialog::STYLE_DIALOG
+        }
+      )
+      
+      # Convert PDF path to file:// URL for embedding
+      pdf_url = "file:///" + pdf_path.gsub("\\", "/")
+      
+      # Count pages (estimate based on data)
+      page_count = estimate_page_count
+      
+      html_content = generate_report_preview_html(pdf_url, page_count)
+      
+      dialog.set_html(html_content)
+      
+      # Add callback for export button
+      dialog.add_action_callback("export_report") do |action_context|
+        # Ask user where to save
+        save_path = UI.savepanel("Save Report PDF", "", "AutoNestCut_Report.pdf")
+        if save_path
+          begin
+            # Copy temp file to chosen location
+            require 'fileutils'
+            FileUtils.cp(pdf_path, save_path)
+            UI.messagebox("Report PDF exported successfully to:\n#{save_path}")
+            dialog.close
+            # Open the saved PDF
+            UI.openURL("file:///#{save_path}")
+          rescue => e
+            UI.messagebox("Error exporting report: #{e.message}")
+          end
+        end
+      end
+      
+      # Add callback for cancel button
+      dialog.add_action_callback("cancel_export") do |action_context|
+        dialog.close
+      end
+      
+      dialog.show
+    end
+    
+    def estimate_page_count
+      # Estimate pages based on content
+      pages = 1 # Cover page
+      pages += 1 if @report_data && @report_data[:summary] # Summary page
+      pages += (@report_data[:unique_board_types]&.length || 0) > 0 ? 1 : 0 # Boards page
+      pages += (@report_data[:unique_part_types]&.length || 0) > 0 ? 1 : 0 # Parts page
+      pages += (@diagrams_data&.length || 0) # Diagram pages
+      pages += (@assembly_data && @assembly_data[:views]&.length || 0) > 0 ? 1 : 0 # Assembly page
+      pages
+    end
+    
+    def generate_report_preview_html(pdf_url, page_count)
+      <<~HTML
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Report PDF Preview</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            
+            body {
+              background: #2b2b2b;
+              overflow: hidden;
+              width: 100vw;
+              height: 100vh;
+            }
+            
+            .pdf-viewer {
+              width: 100%;
+              height: 100%;
+            }
+            
+            .pdf-viewer embed {
+              width: 100%;
+              height: 100%;
+              border: none;
+            }
+            
+            .floating-actions {
+              position: fixed;
+              bottom: 30px;
+              right: 30px;
+              display: flex;
+              gap: 12px;
+              z-index: 1000;
+            }
+            
+            .btn {
+              padding: 12px 24px;
+              font-size: 14px;
+              font-weight: 600;
+              border: none;
+              border-radius: 6px;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            }
+            
+            .btn-export {
+              background: #4CAF50;
+              color: white;
+            }
+            
+            .btn-export:hover {
+              background: #45a049;
+              transform: translateY(-2px);
+              box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+            }
+            
+            .btn-cancel {
+              background: #f44336;
+              color: white;
+            }
+            
+            .btn-cancel:hover {
+              background: #da190b;
+              transform: translateY(-2px);
+              box-shadow: 0 6px 16px rgba(244, 67, 54, 0.4);
+            }
+          </style>
+        </head>
+        <body>
+          <div class="pdf-viewer">
+            <embed src="#{pdf_url}" type="application/pdf">
+          </div>
+          
+          <div class="floating-actions">
+            <button class="btn btn-cancel" onclick="cancelExport()">Cancel</button>
+            <button class="btn btn-export" onclick="exportReport()">Export</button>
+          </div>
+          
+          <script>
+            function exportReport() {
+              window.location = 'skp:export_report';
+            }
+            
+            function cancelExport() {
+              window.location = 'skp:cancel_export';
+            }
+          </script>
+        </body>
+        </html>
+      HTML
+    end
   end
 end
+
