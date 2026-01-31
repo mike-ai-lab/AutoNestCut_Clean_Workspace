@@ -2,7 +2,7 @@
 let currentSettings = {};
 let partsData = {};
 let modelMaterials = []; // Not explicitly used but kept for context.
-let showOnlyUsed = true; // Set to true by default as requested
+// showOnlyUsed removed - Stock Materials table now always shows only used materials
 let defaultCurrency = 'USD'; // Initialized from settings via Ruby later
 let currentUnits = 'mm';    // Initialized from settings via Ruby later
 let currentPrecision = 1;   // Initialized from settings via Ruby later
@@ -146,6 +146,7 @@ function receiveInitialData(data) {
     displayMaterials();
 }
 
+/* COMMENTED OUT: addMaterial function - not needed for used-only materials view
 function addMaterial() {
     const materialName = `New_Material_${Date.now()}`;
     
@@ -161,6 +162,7 @@ function addMaterial() {
     displayMaterials();
     callRuby('save_materials', JSON.stringify(currentSettings.stock_materials));
 }
+*/
 
 function removeMaterial(material) {
     console.log(`🗑️ Attempting to remove material: ${material}`);
@@ -304,38 +306,45 @@ function displayMaterials() {
     }
     container.innerHTML = '';
     
-    currentSettings.stock_materials = currentSettings.stock_materials || {};
-    let materials = { ...currentSettings.stock_materials }; // Create a mutable copy
-
+    // PERFORMANCE FIX: Only load used materials to prevent memory leaks
+    // Full database management available in separate Material Database dialog
     const usedMaterials = new Set();
     Object.keys(partsData).forEach(material => {
         usedMaterials.add(material);
     });
     
+    // Only process materials that are actually used in the current model
+    currentSettings.stock_materials = currentSettings.stock_materials || {};
+    
     // Get sort option
     const sortBy = document.getElementById('sortBy')?.value || 'alphabetical';
     
-    // Create material entries with usage info
-    let materialEntries = Object.keys(materials).map(material => {
-        const data = materials[material];
-        const isUsed = usedMaterials.has(material);
-        const usageCount = isUsed ? (partsData[material]?.length || 0) : 0;
-        
-        return {
-            name: material,
-            data: data,
-            isUsed: isUsed,
-            usageCount: usageCount
+    // Create material entries ONLY for used materials
+    let materialEntries = [];
+    usedMaterials.forEach(materialName => {
+        // Get material data from stock_materials, or create default if missing
+        const data = currentSettings.stock_materials[materialName] || {
+            width: 2440,
+            height: 1220,
+            thickness: 18,
+            price: 0,
+            density: 600,
+            currency: defaultCurrency,
+            auto_generated: true
         };
-    });
-    
-    // Filter if showing only used OR filter out "useless" materials by default
-    materialEntries = materialEntries.filter(entry => {
-        const isUseless = /tomtom|default/i.test(entry.name); // Filter out "TomTom" or "Default"
-        if (showOnlyUsed) {
-            return entry.isUsed && !isUseless;
+        
+        const usageCount = partsData[materialName]?.length || 0;
+        
+        // Filter out useless materials
+        const isUseless = /tomtom|default/i.test(materialName);
+        if (!isUseless) {
+            materialEntries.push({
+                name: materialName,
+                data: data,
+                isUsed: true,
+                usageCount: usageCount
+            });
         }
-        return !isUseless; // Always filter out useless materials, even if not 'used only'
     });
     
     // Update material count indicator
@@ -357,7 +366,7 @@ function displayMaterials() {
     
     materialEntries.forEach(entry => {
         const { name: material, data, isUsed } = entry;
-        let width, height, thickness, price, currency; // Currency is now just `defaultCurrency` from global state
+        let width, height, thickness, price, currency;
         
         if (Array.isArray(data)) { // Legacy array format handling
             width = data[0] || 2440;
@@ -370,12 +379,12 @@ function displayMaterials() {
             height = data.height || 1220;
             thickness = data.thickness || 18;
             price = data.price || 0;
-            currency = defaultCurrency; // Always use global default currency for materials list display
+            currency = defaultCurrency;
         }
         
         const tr = document.createElement('tr');
-        tr.className = isUsed ? 'used' : '';
-        tr.style.cssText = isUsed ? 'background: #f0f4f8;' : '';
+        tr.className = 'used';
+        tr.style.cssText = 'background: #f0f4f8;';
         
         // Check if this is an auto-generated material
         const isAutoCreated = data.auto_generated === true;
@@ -411,7 +420,7 @@ function displayMaterials() {
             </td>
             <td style="padding: 14px 16px; border-bottom: 1px solid #e1e5e9; color: #1a1a1a; text-align: center;">
                 <div style="display: flex; gap: 6px; justify-content: center;">
-                    <button class="action-btn" style="background: white; border: 1px solid #d0d7de; color: #1a1a1a; width: 32px; height: 32px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0;" title="Edit" onclick="highlightMaterial('${escapeHtml(material)}')">
+                    <button class="action-btn" style="background: white; border: 1px solid #d0d7de; color: #1a1a1a; width: 32px; height: 32px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0;" title="Highlight in SketchUp" onclick="highlightMaterial('${escapeHtml(material)}')">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
                             <circle cx="12" cy="12" r="3"/>
@@ -428,9 +437,9 @@ function displayMaterials() {
                 </div>
             </td>
             <td style="padding: 14px 16px; border-bottom: 1px solid #e1e5e9; color: #1a1a1a; text-align: center;">
-                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; ${isUsed ? 'background: #d4edda; color: #155724;' : 'background: #f8f9fa; color: #656d76;'}">
-                    ${isUsed ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-                    ${isUsed ? 'Used' : 'Not Used'}
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #d4edda; color: #155724;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    Used
                 </span>
             </td>
         `;
@@ -475,6 +484,52 @@ function displayPartsPreview() {
     
     tbody.innerHTML = '';
     
+    // CRITICAL FIX: If assembly data exists, populate from assembly parts to ensure 1:1 index mapping
+    if (window.assemblyData && window.assemblyData.geometry && window.assemblyData.geometry.parts) {
+        console.log('📊 Populating parts table from assembly data');
+        const assemblyParts = window.assemblyData.geometry.parts;
+        
+        assemblyParts.forEach((part, partIndex) => {
+            const tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
+            
+            // CRITICAL: Store the index as a data attribute for reverse lookup
+            tr.setAttribute('data-part-index', partIndex);
+            
+            // Pass the partIndex to match the 3D viewer mesh index
+            tr.onclick = function() {
+                selectPart(this, part.name, part.width || 0, part.height || 0, part.thickness || 0, partIndex);
+            };
+            
+            const width = part.width || 0;
+            const height = part.height || 0;
+            const thickness = part.thickness || 0;
+            const area = (width * height) / areaFactors[currentAreaUnits];
+            
+            const materialName = part.material || 'No Material';
+            const materialData = currentSettings.stock_materials?.[materialName];
+            const isAutoGenerated = materialData?.auto_generated === true;
+            const autoTag = isAutoGenerated 
+                ? ' <span style="display: inline-block; background: #ffc107; color: #856404; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: 600; margin-left: 4px;">AUTO</span>'
+                : '';
+            
+            tr.innerHTML = `
+                <td>${escapeHtml(part.name || 'Unnamed')}</td>
+                <td>${formatDimension(width)}</td>
+                <td>${formatDimension(height)}</td>
+                <td>${formatDimension(thickness)}</td>
+                <td>${escapeHtml(materialName)}${autoTag}</td>
+                <td>1</td>
+                <td>${area.toFixed(4)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        console.log('✅ Parts table populated with', assemblyParts.length, 'rows (from assembly data)');
+        return;
+    }
+    
+    // FALLBACK: Use partsData if no assembly data available
     if (!partsData || Object.keys(partsData).length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #656d76; padding: 20px;">No parts to display</td></tr>';
         return;
@@ -489,35 +544,51 @@ function displayPartsPreview() {
         const parts = partsData[material] || [];
         parts.forEach(part => {
             const displayName = part.name || 'Unnamed';
+            const quantity = part.total_quantity || part.quantity || 1;
             
-            const tr = document.createElement('tr');
-            tr.style.cursor = 'pointer';
-            tr.onclick = function() {
-                selectPart(this, displayName, part.width, part.height, part.thickness, globalPartIndex);
-            };
-            
-            const area = (part.width * part.height) / areaFactors[currentAreaUnits];
-            
-            const materialData = currentSettings.stock_materials?.[material];
-            const isAutoGenerated = materialData?.auto_generated === true;
-            const autoTag = isAutoGenerated 
-                ? ' <span style="display: inline-block; background: #ffc107; color: #856404; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: 600; margin-left: 4px;">AUTO</span>'
-                : '';
-            
-            tr.innerHTML = `
-                <td>${escapeHtml(displayName)}</td>
-                <td>${formatDimension(part.width || 0)}</td>
-                <td>${formatDimension(part.height || 0)}</td>
-                <td>${formatDimension(part.thickness || 0)}</td>
-                <td>${escapeHtml(material)}${autoTag}</td>
-                <td>${part.total_quantity || part.quantity || 1}</td>
-                <td>${area.toFixed(4)}</td>
-            `;
-            tbody.appendChild(tr);
-            
-            globalPartIndex++;
+            // CRITICAL FIX: Create individual rows for each instance
+            // This ensures each row maps to a specific 3D mesh by index
+            for (let instanceNum = 0; instanceNum < quantity; instanceNum++) {
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                
+                // CRITICAL: Store the index as a data attribute for reverse lookup
+                tr.setAttribute('data-part-index', globalPartIndex);
+                
+                // Pass the globalPartIndex to match the 3D viewer mesh index
+                const currentIndex = globalPartIndex;
+                tr.onclick = function() {
+                    selectPart(this, displayName, part.width, part.height, part.thickness, currentIndex);
+                };
+                
+                const area = (part.width * part.height) / areaFactors[currentAreaUnits];
+                
+                const materialData = currentSettings.stock_materials?.[material];
+                const isAutoGenerated = materialData?.auto_generated === true;
+                const autoTag = isAutoGenerated 
+                    ? ' <span style="display: inline-block; background: #ffc107; color: #856404; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: 600; margin-left: 4px;">AUTO</span>'
+                    : '';
+                
+                // Show instance number if there are multiple instances
+                const instanceLabel = quantity > 1 ? ` #${instanceNum + 1}` : '';
+                
+                tr.innerHTML = `
+                    <td>${escapeHtml(displayName)}${instanceLabel}</td>
+                    <td>${formatDimension(part.width || 0)}</td>
+                    <td>${formatDimension(part.height || 0)}</td>
+                    <td>${formatDimension(part.thickness || 0)}</td>
+                    <td>${escapeHtml(material)}${autoTag}</td>
+                    <td>1</td>
+                    <td>${area.toFixed(4)}</td>
+                `;
+                tbody.appendChild(tr);
+                
+                globalPartIndex++;
+            }
         });
     });
+    
+    console.log('✅ Parts table populated with', globalPartIndex, 'rows');
 }
 
 // Small HTML escape used by parts preview
@@ -566,6 +637,7 @@ function processNesting() {
     callRuby('process', JSON.stringify(convertedSettings));
 }
 
+/* COMMENTED OUT: loadDefaults and importCSV functions - not needed for used-only materials view
 function loadDefaults() {
     callRuby('load_default_materials');
 }
@@ -573,11 +645,13 @@ function loadDefaults() {
 function importCSV() {
     callRuby('import_materials_csv');
 }
+*/
 
 function exportDatabase() {
     callRuby('export_materials_database');
 }
 
+/* REMOVED: toggleFold function - Stock Materials table now always shows only used materials
 function toggleFold() {
     showOnlyUsed = !showOnlyUsed;
     const button = document.getElementById('foldToggle');
@@ -592,6 +666,7 @@ function toggleFold() {
     }
     displayMaterials();
 }
+*/
 
 function highlightMaterial(material) {
     callRuby('highlight_material', material);
@@ -601,6 +676,7 @@ function clearHighlight() {
     callRuby('clear_highlight');
 }
 
+/* COMMENTED OUT: purgeOldAutoMaterials and related functions - not needed for used-only materials view
 function purgeOldAutoMaterials() {
     console.log(`🧹 Starting purge of old auto-materials...`);
     
@@ -715,6 +791,7 @@ function removePurgedMaterials(purgedList) {
     
     console.log(`✓ [JS] Removed ${removedCount} materials from currentSettings`);
 }
+*/
 
 function getCurrentSettings() {
     // Update settings from form - convert kerf width to mm
