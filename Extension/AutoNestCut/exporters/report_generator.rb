@@ -455,6 +455,11 @@ module AutoNestCut
         geometry_data = extract_component_geometry(entity)
         geometry_data = { parts: [] } unless geometry_data && geometry_data[:parts]
         puts "DEBUG: Geometry parts count: #{geometry_data[:parts].length if geometry_data}"
+        
+        # CRITICAL FIX: Create ID mapping between 3D viewer parts and diagram parts
+        # This mapping will be used by the frontend to match parts correctly
+        # The mapping is based on: name + material + dimensions (sorted)
+        geometry_data[:id_mapping] = create_part_id_mapping(geometry_data[:parts]) if geometry_data[:parts]
 
         # Encode views to base64 data URIs
         encoded_views = {}
@@ -534,6 +539,11 @@ module AutoNestCut
         else
           puts "⚠️ DEBUG ASSEMBLY: Keeping original name '#{part_name}'"
         end
+        
+        # CRITICAL FIX: Generate a stable unique ID for this 3D viewer part
+        # This ID will be used to match with the diagram parts (P27, P28, P29, P30)
+        # Format: "3D_<counter>" to distinguish from diagram IDs
+        viewer_unique_id = "3D_#{part_counter}"
         part_counter += 1
         
         # Get material name - prioritize actual face materials over component material
@@ -577,7 +587,8 @@ module AutoNestCut
           height: dims[1],
           thickness: dims[2],
           explode_vector: [axis_vector.x, axis_vector.z, -axis_vector.y],
-          faces: faces
+          faces: faces,
+          viewer_unique_id: viewer_unique_id  # CRITICAL: Add unique ID for matching
         }
       end
       
@@ -1337,6 +1348,32 @@ module AutoNestCut
         csv << ["Total Cost", "#{currency_symbol}#{('%.2f' % (summary[:total_project_cost] || 0).to_f)}"]
       end
       csv_string
+    end
+    
+    # CRITICAL FIX: Create mapping between 3D viewer part IDs and diagram part IDs
+    # This ensures consistent matching between 3D viewer and diagrams
+    def create_part_id_mapping(viewer_parts)
+      mapping = {}
+      
+      viewer_parts.each do |viewer_part|
+        viewer_id = viewer_part[:viewer_unique_id]
+        next unless viewer_id
+        
+        # Create a signature for matching: name + material + sorted dimensions
+        name = viewer_part[:name]
+        material = viewer_part[:material]
+        dims = [viewer_part[:width], viewer_part[:height], viewer_part[:thickness]].sort.reverse
+        
+        mapping[viewer_id] = {
+          name: name,
+          material: material,
+          dimensions: dims
+        }
+        
+        puts "🔗 ID Mapping: #{viewer_id} => #{name} | #{material} | #{dims.join('×')}mm"
+      end
+      
+      mapping
     end
     
       end

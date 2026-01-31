@@ -1212,7 +1212,9 @@ function selectPartInReportViewer(part) {
         return;
     }
     
-    console.log(`🔍 Searching: ${part.name} | ${part.material} | ${part.width}×${part.height}×${part.thickness || 0}mm`);
+    // Get the unique ID for this part (P27, P28, P29, P30, etc.)
+    const partUniqueId = part.part_unique_id || part.instance_id || part.part_number;
+    console.log(`🔍 Searching for EXACT match: ${partUniqueId} | ${part.name} | ${part.material}`);
     
     // Reset all parts to default appearance
     window.reportAssemblyGroups.forEach(group => {
@@ -1234,96 +1236,19 @@ function selectPartInReportViewer(part) {
         });
     });
     
-    // Build multiple identifiers to match against
-    const searchIdentifiers = [
-        part.name,
-        part.part_unique_id,
-        part.part_number,
-        part.instance_id
-    ].filter(id => id);
-    
-    // Find and highlight ALL matching parts
+    // Find and highlight ONLY the exact matching part by unique ID
     let foundCount = 0;
     const matchedGroups = [];
     
     window.reportAssemblyGroups.forEach((group, index) => {
-        const groupPartName = group.userData.partName;
-        const groupMaterial = group.userData.materialName;
-        const groupWidth = group.userData.width || 0;
-        const groupHeight = group.userData.height || 0;
-        const groupThickness = group.userData.thickness || 0;
+        // CRITICAL FIX: Use unique ID as PRIMARY matching criterion
+        const groupUniqueId = group.userData.uniqueId || group.userData.partUniqueId;
         
-        // CRITICAL: Match using name AND material AND dimensions
-        let isMatch = false;
-        let matchReason = '';
-        
-        // Step 1: Check name
-        let nameMatches = false;
-        for (const identifier of searchIdentifiers) {
-            if (groupPartName === identifier) {
-                nameMatches = true;
-                break;
-            }
-        }
-        
-        if (!nameMatches) return; // Skip if name doesn't match
-        
-        // Step 2: Check material
-        const partMaterial = String(part.material || '').trim();
-        const groupMaterialStr = String(groupMaterial || '').trim();
-        
-        let materialMatches = false;
-        
-        if (!partMaterial || !groupMaterialStr) {
-            return; // Skip if materials are empty
-        }
-        
-        const partMaterialNormalized = partMaterial.toLowerCase().trim();
-        const groupMaterialNormalized = groupMaterialStr.toLowerCase().trim();
-        
-        const extractBaseMaterial = (mat) => {
-            return mat.replace(/\s*\([^)]*\)\s*/g, '').trim();
-        };
-        
-        const partMaterialBase = extractBaseMaterial(partMaterialNormalized);
-        const groupMaterialBase = extractBaseMaterial(groupMaterialNormalized);
-        
-        materialMatches = (partMaterialNormalized === groupMaterialNormalized) || 
-                         (partMaterialBase === groupMaterialBase && partMaterialBase.length > 0);
-        
-        if (!materialMatches) {
-            console.log(`❌ Group ${index}: Name match but material mismatch - "${partMaterialBase}" vs "${groupMaterialBase}"`);
-            return; // Skip if material doesn't match
-        }
-        
-        // Step 3: Check dimensions (with tolerance and order-independent)
-        const tolerance = 1.0; // Tolerance for floating point errors
-        
-        // Sort both dimension sets to make comparison order-independent
-        const partDims = [part.width, part.height, part.thickness || 0].sort((a, b) => b - a);
-        const groupDims = [groupWidth, groupHeight, groupThickness].sort((a, b) => b - a);
-        
-        const widthMatch = Math.abs(partDims[0] - groupDims[0]) < tolerance;
-        const heightMatch = Math.abs(partDims[1] - groupDims[1]) < tolerance;
-        const thicknessMatch = Math.abs(partDims[2] - groupDims[2]) < tolerance;
-        
-        const dimensionsMatch = widthMatch && heightMatch && thicknessMatch;
-        
-        // RELAXED MATCHING: If name and material match, accept even with dimension mismatch
-        // This handles cases where bounds calculation differs from actual part dimensions
-        if (!dimensionsMatch) {
-            console.log(`⚠️ Group ${index}: Dimension mismatch but accepting due to name+material match`);
-            console.log(`   Part: [${partDims.join(',')}] vs Group: [${groupDims.join(',')}]`);
-        }
-        
-        // ALL CHECKS PASSED (name + material, dimensions optional)
-        isMatch = true;
-        matchReason = dimensionsMatch ? `name + material + dimensions` : `name + material (dimension mismatch)`;
-        console.log(`✅ Group ${index}: MATCH - ${groupPartName} (${matchReason})`);
-        
-        if (isMatch) {
+        // EXACT ID MATCH - this is the most reliable way
+        if (groupUniqueId && partUniqueId && groupUniqueId === partUniqueId) {
+            console.log(`✅ Group ${index}: EXACT ID MATCH - ${groupUniqueId}`);
             foundCount++;
-            matchedGroups.push({ group, index, reason: matchReason });
+            matchedGroups.push({ group, index, reason: 'exact_id_match' });
             
             // Apply highlighting
             group.traverse((child) => {
@@ -1350,22 +1275,19 @@ function selectPartInReportViewer(part) {
                     child.material.needsUpdate = true;
                 }
                 if (child.isLineSegments) {
-                    // Store original edge color
-                    if (!group.userData.originalEdgeColor) {
-                        group.userData.originalEdgeColor = child.material.color.getHex();
-                    }
                     // Highlight edges in green
                     child.material.color.setHex(0x00ff00);
                     child.material.needsUpdate = true;
                 }
             });
+            return; // Stop after first match (unique ID ensures only one match)
         }
     });
     
     if (foundCount > 0) {
-        console.log(`✅ Found ${foundCount} matching part(s)`);
+        console.log(`✅ Found exact match using unique ID`);
         
-        // Focus camera on the first matched part
+        // Focus camera on the matched part
         if (window.reportCamera && window.reportControls && matchedGroups.length > 0) {
             const firstMatch = matchedGroups[0].group;
             const box = new THREE.Box3().setFromObject(firstMatch);
@@ -1385,7 +1307,7 @@ function selectPartInReportViewer(part) {
             animateCameraToTarget(targetPos, center);
         }
     } else {
-        console.warn(`❌ No matching parts found`);
+        console.warn(`❌ No matching part found for unique ID: ${partUniqueId}`);
     }
 }
 
@@ -1416,6 +1338,153 @@ function animateCameraToTarget(targetPosition, targetLookAt) {
     }
     
     animate();
+}
+
+// Handle clicks on 3D viewer to highlight corresponding diagram parts
+function handle3DViewerClick(event, canvas) {
+    if (!window.reportCamera || !window.reportAssemblyGroups) return;
+    
+    // Calculate mouse position in normalized device coordinates (-1 to +1)
+    const rect = canvas.getBoundingClientRect();
+    const mouse = new THREE.Vector2();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    // Create raycaster
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, window.reportCamera);
+    
+    // Find intersected objects
+    const intersects = raycaster.intersectObjects(window.reportAssemblyScene.children, true);
+    
+    if (intersects.length > 0) {
+        // Find the first mesh intersection
+        for (let intersect of intersects) {
+            if (intersect.object.isMesh) {
+                // Find the parent group that contains userData
+                let group = intersect.object;
+                while (group && !group.userData.partName) {
+                    group = group.parent;
+                }
+                
+                if (group && group.userData.partName) {
+                    console.log('🖱️ 3D Viewer clicked:', group.userData.partName);
+                    
+                    // Apply visual highlight to clicked component
+                    highlight3DViewerComponent(group);
+                    
+                    // Then highlight the diagram
+                    highlightDiagramFromViewer(group.userData);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// Apply visual highlight to clicked 3D component
+function highlight3DViewerComponent(clickedGroup) {
+    // Reset all parts to default appearance first
+    window.reportAssemblyGroups.forEach(group => {
+        group.traverse((child) => {
+            if (child.isMesh && child.material) {
+                const originalMat = group.userData.originalMaterial || {};
+                child.material.emissive.setHex(0x000000);
+                child.material.emissiveIntensity = 0;
+                child.material.color.setHex(originalMat.color || 0xcccccc);
+                child.material.opacity = originalMat.opacity || 0.85;
+                child.material.needsUpdate = true;
+            }
+            if (child.isLineSegments) {
+                child.material.color.setHex(group.userData.originalEdgeColor || 0x666666);
+                child.material.needsUpdate = true;
+            }
+        });
+    });
+    
+    // Apply highlight to clicked component
+    clickedGroup.traverse((child) => {
+        if (child.isMesh && child.material) {
+            // Store original color if not already stored
+            if (!clickedGroup.userData.originalMaterial.color) {
+                clickedGroup.userData.originalMaterial.color = child.material.color.getHex();
+                clickedGroup.userData.originalMaterial.opacity = child.material.opacity;
+            }
+            
+            // Apply bright cyan/blue emissive glow for click feedback
+            child.material.emissive.setHex(0x00ffff);
+            child.material.emissiveIntensity = 0.6;
+            
+            // Brighten the color
+            const currentColor = child.material.color.getHex();
+            const r = Math.min(255, ((currentColor >> 16) & 0xff) + 60);
+            const g = Math.min(255, ((currentColor >> 8) & 0xff) + 60);
+            const b = Math.min(255, (currentColor & 0xff) + 60);
+            child.material.color.setRGB(r / 255, g / 255, b / 255);
+            
+            // Increase opacity
+            child.material.opacity = Math.min(1.0, child.material.opacity + 0.2);
+            child.material.needsUpdate = true;
+        }
+        if (child.isLineSegments) {
+            // Store original edge color
+            if (!clickedGroup.userData.originalEdgeColor) {
+                clickedGroup.userData.originalEdgeColor = child.material.color.getHex();
+            }
+            // Highlight edges in bright cyan
+            child.material.color.setHex(0x00ffff);
+            child.material.needsUpdate = true;
+        }
+    });
+    
+    console.log('✨ Applied visual highlight to:', clickedGroup.userData.partName);
+}
+
+// Highlight diagram part when 3D viewer part is clicked (reverse flow)
+function highlightDiagramFromViewer(partUserData) {
+    // CRITICAL FIX: Use unique ID as PRIMARY matching criterion
+    const uniqueId = partUserData.uniqueId || partUserData.partUniqueId;
+    const partName = partUserData.partName;
+    const materialName = partUserData.materialName;
+    
+    console.log(`🔍 Searching diagrams for unique ID: ${uniqueId} | ${partName} | ${materialName}`);
+    
+    // Search through all boards to find the EXACT matching part by unique ID
+    let foundPart = null;
+    let foundBoardIndex = -1;
+    
+    for (let boardIndex = 0; boardIndex < g_boardsData.length; boardIndex++) {
+        const board = g_boardsData[boardIndex];
+        const parts = board.parts || [];
+        
+        for (let part of parts) {
+            // EXACT ID MATCH - most reliable
+            const partUniqueId = part.part_unique_id || part.instance_id || part.part_number;
+            
+            if (uniqueId && partUniqueId && uniqueId === partUniqueId) {
+                foundPart = part;
+                foundBoardIndex = boardIndex;
+                console.log(`✅ EXACT ID MATCH: ${partUniqueId} on Board ${boardIndex + 1}`);
+                break;
+            }
+        }
+        
+        if (foundPart) break;
+    }
+    
+    if (!foundPart) {
+        console.warn(`❌ No matching diagram part found for unique ID: ${uniqueId}`);
+        return;
+    }
+    
+    // Get the part ID for highlighting
+    const partId = foundPart.part_unique_id || foundPart.part_number || foundPart.instance_id || foundPart.name;
+    const boardNumber = foundBoardIndex + 1;
+    
+    console.log(`🎯 Highlighting: ${partId} on Board ${boardNumber}`);
+    
+    // Scroll to and highlight the diagram
+    scrollToPieceDiagram(partId, boardNumber);
 }
 
 // REMOVED: Old modal-based 3D viewer code (initPartViewer, displayPartViewerFallback, etc.)
@@ -1899,6 +1968,9 @@ function initReportAssemblyViewer() {
         group.add(mesh);
         group.add(wireframe);
         
+        // CRITICAL FIX: Store the viewer_unique_id for reliable matching
+        const viewerUniqueId = partData.viewer_unique_id || `3D_${partIndex + 1}`;
+        
         group.userData = {
             partName: partData.name,
             materialName: partData.material || "Default Material",
@@ -1914,7 +1986,9 @@ function initReportAssemblyViewer() {
                 map: null
             },
             originalEdgeColor: 0x666666,
-            texturePath: texturePath
+            texturePath: texturePath,
+            viewerUniqueId: viewerUniqueId,  // CRITICAL: Add unique ID for matching
+            uniqueId: null  // Will be set by ID mapping
         };
         
         // Load texture if available
@@ -1994,6 +2068,11 @@ function initReportAssemblyViewer() {
     
     console.log('Assembly rendered:', window.reportAssemblyGroups.length, 'components');
     
+    // Add click handler for 3D viewer to highlight diagram parts
+    canvas.addEventListener('click', (event) => {
+        handle3DViewerClick(event, canvas);
+    });
+    
     function animate() {
         requestAnimationFrame(animate);
         window.reportControls.update();
@@ -2001,7 +2080,90 @@ function initReportAssemblyViewer() {
     }
     animate();
     
+    // CRITICAL FIX: Create ID mapping between 3D viewer parts and diagram parts
+    // This must be done AFTER all parts are loaded
+    createPartIdMapping();
+    
     console.log('Report assembly viewer initialized');
+}
+
+// CRITICAL FIX: Create mapping between 3D viewer parts and diagram parts
+// This function matches 3D viewer parts to their corresponding diagram part IDs (P27, P28, P29, P30)
+function createPartIdMapping() {
+    if (!window.reportAssemblyGroups || !g_boardsData) {
+        console.warn('⚠️ Cannot create ID mapping - missing data');
+        return;
+    }
+    
+    console.log('🔗 Creating ID mapping between 3D viewer and diagrams...');
+    
+    // Collect all diagram parts with their IDs
+    const diagramParts = [];
+    g_boardsData.forEach((board, boardIndex) => {
+        const parts = board.parts || [];
+        parts.forEach(part => {
+            const partId = part.part_unique_id || part.instance_id || part.part_number;
+            if (partId) {
+                diagramParts.push({
+                    id: partId,
+                    name: part.name,
+                    material: part.material,
+                    width: part.width,
+                    height: part.height,
+                    thickness: part.thickness || 0,
+                    boardNumber: boardIndex + 1
+                });
+            }
+        });
+    });
+    
+    console.log(`📊 Found ${diagramParts.length} diagram parts with IDs`);
+    console.log(`🎨 Found ${window.reportAssemblyGroups.length} 3D viewer parts`);
+    
+    // Match each 3D viewer part to a diagram part
+    let matchCount = 0;
+    const usedDiagramIds = new Set();
+    
+    window.reportAssemblyGroups.forEach((group, index) => {
+        const viewerPart = group.userData;
+        const viewerName = viewerPart.partName;
+        const viewerMaterial = viewerPart.materialName;
+        const viewerDims = [viewerPart.width, viewerPart.height, viewerPart.thickness].sort((a, b) => b - a);
+        
+        console.log(`\n🔍 Matching 3D part ${index + 1}: ${viewerName} | ${viewerMaterial} | ${viewerDims.join('×')}mm`);
+        
+        // Find matching diagram part (that hasn't been used yet)
+        for (const diagramPart of diagramParts) {
+            // Skip if already matched
+            if (usedDiagramIds.has(diagramPart.id)) continue;
+            
+            // Match by name + material + dimensions
+            const nameMatch = diagramPart.name === viewerName;
+            const materialMatch = diagramPart.material === viewerMaterial;
+            
+            const diagramDims = [diagramPart.width, diagramPart.height, diagramPart.thickness].sort((a, b) => b - a);
+            const tolerance = 1.0;
+            const dimsMatch = Math.abs(viewerDims[0] - diagramDims[0]) < tolerance &&
+                            Math.abs(viewerDims[1] - diagramDims[1]) < tolerance &&
+                            Math.abs(viewerDims[2] - diagramDims[2]) < tolerance;
+            
+            if (nameMatch && materialMatch && dimsMatch) {
+                // MATCH FOUND!
+                group.userData.uniqueId = diagramPart.id;
+                group.userData.partUniqueId = diagramPart.id;
+                usedDiagramIds.add(diagramPart.id);
+                matchCount++;
+                console.log(`✅ MATCHED to diagram part: ${diagramPart.id} (Board ${diagramPart.boardNumber})`);
+                break;
+            }
+        }
+        
+        if (!group.userData.uniqueId) {
+            console.warn(`❌ No match found for 3D part ${index + 1}: ${viewerName}`);
+        }
+    });
+    
+    console.log(`\n🎯 ID Mapping complete: ${matchCount}/${window.reportAssemblyGroups.length} parts matched`);
 }
 
 function initAssemblyViewer(geometryData) {
@@ -2245,13 +2407,14 @@ function scrollToPieceDiagram(partId, boardNumber) {
         return;
     }
     
-    // Check if this piece is already highlighted - if so, toggle it off
+    // Check if this is the EXACT same piece (same partId AND same canvas) - only then toggle off
     if (currentHighlightedPiece === partId && currentHighlightedCanvas === targetCanvas) {
+        console.log('Same piece clicked again - toggling off');
         clearPieceHighlight();
         return;
     }
     
-    // Clear previous highlight
+    // Different piece or different board - clear previous and highlight new
     clearPieceHighlight();
     
     // Find the piece in the canvas data
@@ -2263,6 +2426,7 @@ function scrollToPieceDiagram(partId, boardNumber) {
                 highlightPieceOnCanvas(targetCanvas, partData);
                 currentHighlightedPiece = partId;
                 currentHighlightedCanvas = targetCanvas;
+                console.log('✅ Highlighted piece:', partId, 'on board', boardNumber);
                 break;
             }
         }
