@@ -9,6 +9,15 @@ require 'tmpdir'
 module AutoNestCut
   class ReportPdfExporter
     
+    # --- DESIGN CONSTANTS (GitBook/Minimalist Style) ---
+    COLOR_TEXT_MAIN = '24292F'   # Dark Charcoal
+    COLOR_TEXT_LIGHT = '57606A'  # Light Grey for subtitles
+    COLOR_ACCENT = '0969DA'      # Minimalist Blue
+    COLOR_BORDER = 'D0D7DE'      # Very light grey for separators
+    FONT_SIZE_H1 = 24
+    FONT_SIZE_H2 = 16
+    FONT_SIZE_BODY = 10
+    
     def initialize
       @report_data = {}
       @diagrams_data = []
@@ -81,10 +90,11 @@ module AutoNestCut
         # Force UTF-8 encoding on output path
         output_path = output_path.encode('UTF-8', invalid: :replace, undef: :replace, replace: '?')
         
-        # Generate PDF using Prawn with UTF-8 support and professional margins
+        # Generate PDF using Prawn with UTF-8 support and GitBook-style margins
         Prawn::Document.generate(output_path, 
-          page_size: 'A4', 
-          margin: [40, 50, 40, 50],  # Top, Right, Bottom, Left - professional margins
+          page_size: 'A4',
+          page_layout: :portrait,  # Start portrait, switch to landscape for diagrams
+          margin: [60, 50, 60, 50],  # Increased top margin to 60pt (21mm) - prevents header crowding
           info: {
             Title: 'AutoNestCut Manufacturing Report',
             Author: 'Int. Arch. M.Shkeir',
@@ -248,13 +258,17 @@ module AutoNestCut
         puts "  ✗ Skipping boards summary section (no diagrams data)"
       end
       
-      # Cutting Diagrams
+      # Cutting Diagrams - SWITCH TO LANDSCAPE for better visualization
       if @diagrams_data && @diagrams_data.length > 0
-        puts "  → Rendering cutting diagrams section (NEW PAGE) (#{@diagrams_data.length} diagrams)..."
-        pdf.start_new_page
-        render_diagrams_section(pdf)
+        puts "  → Rendering cutting diagrams section (LANDSCAPE MODE) (#{@diagrams_data.length} diagrams)..."
+        render_diagrams_section_landscape(pdf)
       else
         puts "  ✗ Skipping cutting diagrams section (no data)"
+      end
+      
+      # Switch back to PORTRAIT for remaining sections
+      if @report_data[:cut_sequences] || @report_data[:parts_placed]
+        pdf.start_new_page(layout: :portrait)
       end
       
       # Cut Sequences
@@ -308,63 +322,55 @@ module AutoNestCut
     end
     
     def render_title_page(pdf)
-      # Professional header with branding
-      pdf.fill_color '0066cc'
-      pdf.fill_rectangle [0, pdf.cursor], pdf.bounds.width, 80
-      pdf.fill_color '000000'
-      
-      pdf.move_down 20
-      pdf.font_size(32) { pdf.text 'Cut List & Nesting Report', style: :bold, align: :center, color: 'FFFFFF' }
-      pdf.move_down 8
-      pdf.font_size(13) { pdf.text 'Professional Manufacturing Analysis', align: :center, color: 'E6F2FF' }
-      pdf.move_down 30
-      
       summary = @report_data[:summary] || {}
       
-      # Project Information Section with visual separator
-      pdf.stroke_color 'CCCCCC'
-      pdf.stroke_horizontal_rule
-      pdf.move_down 15
+      # Minimalist Header (No colored boxes)
+      pdf.move_down 40
+      pdf.font("Helvetica", style: :bold) do
+        pdf.text "Manufacturing Report", size: 32, color: COLOR_TEXT_MAIN
+      end
       
-      pdf.font_size(14) { pdf.text 'Project Information', style: :bold, color: '0066cc' }
       pdf.move_down 10
+      pdf.font("Helvetica", style: :italic) do
+        pdf.text "Generated on #{Time.now.strftime('%B %d, %Y')}", size: 12, color: COLOR_TEXT_LIGHT
+      end
       
-      project_info = [
-        ['Project Name:', summary[:project_name] || 'Untitled Project'],
-        ['Client Name:', summary[:client_name] || 'N/A'],
-        ['Generated:', Time.now.strftime('%B %d, %Y at %I:%M %p')],
-        ['Units:', summary[:units] || 'mm'],
-        ['Currency:', summary[:currency] || 'USD']
-      ]
-      
-      render_enhanced_table(pdf, project_info, header: false)
-      
-      pdf.move_down 25
+      pdf.move_down 50
+      pdf.stroke_color COLOR_BORDER
       pdf.stroke_horizontal_rule
-      pdf.move_down 15
+      pdf.move_down 30
       
-      # Key Metrics Section with visual emphasis
-      pdf.font_size(14) { pdf.text 'Key Metrics', style: :bold, color: '0066cc' }
-      pdf.move_down 10
+      # Project Key Metrics (Clean list layout)
+      pdf.text "Project Summary", size: FONT_SIZE_H2, style: :bold, color: COLOR_TEXT_MAIN
+      pdf.move_down 15
       
       metrics = [
-        ['Total Parts:', summary[:total_parts_instances] || 0],
-        ['Unique Components:', summary[:total_unique_part_types] || 0],
-        ['Material Sheets:', summary[:total_boards] || 0],
-        ['Material Efficiency:', "#{(summary[:overall_efficiency] || 0).round(1)}%"],
-        ['Total Waste Area:', summary[:total_waste_area_absolute] || '0 m²'],
-        ['Total Project Cost:', "#{summary[:currency] || 'USD'} #{(summary[:total_project_cost] || 0).round(2)}"],
-        ['Total Weight:', "#{(summary[:total_project_weight_kg] || 0).round(2)} kg"]
+        ['Total Parts', summary[:total_parts_instances] || 0],
+        ['Unique Materials', (@report_data[:unique_board_types]&.length || 0)],
+        ['Sheets Required', summary[:total_boards] || 0],
+        ['Efficiency', "#{(summary[:overall_efficiency] || 0).round(1)}%"],
+        ['Total Cost', "#{summary[:currency] || '$'} #{(summary[:total_project_cost] || 0).round(2)}"]
       ]
       
-      render_enhanced_table(pdf, metrics, header: false, highlight_last: true)
+      metrics.each do |key, value|
+        pdf.indent(10) do
+          y_pos = pdf.cursor
+          pdf.text key, size: 11, color: COLOR_TEXT_LIGHT
+          pdf.draw_text value.to_s, at: [200, y_pos], size: 11, style: :bold, color: COLOR_TEXT_MAIN
+          pdf.move_down 20
+        end
+      end
+      
+      pdf.move_down 30
+      
+      # Info block (GitBook style)
+      draw_info_block(pdf, "Production Note", 
+        "This project requires #{summary[:total_boards]} sheets of material. " +
+        "Estimated waste is #{summary[:total_waste_area_absolute] || 'N/A'}.")
     end
     
     def render_overall_summary_section(pdf)
-      pdf.font_size(18) { pdf.text 'Overall Summary', style: :bold, color: '0066cc' }
-      pdf.stroke_color 'CCCCCC'
-      pdf.stroke_horizontal_rule
-      pdf.move_down 15
+      draw_minimal_header(pdf, 'Overall Summary')
       
       summary = @report_data[:summary]
       
@@ -378,7 +384,7 @@ module AutoNestCut
         ['Total Project Cost', "#{summary[:currency] || 'USD'} #{(summary[:total_project_cost] || 0).round(2)}"]
       ]
       
-      render_enhanced_table(pdf, table_data, highlight_last: true)
+      render_minimal_table(pdf, table_data)
       pdf.move_down 10
     end
     
@@ -404,10 +410,7 @@ module AutoNestCut
     end
     
     def render_materials_section(pdf)
-      pdf.font_size(18) { pdf.text 'Materials Used', style: :bold, color: '0066cc' }
-      pdf.stroke_color 'CCCCCC'
-      pdf.stroke_horizontal_rule
-      pdf.move_down 15
+      draw_minimal_header(pdf, 'Materials Used')
       
       table_data = [['Material', 'Price per Sheet']]
       
@@ -418,20 +421,16 @@ module AutoNestCut
         ]
       end
       
-      render_enhanced_table(pdf, table_data)
+      render_minimal_table(pdf, table_data)
       pdf.move_down 10
     end
     
     def render_unique_parts_section(pdf)
-      pdf.font_size(18) { pdf.text 'Unique Part Types', style: :bold, color: '0066cc' }
-      pdf.stroke_color 'CCCCCC'
-      pdf.stroke_horizontal_rule
-      pdf.move_down 15
+      draw_minimal_header(pdf, 'Unique Part Types')
       
       table_data = [['Name', 'Width (mm)', 'Height (mm)', 'Thickness (mm)', 'Material', 'Grain', 'Edge Banding', 'Qty', 'Total Area (m²)', 'Weight (kg)']]
       
       @report_data[:unique_part_types].each do |part|
-        # Properly format edge banding
         edge_banding_value = part[:edge_banding] || part['edge_banding']
         if edge_banding_value.is_a?(Hash)
           edge_banding_text = edge_banding_value[:type] || edge_banding_value['type'] || 'None'
@@ -453,15 +452,12 @@ module AutoNestCut
         ]
       end
       
-      render_enhanced_table(pdf, table_data)
+      render_minimal_table(pdf, table_data)
       pdf.move_down 10
     end
     
     def render_sheet_inventory_section(pdf)
-      pdf.font_size(18) { pdf.text 'Sheet Inventory Summary', style: :bold, color: '0066cc' }
-      pdf.stroke_color 'CCCCCC'
-      pdf.stroke_horizontal_rule
-      pdf.move_down 15
+      draw_minimal_header(pdf, 'Sheet Inventory Summary')
       
       table_data = [['Material', 'Dimensions (mm)', 'Count', 'Total Area (m²)', 'Price/Sheet', 'Total Cost']]
       
@@ -478,16 +474,15 @@ module AutoNestCut
         ]
       end
       
-      render_enhanced_table(pdf, table_data)
+      render_minimal_table(pdf, table_data)
     end
     
     def render_boards_summary_section(pdf)
-      pdf.font_size(18) { pdf.text 'Boards Summary', style: :bold, color: '0066cc' }
-      pdf.move_down 15
+      draw_minimal_header(pdf, 'Boards Summary')
       
       @diagrams_data.each_with_index do |board, idx|
-        # Check if we need a new page - ensure enough space
-        if pdf.cursor < 250
+        # EACH BOARD GETS ITS OWN PAGE (except the first one)
+        if idx > 0
           pdf.start_new_page
         end
         
@@ -496,75 +491,54 @@ module AutoNestCut
         height = board[:stock_height] || board['stock_height'] || 1220
         parts_count = board[:parts_count] || board['parts_count'] || 0
         efficiency = (board[:efficiency_percentage] || board['efficiency_percentage'] || 0).round(1)
-        waste = (board[:waste_percentage] || board['waste_percentage'] || 0).round(1)
         
-        # Board header with colored background based on efficiency
-        bg_color = efficiency >= 80 ? 'E8F5E9' : (efficiency >= 60 ? 'FFF8E1' : 'FFEBEE')
-        pdf.fill_color bg_color
-        pdf.fill_rectangle [0, pdf.cursor], pdf.bounds.width, 35
-        pdf.fill_color '000000'
+        # Board Title - Large and prominent
+        pdf.move_down 20
+        pdf.text "Board #{idx + 1}: #{material}", size: 18, style: :bold, color: COLOR_TEXT_MAIN
+        pdf.move_down 5
+        pdf.stroke_color COLOR_BORDER
+        pdf.stroke_horizontal_rule
+        pdf.move_down 15
         
-        pdf.move_down 10
-        pdf.font_size(14) { pdf.text "Board #{idx + 1}: #{material}", style: :bold, indent_paragraphs: 10 }
-        pdf.move_down 12
-        
-        # Board info in enhanced format
+        # Board Info Table - Clean and compact
         board_info = [
-          ['Size:', "#{width.round(1)} × #{height.round(1)} mm"],
-          ['Parts:', parts_count.to_s],
-          ['Efficiency:', "#{efficiency}%"],
-          ['Waste:', "#{waste}%"]
+          ['Property', 'Value'],
+          ['Size', "#{width.round(1)} × #{height.round(1)} mm"],
+          ['Parts Count', parts_count.to_s],
+          ['Efficiency', "#{efficiency}%"]
         ]
         
-        render_enhanced_table(pdf, board_info, header: false)
+        render_minimal_table(pdf, board_info)
         
-        # Parts on this board
+        # Parts on this board - Only if there are parts
         if @report_data[:parts_placed]
           parts_on_board = @report_data[:parts_placed].select { |p| (p[:board_number] || p['board_number']) == (idx + 1) }
           
           if parts_on_board.length > 0
-            pdf.move_down 12
-            pdf.font_size(11) { pdf.text 'Parts on this board:', style: :bold, color: '0066cc' }
-            pdf.move_down 6
+            pdf.move_down 20
+            pdf.text 'Parts on this board:', size: 12, style: :bold, color: COLOR_TEXT_MAIN
+            pdf.move_down 10
             
-            parts_table = [['Part ID', 'Name', 'Dimensions (mm)', 'Material', 'Grain', 'Edge Banding']]
+            parts_table = [['Part ID', 'Name', 'Dimensions (mm)', 'Material']]
             
             parts_on_board.each_with_index do |part, part_idx|
-              part_id = part[:part_unique_id] || part['part_unique_id'] || part[:instance_id] || part['instance_id'] || "P#{part_idx + 1}"
+              part_id = part[:part_unique_id] || part['part_unique_id'] || "P#{part_idx + 1}"
               name = part[:name] || part['name'] || ''
               width_p = (part[:width] || part['width'] || 0).round(1)
               height_p = (part[:height] || part['height'] || 0).round(1)
               material_p = part[:material] || part['material'] || ''
-              grain = part[:grain_direction] || part['grain_direction'] || 'Any'
               
-              # Properly format edge banding
-              edge_banding_value = part[:edge_banding] || part['edge_banding']
-              if edge_banding_value.is_a?(Hash)
-                edge_banding = edge_banding_value[:type] || edge_banding_value['type'] || 'None'
-              else
-                edge_banding = edge_banding_value.to_s == '' ? 'None' : (edge_banding_value || 'None')
-              end
-              
-              parts_table << [part_id, name, "#{width_p} × #{height_p}", material_p, grain, edge_banding]
+              parts_table << [part_id, name, "#{width_p} × #{height_p}", material_p]
             end
             
-            render_enhanced_table(pdf, parts_table)
+            render_minimal_table(pdf, parts_table)
           end
-        end
-        
-        pdf.move_down 20
-        
-        # Add separator line between boards
-        if idx < @diagrams_data.length - 1
-          pdf.stroke_color 'DDDDDD'
-          pdf.stroke_horizontal_rule
-          pdf.move_down 15
         end
       end
     end
     
     def render_diagrams_section(pdf)
-      pdf.font_size(18) { pdf.text 'Cutting Diagrams', style: :bold, color: '0066cc' }
+      pdf.font_size(18) { pdf.text 'Cutting Diagrams', style: :bold, color: COLOR_ACCENT }
       pdf.move_down 15
       
       @diagrams_data.each_with_index do |board, idx|
@@ -631,31 +605,83 @@ module AutoNestCut
       end
     end
     
+    # NEW: Landscape-optimized diagram rendering for better visualization
+    def render_diagrams_section_landscape(pdf)
+      @diagrams_data.each_with_index do |board, idx|
+        # Force LANDSCAPE orientation for each diagram
+        pdf.start_new_page(layout: :landscape)
+        
+        # Minimalist header
+        pdf.font_size(FONT_SIZE_H2) { 
+          pdf.text "Sheet #{idx + 1}: #{board[:material] || board['material']}", 
+            style: :bold, 
+            color: COLOR_TEXT_MAIN 
+        }
+        
+        efficiency = (board[:efficiency_percentage] || board['efficiency_percentage'] || 0).round(1)
+        waste = (board[:waste_percentage] || board['waste_percentage'] || 0).round(1)
+        
+        pdf.move_down 5
+        pdf.font_size(10) { 
+          pdf.text "Efficiency: #{efficiency}%  |  Waste: #{waste}%", 
+            color: COLOR_TEXT_LIGHT 
+        }
+        
+        pdf.move_down 15
+        
+        # Render diagram image - MAXIMIZED for landscape
+        diagram_img = @diagram_images.find { |img| img[:index] == idx || img['index'] == idx }
+        if diagram_img && (diagram_img[:image] || diagram_img['image'])
+          image_data = diagram_img[:image] || diagram_img['image']
+          
+          begin
+            if image_data.is_a?(String) && image_data.start_with?('data:image')
+              base64_data = image_data.sub(/^data:image\/[^;]+;base64,/, '')
+              decoded_image = Base64.decode64(base64_data)
+              
+              temp_file = File.join(Dir.tmpdir, "diagram_#{idx}_#{Time.now.to_i}.png")
+              File.binwrite(temp_file, decoded_image)
+              
+              # LANDSCAPE: Maximum width and height for diagram
+              max_width = pdf.bounds.width
+              max_height = pdf.cursor - 40
+              pdf.image temp_file, fit: [max_width, max_height], position: :center
+              
+              File.delete(temp_file) if File.exist?(temp_file)
+            elsif File.exist?(image_data)
+              max_width = pdf.bounds.width
+              max_height = pdf.cursor - 40
+              pdf.image image_data, fit: [max_width, max_height], position: :center
+            end
+          rescue => e
+            puts "WARNING: Could not embed diagram image: #{e.message}"
+            # Minimalist error message
+            pdf.fill_color 'F6F8FA'
+            pdf.fill_rectangle [0, pdf.cursor], pdf.bounds.width, 50
+            pdf.fill_color COLOR_ACCENT
+            pdf.fill_rectangle [0, pdf.cursor], 4, 50
+            pdf.fill_color COLOR_TEXT_MAIN
+            pdf.move_down 20
+            pdf.text "⚠ Diagram image unavailable", align: :center, color: COLOR_TEXT_LIGHT
+          end
+        end
+      end
+    end
+    
     def render_cut_sequences_section(pdf)
-      pdf.font_size(18) { pdf.text 'Cut Sequences', style: :bold, color: '0066cc' }
-      pdf.stroke_color 'CCCCCC'
-      pdf.stroke_horizontal_rule
-      pdf.move_down 15
+      draw_minimal_header(pdf, 'Cut Sequences')
       
       @report_data[:cut_sequences].each_with_index do |sequence, seq_idx|
-        # Check for page break - ensure enough space for sequence
         if pdf.cursor < 200
           pdf.start_new_page
-          pdf.font_size(18) { pdf.text 'Cut Sequences (continued)', style: :bold, color: '0066cc' }
-          pdf.stroke_horizontal_rule
-          pdf.move_down 15
         end
         
-        # Sequence header with background
-        pdf.fill_color 'F0F8FF'
-        pdf.fill_rectangle [0, pdf.cursor], pdf.bounds.width, 28
-        pdf.fill_color '000000'
-        pdf.move_down 8
-        pdf.font_size(12) { pdf.text sequence[:title], style: :bold, indent_paragraphs: 10 }
-        pdf.move_down 8
+        pdf.move_down 10
+        pdf.text sequence[:title], size: 12, style: :bold, color: COLOR_TEXT_MAIN
+        pdf.move_down 5
         
         if sequence[:stock_size]
-          pdf.font_size(9) { pdf.text "Stock Size: #{sequence[:stock_size]}", color: '666666', indent_paragraphs: 10 }
+          pdf.text "Stock Size: #{sequence[:stock_size]}", size: 9, color: COLOR_TEXT_LIGHT
           pdf.move_down 8
         end
         
@@ -670,7 +696,7 @@ module AutoNestCut
             ]
           end
           
-          render_enhanced_table(pdf, table_data)
+          render_minimal_table(pdf, table_data)
         end
         
         pdf.move_down 15
@@ -678,10 +704,7 @@ module AutoNestCut
     end
     
     def render_offcuts_section(pdf)
-      pdf.font_size(18) { pdf.text 'Usable Offcuts', style: :bold, color: '0066cc' }
-      pdf.stroke_color 'CCCCCC'
-      pdf.stroke_horizontal_rule
-      pdf.move_down 15
+      draw_minimal_header(pdf, 'Usable Offcuts')
       
       table_data = [['Sheet #', 'Material', 'Estimated Size', 'Area (m²)']]
       
@@ -694,30 +717,23 @@ module AutoNestCut
         ]
       end
       
-      render_enhanced_table(pdf, table_data)
+      render_minimal_table(pdf, table_data)
     end
     
     def render_assembly_section(pdf)
-      pdf.font_size(18) { pdf.text 'Assembly Views', style: :bold, color: '0066cc' }
-      pdf.move_down 15
+      draw_minimal_header(pdf, 'Assembly Views')
       
       views = @assembly_data[:views] || {}
       
       views.each_with_index do |(view_name, view_image), idx|
-        # Each assembly view gets its own page (except first)
         if idx > 0
           pdf.start_new_page
         end
         
-        # Force UTF-8 encoding on view name
         view_name_utf8 = ensure_utf8(view_name.to_s)
         
-        # View header with background
-        pdf.fill_color 'F8F9FA'
-        pdf.fill_rectangle [0, pdf.cursor], pdf.bounds.width, 25
-        pdf.fill_color '000000'
-        pdf.move_down 7
-        pdf.font_size(12) { pdf.text view_name_utf8, style: :bold, indent_paragraphs: 10, color: '0066cc' }
+        pdf.move_down 10
+        pdf.text view_name_utf8, size: 12, style: :bold, color: COLOR_TEXT_MAIN
         pdf.move_down 15
         
         begin
@@ -729,8 +745,7 @@ module AutoNestCut
             temp_file = File.join(Dir.tmpdir, "assembly_#{safe_view_name}_#{Time.now.to_i}.png")
             File.binwrite(temp_file, decoded_image)
             
-            # MAXIMIZED: Use full page width and maximum available height
-            available_height = pdf.cursor - 60  # Leave space for footer
+            available_height = pdf.cursor - 60
             pdf.image temp_file, fit: [pdf.bounds.width, available_height], position: :center
             
             File.delete(temp_file) if File.exist?(temp_file)
@@ -740,21 +755,13 @@ module AutoNestCut
           end
         rescue => e
           puts "WARNING: Could not embed assembly view: #{e.message}"
-          pdf.fill_color 'FFE6E6'
-          pdf.fill_rectangle [pdf.bounds.left, pdf.cursor], pdf.bounds.width, 40
-          pdf.fill_color '000000'
-          pdf.move_down 15
-          pdf.text "⚠ Assembly view unavailable", color: 'DC3545', align: :center
-          pdf.move_down 15
+          draw_info_block(pdf, "Image Error", "Assembly view unavailable")
         end
       end
     end
     
     def render_parts_list_section(pdf)
-      pdf.font_size(18) { pdf.text 'Cut List & Part Details', style: :bold, color: '0066cc' }
-      pdf.stroke_color 'CCCCCC'
-      pdf.stroke_horizontal_rule
-      pdf.move_down 15
+      draw_minimal_header(pdf, 'Cut List & Part Details')
       
       table_data = [['Part ID', 'Name', 'Dimensions (mm)', 'Material', 'Sheet #', 'Grain', 'Edge Banding']]
       
@@ -763,7 +770,6 @@ module AutoNestCut
         width = (part[:width] || 0).round(1)
         height = (part[:height] || 0).round(1)
         
-        # Properly format edge banding
         edge_banding_value = part[:edge_banding]
         if edge_banding_value.is_a?(Hash)
           edge_banding = edge_banding_value[:type] || edge_banding_value['type'] || 'None'
@@ -782,15 +788,12 @@ module AutoNestCut
         ]
       end
       
-      render_enhanced_table(pdf, table_data)
+      render_minimal_table(pdf, table_data)
     end
     
     def render_cost_breakdown_section(pdf)
       pdf.move_down 20
-      pdf.font_size(18) { pdf.text 'Cost Breakdown', style: :bold, color: '0066cc' }
-      pdf.stroke_color 'CCCCCC'
-      pdf.stroke_horizontal_rule
-      pdf.move_down 15
+      draw_minimal_header(pdf, 'Cost Breakdown')
       
       table_data = [['Material', 'Sheets Required', 'Unit Cost', 'Total Cost']]
       
@@ -803,53 +806,131 @@ module AutoNestCut
         ]
       end
       
-      render_enhanced_table(pdf, table_data, highlight_last: true)
+      render_minimal_table(pdf, table_data)
       pdf.move_down 15
     end
     
-    def render_footer(pdf)
-      # Add page numbers on all pages at the bottom
-      pdf.number_pages '<page> of <total>', 
-        at: [pdf.bounds.left, -10], 
-        align: :center, 
-        size: 9,
-        color: '999999'
+    # ------------------------------------------------------------------
+    #  GITBOOK-STYLE HELPER METHODS
+    # ------------------------------------------------------------------
+    
+    # Draws a clean minimalist header with an underline (No massive color bars)
+    def draw_minimal_header(pdf, title)
+      pdf.move_down 10
+      pdf.text title, size: FONT_SIZE_H2, style: :bold, color: COLOR_TEXT_MAIN
+      pdf.move_down 5
+      pdf.stroke_color COLOR_BORDER
+      pdf.stroke_horizontal_rule
+      pdf.move_down 20
+    end
+    
+    # Renders a GitBook-style Info Block (Grey background, blue accent bar on left)
+    def draw_info_block(pdf, title, message)
+      pdf.move_down 10
+      box_height = 50
       
-      # Add professional footer ONLY at the absolute bottom of the last page
-      # We need to position it at the bottom margin, not at current cursor
-      pdf.go_to_page(pdf.page_count)
+      # Background
+      pdf.fill_color 'F6F8FA'
+      pdf.fill_rectangle [0, pdf.cursor], pdf.bounds.width, box_height
       
-      # Calculate position for footer at bottom of page
-      # Bottom margin is 40pt, so we position footer elements from bottom up
-      footer_y_position = 30  # 30pt from bottom of page
+      # Accent Line (Left)
+      pdf.fill_color COLOR_ACCENT
+      pdf.fill_rectangle [0, pdf.cursor], 4, box_height
       
-      # Move to bottom of page for footer
-      pdf.bounding_box([pdf.bounds.left, footer_y_position], width: pdf.bounds.width, height: 30) do
-        # Footer separator line at top of bounding box
-        pdf.stroke_color 'CCCCCC'
-        pdf.stroke_horizontal_rule
-        pdf.move_down 5
-        
-        # Footer content with branding
-        pdf.font_size(10) { 
-          pdf.text 'AutoNestCut Professional', 
-            align: :center, 
-            color: '0066cc',
-            style: :bold
-        }
+      # Text
+      pdf.fill_color COLOR_TEXT_MAIN
+      pdf.indent(15) do
+        pdf.move_down 10
+        pdf.text title, style: :bold, size: 10
         pdf.move_down 3
-        pdf.font_size(8) { 
-          pdf.text 'Developed by Int. Arch. M.Shkeir', 
-            align: :center, 
-            color: '999999'
-        }
-        pdf.move_down 2
-        pdf.font_size(8) { 
-          pdf.text "Generated on #{Time.now.strftime('%B %d, %Y at %I:%M %p')}", 
-            align: :center, 
-            color: 'CCCCCC'
-        }
+        pdf.text message, size: 9, color: COLOR_TEXT_LIGHT
       end
+      
+      pdf.move_down 20
+      pdf.fill_color '000000'
+    end
+    
+    # Minimal table renderer - horizontal borders only, no zebra stripes
+    def render_minimal_table(pdf, table_data)
+      return if table_data.empty?
+      
+      headers = table_data[0]
+      data_rows = table_data[1..-1]
+      
+      # Column Width Logic
+      col_width = pdf.bounds.width / headers.length
+      
+      # 1. Header Row - WITH PROPER HEIGHT FOR WRAPPING
+      pdf.font_size(9)
+      pdf.fill_color COLOR_TEXT_LIGHT
+      
+      # Calculate max header height needed (check if any header wraps)
+      max_header_height = 20
+      headers.each do |h|
+        text_length = ensure_utf8(h).to_s.upcase.length
+        # If text is long, it might wrap - give more height
+        if text_length > 15
+          max_header_height = 30
+        end
+      end
+      
+      # Render headers with proper spacing
+      header_y = pdf.cursor
+      headers.each_with_index do |h, i|
+        pdf.text_box ensure_utf8(h).to_s.upcase, 
+          at: [i * col_width, header_y], 
+          width: col_width - 5, 
+          height: max_header_height, 
+          style: :bold,
+          overflow: :shrink_to_fit,
+          valign: :top
+      end
+      
+      # Move down by the header height BEFORE drawing the line
+      pdf.move_down max_header_height
+      pdf.stroke_color COLOR_BORDER
+      pdf.stroke_horizontal_rule
+      pdf.move_down 10
+      
+      # 2. Data Rows
+      pdf.fill_color COLOR_TEXT_MAIN
+      
+      data_rows.each do |row|
+        # Check for Page Break
+        if pdf.cursor < 30
+          pdf.start_new_page
+          pdf.move_down 20
+        end
+        
+        row_y = pdf.cursor
+        
+        row.each_with_index do |cell, i|
+          text = ensure_utf8(cell).to_s
+          pdf.text_box text,
+            at: [i * col_width, row_y],
+            width: col_width - 5,
+            height: 15,
+            overflow: :truncate,
+            valign: :top
+        end
+        
+        pdf.move_down 20
+      end
+      
+      pdf.move_down 20
+      pdf.fill_color '000000'
+    end
+    
+    def render_footer(pdf)
+      # Minimalist page numbers
+      pdf.number_pages "Page <page> of <total>", {
+        start_count_at: 1,
+        page_filter: :all,
+        at: [pdf.bounds.left, 0],
+        align: :center,
+        size: 8,
+        color: COLOR_TEXT_LIGHT
+      }
     end
     
     

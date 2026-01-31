@@ -618,48 +618,73 @@ function renderReport() {
 }
 
 function renderCutSequences(reportData) {
+    // COMPLETELY NEW IMPLEMENTATION - NO OLD CODE
     const container = document.getElementById('cutSequenceContainer');
-    if (!container || !reportData.cut_sequences) {
+    if (!container) {
+        console.error('Cut sequence container not found');
         return;
     }
     
-    const reportUnits = window.currentUnits || 'mm';
-    const reportPrecision = window.currentPrecision ?? 1;
+    if (!reportData.cut_sequences || reportData.cut_sequences.length === 0) {
+        container.innerHTML = '<div class="report-table-container"><div class="report-table-header">No Cut Sequences</div><div style="padding: 20px; text-align: center; color: #64748b;">No cut sequences available</div></div>';
+        return;
+    }
     
-    let html = '';
+    // Build HTML from scratch with new design
+    let htmlOutput = '';
+    
     reportData.cut_sequences.forEach(board => {
         const tableId = `cutSequenceTable_${board.board_number}`;
-        html += `
-        <div class="table-with-controls">
-            <div class="table-controls">
-                <button class="icon-btn" onclick="copyTableAsMarkdown('${tableId}')" title="Copy Markdown">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="cut-sequence-board">
-                <h4>Sheet ${board.board_number}: ${escapeHtml(board.material)}</h4>
-                <p><strong>Stock Size:</strong> ${board.stock_dimensions}</p>
-                <table id="${tableId}" class="cut-sequence-table">
-                    <thead><tr><th>Step</th><th>Operation</th><th>Description</th><th>Measurement</th></tr></thead>
-                    <tbody>
-                        ${board.cut_sequence.map(step => `
-                            <tr>
-                                <td>${step.step}</td>
-                                <td>${escapeHtml(step.type)}</td>
-                                <td>${escapeHtml(step.description)}</td>
-                                <td>${escapeHtml(step.measurement)}</td>
-                            </tr>
-                        `).join('')}
+        
+        // Create table with report design classes
+        htmlOutput += `
+            <div class="report-table-container" style="margin-bottom: 24px;">
+                <div class="report-table-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Sheet ${board.board_number}: ${escapeHtml(board.material)} - ${board.stock_dimensions}</span>
+                </div>
+                <table id="${tableId}" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <colgroup>
+                        <col style="width: 10%;">
+                        <col style="width: 20%;">
+                        <col style="width: auto;">
+                        <col style="width: 20%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; padding: 12px 20px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">#</th>
+                            <th style="text-align: left; padding: 12px 20px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Operation</th>
+                            <th style="text-align: left; padding: 12px 20px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Description</th>
+                            <th style="text-align: right; padding: 12px 20px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Measurement</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+        
+        // Add rows
+        board.cut_sequence.forEach((step, index) => {
+            const isLast = index === board.cut_sequence.length - 1;
+            const borderStyle = isLast ? 'border-bottom: none;' : 'border-bottom: 1px solid #e2e8f0;';
+            
+            htmlOutput += `
+                        <tr style="transition: background 0.15s;">
+                            <td style="padding: 12px 20px; color: #0f172a; ${borderStyle}">
+                                <span style="background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 500; display: inline-block;">${step.step}</span>
+                            </td>
+                            <td style="padding: 12px 20px; color: #0f172a; font-weight: 500; ${borderStyle}">${escapeHtml(step.type)}</td>
+                            <td style="padding: 12px 20px; color: #0f172a; ${borderStyle}">${escapeHtml(step.description)}</td>
+                            <td style="padding: 12px 20px; color: #0f172a; text-align: right; ${borderStyle}">${escapeHtml(step.measurement)}</td>
+                        </tr>`;
+        });
+        
+        htmlOutput += `
                     </tbody>
                 </table>
-            </div>
-        </div>`;
+            </div>`;
     });
     
-    container.innerHTML = html;
+    // Set the HTML
+    container.innerHTML = htmlOutput;
+    
+    console.log('Cut sequences rendered with NEW implementation:', reportData.cut_sequences.length, 'boards');
 }
 
 function renderOffcutsTable(reportData) {

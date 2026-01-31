@@ -590,28 +590,8 @@ module AutoNestCut
           html += "</div>\n"
         end
         
-        # CUT SEQUENCES
-        if report_data && report_data[:cut_sequences]
-          html += "<div class='section new-page'><h2>Cut Sequences</h2>\n"
-          report_data[:cut_sequences].each do |sequence|
-            html += "<div class=\"cut-sequence\">\n"
-            html += "<div class=\"cut-sequence-title\">#{sequence[:title]}</div>\n"
-            if sequence[:stock_size]
-              html += "<p style=\"margin: 5px 0; font-size: 9pt;\"><strong>Stock Size:</strong> #{sequence[:stock_size]}</p>\n"
-            end
-            if sequence[:steps] && sequence[:steps].length > 0
-              html += "<table style=\"font-size: 9pt;\">\n"
-              html += "<thead><tr><th>Step</th><th>Operation</th><th>Description</th><th>Measurement</th></tr></thead>\n"
-              html += "<tbody>\n"
-              sequence[:steps].each do |step|
-                html += "<tr><td>#{step[:step]}</td><td>#{step[:operation]}</td><td>#{step[:description]}</td><td>#{step[:measurement]}</td></tr>\n"
-              end
-              html += "</tbody></table>\n"
-            end
-            html += "</div>\n"
-          end
-          html += "</div>\n"
-        end
+        # CUT SEQUENCES - Removed Ruby generation, now handled by JavaScript renderCutSequences()
+        # The cut sequences are passed in reportData.report.cut_sequences and rendered by diagrams_report.js
         
         # USABLE OFFCUTS
         if report_data && report_data[:usable_offcuts]
@@ -2370,11 +2350,6 @@ module AutoNestCut
             const materialReqTable = document.getElementById('materialRequirementsTable');
             if (materialReqTable && reportData.diagrams) {
               materialReqTable.innerHTML = generateBoardsSummaryTableHTML(reportData.diagrams);
-            }
-            
-            // Add Cut Sequences
-            if (typeof renderCutSequences === 'function' && reportData.report.cut_sequences) {
-              renderCutSequences(reportData.report);
             }
             
             // Add Offcuts table

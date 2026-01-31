@@ -1,3 +1,9 @@
+// ============================================================================
+// DIAGRAMS_REPORT.JS LOADED - VERSION 20250201_RUBY_FIX
+// ============================================================================
+console.log('🚀🚀🚀 diagrams_report.js LOADED - VERSION 20250201_RUBY_FIX 🚀🚀🚀');
+console.log('🚀 File timestamp:', new Date().toISOString());
+
 // Global formatting utility - put this at the top of the script or in a global utility file.
 // This ensures consistency across all numeric displays affected by precision settings.
 
@@ -572,31 +578,40 @@ function renderReport() {
 
     const summaryTable = document.getElementById('summaryTable');
     if (summaryTable) {
-        let summaryHTML = `
-            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-            <tbody>`;
-        
-        // Add project details if available (with HTML escaping)
-        if (g_reportData.summary.project_name && g_reportData.summary.project_name !== 'Untitled Project') {
-            summaryHTML += `<tr><td>Project Name</td><td><strong>${escapeHtml(g_reportData.summary.project_name)}</strong></td></tr>`;
+        // Check if summary data exists
+        if (!g_reportData.summary || Object.keys(g_reportData.summary).length === 0) {
+            // Hide the entire Overall Summary section if no data
+            const summarySection = summaryTable.closest('.report-table-container');
+            const summaryTitle = document.querySelector('h2[data-translate="overall_summary"]');
+            if (summarySection) summarySection.style.display = 'none';
+            if (summaryTitle) summaryTitle.style.display = 'none';
+        } else {
+            let summaryHTML = `
+                <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+                <tbody>`;
+            
+            // Add project details if available (with HTML escaping)
+            if (g_reportData.summary.project_name && g_reportData.summary.project_name !== 'Untitled Project') {
+                summaryHTML += `<tr><td>Project Name</td><td><strong>${escapeHtml(g_reportData.summary.project_name)}</strong></td></tr>`;
+            }
+            if (g_reportData.summary.client_name) {
+                summaryHTML += `<tr><td>Client</td><td><strong>${escapeHtml(g_reportData.summary.client_name)}</strong></td></tr>`;
+            }
+            if (g_reportData.summary.prepared_by) {
+                summaryHTML += `<tr><td>Prepared by</td><td><strong>${escapeHtml(g_reportData.summary.prepared_by)}</strong></td></tr>`;
+            }
+            
+            summaryHTML += `
+                <tr><td>Total Parts Instances</td><td>${g_reportData.summary.total_parts_instances || 0}</td></tr>
+                <tr><td>Total Unique Part Types</td><td>${g_reportData.summary.total_unique_part_types || 0}</td></tr>
+                <tr><td>Total Boards</td><td>${g_reportData.summary.total_boards || 0}</td></tr>
+                <tr><td>Overall Efficiency</td><td>${formatNumber(g_reportData.summary.overall_efficiency || 0, reportPrecision)}%</td></tr>
+                <tr><td><strong>Total Project Weight</strong></td><td class="total-highlight"><strong>${formatNumber(g_reportData.summary.total_project_weight_kg || 0, 2)} kg</strong></td></tr>
+                <tr><td><strong>Total Project Cost</strong></td><td class="total-highlight"><strong>${currencySymbol}${formatNumber(g_reportData.summary.total_project_cost || 0, 2)}</strong></td></tr>
+                </tbody>`;
+            
+            summaryTable.innerHTML = summaryHTML;
         }
-        if (g_reportData.summary.client_name) {
-            summaryHTML += `<tr><td>Client</td><td><strong>${escapeHtml(g_reportData.summary.client_name)}</strong></td></tr>`;
-        }
-        if (g_reportData.summary.prepared_by) {
-            summaryHTML += `<tr><td>Prepared by</td><td><strong>${escapeHtml(g_reportData.summary.prepared_by)}</strong></td></tr>`;
-        }
-        
-        summaryHTML += `
-            <tr><td>Total Parts Instances</td><td>${g_reportData.summary.total_parts_instances || 0}</td></tr>
-            <tr><td>Total Unique Part Types</td><td>${g_reportData.summary.total_unique_part_types || 0}</td></tr>
-            <tr><td>Total Boards</td><td>${g_reportData.summary.total_boards || 0}</td></tr>
-            <tr><td>Overall Efficiency</td><td>${formatNumber(g_reportData.summary.overall_efficiency || 0, reportPrecision)}%</td></tr>
-            <tr><td><strong>Total Project Weight</strong></td><td class="total-highlight"><strong>${formatNumber(g_reportData.summary.total_project_weight_kg || 0, 2)} kg</strong></td></tr>
-            <tr><td><strong>Total Project Cost</strong></td><td class="total-highlight"><strong>${currencySymbol}${formatNumber(g_reportData.summary.total_project_cost || 0, 2)}</strong></td></tr>
-            </tbody>`;
-        
-        summaryTable.innerHTML = summaryHTML;
     }
 
     const materialsUsedTable = document.getElementById('materialsUsedTable');
@@ -763,48 +778,82 @@ function renderReport() {
 }
 
 function renderCutSequences(reportData) {
+    console.log('🔧 renderCutSequences called with data:', reportData);
+    console.log('🔧 Cut sequences count:', reportData.cut_sequences?.length || 0);
+    
+    // COMPLETELY NEW IMPLEMENTATION - NO OLD CODE
     const container = document.getElementById('cutSequenceContainer');
-    if (!container || !reportData.cut_sequences) {
+    if (!container) {
+        console.error('❌ Cut sequence container not found');
         return;
     }
     
-    const reportUnits = window.currentUnits || 'mm';
-    const reportPrecision = window.currentPrecision ?? 1;
+    console.log('✅ Container found:', container);
     
-    let html = '';
+    if (!reportData.cut_sequences || reportData.cut_sequences.length === 0) {
+        console.log('⚠️ No cut sequences data available');
+        container.innerHTML = '<div class="report-table-container"><div class="report-table-header">No Cut Sequences</div><div style="padding: 20px; text-align: center; color: #64748b;">No cut sequences available</div></div>';
+        return;
+    }
+    
+    console.log('🎨 Building HTML with NEW DESIGN for', reportData.cut_sequences.length, 'boards');
+    
+    // Build HTML from scratch with new design
+    let htmlOutput = '';
+    
     reportData.cut_sequences.forEach(board => {
         const tableId = `cutSequenceTable_${board.board_number}`;
-        html += `
-        <div class="table-with-controls">
-            <div class="table-controls">
-                <button class="icon-btn" onclick="copyTableAsMarkdown('${tableId}')" title="Copy Markdown">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="cut-sequence-board">
-                <h4>Sheet ${board.board_number}: ${escapeHtml(board.material)}</h4>
-                <p><strong>Stock Size:</strong> ${board.stock_dimensions}</p>
-                <table id="${tableId}" class="cut-sequence-table">
-                    <thead><tr><th>Step</th><th>Operation</th><th>Description</th><th>Measurement</th></tr></thead>
-                    <tbody>
-                        ${board.cut_sequence.map(step => `
-                            <tr>
-                                <td>${step.step}</td>
-                                <td>${escapeHtml(step.type)}</td>
-                                <td>${escapeHtml(step.description)}</td>
-                                <td>${escapeHtml(step.measurement)}</td>
-                            </tr>
-                        `).join('')}
+        
+        // Create table with report design classes
+        htmlOutput += `
+            <div class="report-table-container" style="margin-bottom: 24px;">
+                <div class="report-table-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Sheet ${board.board_number}: ${escapeHtml(board.material)} - ${board.stock_dimensions}</span>
+                </div>
+                <table id="${tableId}" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <colgroup>
+                        <col style="width: 10%;">
+                        <col style="width: 20%;">
+                        <col style="width: auto;">
+                        <col style="width: 20%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; padding: 12px 20px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">#</th>
+                            <th style="text-align: left; padding: 12px 20px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Operation</th>
+                            <th style="text-align: left; padding: 12px 20px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Description</th>
+                            <th style="text-align: right; padding: 12px 20px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Measurement</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+        
+        // Add rows
+        board.cut_sequence.forEach((step, index) => {
+            const isLast = index === board.cut_sequence.length - 1;
+            const borderStyle = isLast ? 'border-bottom: none;' : 'border-bottom: 1px solid #e2e8f0;';
+            
+            htmlOutput += `
+                        <tr style="transition: background 0.15s;">
+                            <td style="padding: 12px 20px; color: #0f172a; ${borderStyle}">
+                                <span style="background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 500; display: inline-block;">${step.step}</span>
+                            </td>
+                            <td style="padding: 12px 20px; color: #0f172a; font-weight: 500; ${borderStyle}">${escapeHtml(step.type)}</td>
+                            <td style="padding: 12px 20px; color: #0f172a; ${borderStyle}">${escapeHtml(step.description)}</td>
+                            <td style="padding: 12px 20px; color: #0f172a; text-align: right; ${borderStyle}">${escapeHtml(step.measurement)}</td>
+                        </tr>`;
+        });
+        
+        htmlOutput += `
                     </tbody>
                 </table>
-            </div>
-        </div>`;
+            </div>`;
     });
     
-    container.innerHTML = html;
+    // Set the HTML
+    container.innerHTML = htmlOutput;
+    
+    console.log('✅ Cut sequences rendered successfully with NEW DESIGN');
+    console.log('📊 Total boards rendered:', reportData.cut_sequences.length);
 }
 
 function renderOffcutsTable(reportData) {
