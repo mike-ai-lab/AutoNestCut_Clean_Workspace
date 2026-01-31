@@ -18,18 +18,23 @@ module AutoNestCut
       total_materials = part_types_by_material_and_quantities.keys.length
       start_time = Time.now
       
-      part_types_by_material_and_quantities.each_with_index do |(material, types_and_quantities_for_material), material_index|
+      part_types_by_material_and_quantities.each_with_index do |(material_key, types_and_quantities_for_material), material_index|
         current_material_base_progress = (material_index.to_f / total_materials * 80).round(1)
         
-        puts "\nDEBUG: Processing material #{material_index + 1}/#{total_materials}: #{material}"
+        # Extract original material name from the key (format: "MaterialName_18.0mm")
+        original_material = material_key.split('_')[0..-2].join('_')  # Remove thickness suffix
+        
+        puts "\nDEBUG: Processing material #{material_index + 1}/#{total_materials}: #{material_key}"
+        puts "DEBUG: Original material name: #{original_material}"
         puts "DEBUG: Part types for this material: #{types_and_quantities_for_material.length}"
         puts "DEBUG: Base progress for this material: #{current_material_base_progress}%"
         
         # Ensure progress is at least 5% to show something is happening
         progress_to_report = [current_material_base_progress + 5, 5].max
-        report_progress("Processing material: #{material}...", progress_to_report)
+        report_progress("Processing material: #{original_material}...", progress_to_report)
         
-        stock_dims = stock_materials_config[material]
+        # Use original material name for stock lookup
+        stock_dims = stock_materials_config[original_material]
         if stock_dims.nil?
           stock_width, stock_height = 2440.0, 1220.0
         elsif stock_dims.is_a?(Hash)
@@ -58,9 +63,10 @@ module AutoNestCut
         creation_time = Time.now - creation_start
         puts "DEBUG: Part creation took #{creation_time.round(2)}s for #{all_individual_parts_to_place.length} parts"
 
-        report_progress("Nesting parts for #{material}...", current_material_base_progress + 10)
+        report_progress("Nesting parts for #{original_material}...", current_material_base_progress + 10)
 
-        material_boards = nest_individual_parts(all_individual_parts_to_place, material, stock_width, stock_height, kerf_width, allow_rotation, current_material_base_progress + 10, total_materials)
+        # Pass original material name (not the key with thickness) to nest_individual_parts
+        material_boards = nest_individual_parts(all_individual_parts_to_place, original_material, stock_width, stock_height, kerf_width, allow_rotation, current_material_base_progress + 10, total_materials)
         boards.concat(material_boards)
       end
       

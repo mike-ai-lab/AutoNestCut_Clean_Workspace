@@ -128,11 +128,16 @@ module AutoNestCut
         # Create part_type using the actual entity
         part_type = AutoNestCut::Part.new(entity, detected_material)
         material_name = part_type.material
+        thickness = part_type.thickness
+        
+        # CRITICAL FIX: Group by BOTH material AND thickness
+        # Parts with same material but different thickness MUST be on separate sheets!
+        material_key = "#{material_name}_#{thickness.round(2)}mm"
         
         # Material detection complete
         
-        part_types_by_material[material_name] ||= []
-        part_types_by_material[material_name] << { part_type: part_type, total_quantity: total_count_for_type }
+        part_types_by_material[material_key] ||= []
+        part_types_by_material[material_key] << { part_type: part_type, total_quantity: total_count_for_type }
       end
       
       # Parts by material analysis complete

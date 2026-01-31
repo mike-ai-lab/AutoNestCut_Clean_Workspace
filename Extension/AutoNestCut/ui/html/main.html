@@ -4592,24 +4592,95 @@ button:hover {
 }
 .diagram-card {
     border: 1px solid #d0d7de;
-    padding: 12px;
+    padding: 16px;
     background: #ffffff;
-    border-radius: 6px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     width: 100%;
     box-sizing: border-box;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
     display: flex;
     flex-direction: column;
-    align-items: center;
     text-align: center;
 }
+
+.diagram-header {
+    width: 100%;
+    margin-bottom: 16px;
+}
+
 .diagram-card h3 {
-    font-size: 16px;
-    margin: 0 0 6px 0;
+    font-size: 18px;
+    margin: 0 0 12px 0;
     font-weight: 600;
     color: #24292e;
 }
+
+.diagram-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+}
+
+.diagram-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.diagram-tag svg {
+    flex-shrink: 0;
+}
+
+.material-tag {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.dimensions-tag {
+    background: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+.thickness-tag {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.efficiency-tag {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.efficiency-tag.efficiency-high {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.efficiency-tag.efficiency-medium {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.efficiency-tag.efficiency-low {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
 .diagram-card p {
     font-size: 14px;
     color: #656d76;

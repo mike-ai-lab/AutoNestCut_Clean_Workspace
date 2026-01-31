@@ -136,10 +136,14 @@ module AutoNestCut
         }
       end
       
+      # Get thickness from first part on board (all parts on same board should have same thickness)
+      board_thickness = @parts_on_board.length > 0 ? @parts_on_board[0].thickness : nil
+      
       {
         material: @material,
         stock_width: @stock_width,
         stock_height: @stock_height,
+        thickness: board_thickness, # Add thickness to board data
         parts_count: @parts_on_board.length,
         used_area: used_area,
         waste_area: waste_area,

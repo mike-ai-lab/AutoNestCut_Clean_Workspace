@@ -239,21 +239,80 @@ function renderDiagrams() {
         const boardMaterial = board.material || 'Unknown Material';
         console.log(`\nDiagram ${boardIndex + 1} - Material: "${boardMaterial}"`);
 
-        const title = document.createElement('h3');
-        title.textContent = `${boardMaterial} Board ${boardIndex + 1}`;
-        title.id = `diagram-${String(boardMaterial).replace(/[^a-zA-Z0-9]/g, '_')}-${boardIndex}`;
-        card.appendChild(title);
-
-        const info = document.createElement('p');
-        // Use global `currentUnits` and `currentPrecision` from app.js
+        // Create header with title
+        const header = document.createElement('div');
+        header.className = 'diagram-header';
         
+        const title = document.createElement('h3');
+        title.textContent = `Board ${boardIndex + 1}`;
+        title.id = `diagram-${String(boardMaterial).replace(/[^a-zA-Z0-9]/g, '_')}-${boardIndex}`;
+        header.appendChild(title);
+        
+        // Create tags container with Lucide icons
+        const tagsContainer = document.createElement('div');
+        tagsContainer.className = 'diagram-tags';
+        
+        // Material tag with Package icon
+        const materialTag = document.createElement('div');
+        materialTag.className = 'diagram-tag material-tag';
+        materialTag.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m7.5 4.27 9 5.15"></path>
+                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                <path d="m3.3 7 8.7 5 8.7-5"></path>
+                <path d="M12 22V12"></path>
+            </svg>
+            <span>${boardMaterial}</span>
+        `;
+        tagsContainer.appendChild(materialTag);
+        
+        // Dimensions tag with Maximize icon
         const width = board.stock_width / window.unitFactors[reportUnits];
         const height = board.stock_height / window.unitFactors[reportUnits];
+        const dimensionsTag = document.createElement('div');
+        dimensionsTag.className = 'diagram-tag dimensions-tag';
+        dimensionsTag.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
+                <path d="M21 8V5a2 2 0 0 0-2-2h-3"></path>
+                <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+                <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
+            </svg>
+            <span>${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)} ${reportUnits}</span>
+        `;
+        tagsContainer.appendChild(dimensionsTag);
         
-        // Removed `units` from dimension values in info string
-        info.innerHTML = `Size: ${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)} ${reportUnits}<br>
-                          Waste: ${formatNumber(board.waste_percentage, 1)}% (Efficiency: ${formatNumber(board.efficiency_percentage, 1)}%)`;
-        card.appendChild(info);
+        // Thickness tag with Layers icon
+        const thickness = board.thickness || (board.parts_on_board && board.parts_on_board.length > 0 ? board.parts_on_board[0].thickness : 18);
+        const thicknessTag = document.createElement('div');
+        thicknessTag.className = 'diagram-tag thickness-tag';
+        thicknessTag.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"></path>
+                <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"></path>
+                <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"></path>
+            </svg>
+            <span>${formatNumber(thickness / window.unitFactors[reportUnits], reportPrecision)} ${reportUnits}</span>
+        `;
+        tagsContainer.appendChild(thicknessTag);
+        
+        // Efficiency tag with TrendingUp icon
+        const efficiencyTag = document.createElement('div');
+        efficiencyTag.className = 'diagram-tag efficiency-tag';
+        const efficiencyValue = board.efficiency_percentage || 0;
+        const efficiencyClass = efficiencyValue >= 80 ? 'high' : efficiencyValue >= 60 ? 'medium' : 'low';
+        efficiencyTag.classList.add(`efficiency-${efficiencyClass}`);
+        efficiencyTag.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                <polyline points="16 7 22 7 22 13"></polyline>
+            </svg>
+            <span>${formatNumber(efficiencyValue, 1)}% Efficiency</span>
+        `;
+        tagsContainer.appendChild(efficiencyTag);
+        
+        header.appendChild(tagsContainer);
+        card.appendChild(header);
 
         const canvas = document.createElement('canvas');
         canvas.className = 'diagram-canvas';

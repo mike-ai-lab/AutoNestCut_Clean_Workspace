@@ -17,6 +17,13 @@ end
 
 module AutoNestCut
   class ReportGenerator
+    
+    # Class-level texture cache to avoid re-exporting the same texture
+    @@texture_cache = {}
+    
+    def self.clear_texture_cache
+      @@texture_cache.clear
+    end
 
     def generate_report_data(boards, settings = {})
       current_settings = Config.get_cached_settings
@@ -531,42 +538,36 @@ module AutoNestCut
             }
             
             # Generate UV coordinates
-            # If the face has a texture, use its UV coordinates
-            if face_material && face_material.texture
-              begin
-                uv_helper = e.get_UVHelper(true, true, face_material.texture)
-                if uv_helper
-                  uv_point = uv_helper.get_front_UVQ(v.position)
-                  uvs << { x: uv_point.x, y: uv_point.y }
-                else
-                  # Fallback: planar mapping based on face normal
-                  uvs << generate_planar_uv(v.position, e.normal)
-                end
-              rescue => ex
-                puts "WARNING: Failed to get UV for vertex: #{ex.message}"
-                uvs << generate_planar_uv(v.position, e.normal)
-              end
-            else
-              # No texture: generate simple planar UVs
-              uvs << generate_planar_uv(v.position, e.normal)
-            end
+            # Use simple planar mapping for all faces to avoid TextureWriter issues
+            # The 3D viewer will handle texture mapping on the client side
+            uvs << generate_planar_uv(v.position, e.normal)
           end
           
           color = face_material ? (face_material.color.to_i & 0xFFFFFF) : 0x74b9ff
           material_name = face_material ? face_material.name : nil
           
-          # Extract texture data if available
+          # Extract texture data if available (with caching)
           texture_data = nil
           if face_material && face_material.texture
             begin
-              temp_dir = File.join(Dir.tmpdir, 'autonestcut_textures')
-              Dir.mkdir(temp_dir) unless Dir.exist?(temp_dir)
-              texture_filename = "#{face_material.name.gsub(/[^\w]/, '_')}_#{face_material.texture.object_id}.png"
-              texture_path = File.join(temp_dir, texture_filename)
+              # Check cache first
+              texture_id = face_material.texture.object_id
               
-              if face_material.texture.write(texture_path)
-                texture_data = texture_path
-                puts "DEBUG: Exported texture for #{material_name} to #{texture_path}"
+              if @@texture_cache[texture_id]
+                # Use cached texture path
+                texture_data = @@texture_cache[texture_id]
+              else
+                # Export texture and cache it
+                temp_dir = File.join(Dir.tmpdir, 'autonestcut_textures')
+                Dir.mkdir(temp_dir) unless Dir.exist?(temp_dir)
+                texture_filename = "#{face_material.name.gsub(/[^\w]/, '_')}_#{texture_id}.png"
+                texture_path = File.join(temp_dir, texture_filename)
+                
+                if face_material.texture.write(texture_path)
+                  texture_data = texture_path
+                  @@texture_cache[texture_id] = texture_path
+                  puts "✓ Exported texture for #{material_name} to #{texture_path}"
+                end
               end
             rescue => ex
               puts "WARNING: Failed to export texture for #{material_name}: #{ex.message}"
