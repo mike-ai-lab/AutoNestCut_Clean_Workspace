@@ -455,10 +455,6 @@
                 </button>
                 <button class="toolbar-btn" id="loadDefaultsBtn">Load Defaults</button>
                 <input type="file" id="importFileInput" accept=".csv" />
-                <div class="search-box">
-                    <svg viewBox="0 0 24 24" class="search-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                    <input type="text" id="searchInput" placeholder="Search materials..." />
-                </div>
                 <select class="sort-select" id="filterSelect">
                     <option value="all">Filter: All</option>
                     <option value="favorites">Filter: Favorites</option>
@@ -477,6 +473,10 @@
                     <option value="50">50 per page</option>
                 </select>
                 <div style="flex: 1;"></div>
+                <div class="search-box" style="max-width: 400px; flex: 1;">
+                    <svg viewBox="0 0 24 24" class="search-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input type="text" id="searchInput" placeholder="Search materials..." />
+                </div>
                 <div class="pagination-info" id="paginationInfo" style="display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 600; color: var(--text-main);">
                     <span id="materialsRange">Materials 1-30 / 180</span>
                     <span style="color: var(--text-muted);">|</span>
@@ -661,6 +661,18 @@
         function receiveMaterialsData(data) {
             materialsData = JSON.parse(data);
             console.log('Received materials data:', materialsData);
+            
+            // CRITICAL FIX: Convert array format to single object format for UI
+            // Backend stores materials as arrays to support multiple thicknesses
+            // Frontend displays one material per row, so we flatten to the first thickness
+            Object.keys(materialsData).forEach(name => {
+                const data = materialsData[name];
+                if (Array.isArray(data) && data.length > 0) {
+                    // Take the first thickness variation
+                    materialsData[name] = data[0];
+                    console.log(`Converted array to object for: ${name}`);
+                }
+            });
             
             // Debug: Check for flagged materials
             Object.entries(materialsData).forEach(([name, mat]) => {
@@ -904,21 +916,26 @@
             console.log('=== SAVE CHANGES STARTED ===');
             console.log(`Total materials in memory: ${Object.keys(materialsData).length}`);
             
-            // CRITICAL FIX: Start with ALL materials, not just visible rows
+            // CRITICAL FIX: Deep clone ALL materials to preserve complete data structure
             // This prevents data loss when pagination is active
-            const updated = { ...materialsData };
+            const updated = JSON.parse(JSON.stringify(materialsData));
             let unflaggedCount = 0;
             let editedCount = 0;
             
-            // Only update materials that are currently visible and edited
+            // Track which materials are visible on current page for updates
+            const visibleMaterialNames = new Set();
             const rows = document.querySelectorAll('#materialsBody tr');
             
             rows.forEach((row, index) => {
                 const nameInput = row.querySelector('.edit-name');
                 if (!nameInput) return;
                 
-                const oldName = nameInput.defaultValue || nameInput.textContent.trim();
+                // Get the original name from the data attribute or default value
+                const checkbox = row.querySelector('.row-checkbox');
+                const oldName = checkbox ? checkbox.getAttribute('data-material') : nameInput.defaultValue || nameInput.textContent.trim();
                 const newName = nameInput.value.trim();
+                
+                visibleMaterialNames.add(oldName);
                 
                 const widthInput = row.querySelector('.edit-width');
                 const heightInput = row.querySelector('.edit-height');
@@ -930,52 +947,48 @@
                 
                 const originalData = materialsData[oldName] || materialsData[newName] || {};
                 
-                // Update the material (whether it's a rename or edit)
-                updated[newName] = {
-                    width: parseFloat(widthInput.value) || 2440,
-                    height: parseFloat(heightInput.value) || 1220,
-                    thickness: parseFloat(thicknessInput.value) || 18,
-                    price: parseFloat(priceInput.value) || 0,
-                    currency: currencyInput.value.toUpperCase() || 'USD',
-                    density: originalData.density || 600,
-                    auto_generated: originalData.auto_generated || false,
-                    is_default: originalData.is_default || false,
-                    is_favorite: originalData.is_favorite || false,
-                    created_at: originalData.created_at || '',
-                    original_sketchup_material: originalData.original_sketchup_material || ''
+                // Preserve ALL original properties and only update edited fields
+                const updatedMaterial = {
+                    ...originalData,
+                    width: parseFloat(widthInput.value) || originalData.width || 2440,
+                    height: parseFloat(heightInput.value) || originalData.height || 1220,
+                    thickness: parseFloat(thicknessInput.value) || originalData.thickness || 18,
+                    price: parseFloat(priceInput.value) || originalData.price || 0,
+                    currency: currencyInput.value.toUpperCase() || originalData.currency || 'USD'
                 };
                 
-                // If renamed, remove old entry
-                if (oldName !== newName && oldName in updated) {
+                // Handle rename: remove old entry and add new one
+                if (oldName !== newName) {
                     delete updated[oldName];
                     
                     // Unflag if renamed
                     if (originalData.flagged_no_material) {
                         console.log(`✓ UNFLAGGED: "${oldName}" → "${newName}"`);
-                        updated[newName].flagged_no_material = false;
+                        updatedMaterial.flagged_no_material = false;
                         unflaggedCount++;
-                    } else {
-                        updated[newName].flagged_no_material = originalData.flagged_no_material || false;
                     }
-                } else {
-                    updated[newName].flagged_no_material = originalData.flagged_no_material || false;
                 }
                 
+                // Update or add the material
+                updated[newName] = updatedMaterial;
                 editedCount++;
             });
             
             console.log(`Edited materials on current page: ${editedCount}`);
+            console.log(`Total materials preserved: ${Object.keys(updated).length}`);
             if (unflaggedCount > 0) {
                 console.log(`Total unflagged: ${unflaggedCount}`);
             }
             
-            // CRITICAL: Update materialsData with ALL materials (visible + hidden)
+            // CRITICAL: Update materialsData reference
             materialsData = updated;
             console.log(`Total materials after save: ${Object.keys(materialsData).length}`);
             
+            // Send to backend
             if (window.sketchup) { 
                 window.sketchup.save_materials_data(JSON.stringify(materialsData)); 
             }
+            
             hasUnsavedChanges = false;
             showToast('Materials saved successfully');
             console.log('=== SAVE COMPLETED ===');

@@ -236,7 +236,7 @@ module AutoNestCut
                     'width' => 2440,
                     'height' => 1220,
                     'thickness' => thickness_val,
-                    'price' => 0,
+                    'price' => 300,
                     'currency' => latest_settings['default_currency'] || 'USD'
                   }
                 end
@@ -1230,7 +1230,7 @@ module AutoNestCut
             'width' => 2440,
             'height' => 1220,
             'thickness' => thickness_val,
-            'price' => 0,
+            'price' => 300,
             'currency' => current_settings['default_currency'] || 'USD',
             'auto_generated' => true
           }
@@ -1725,6 +1725,18 @@ module AutoNestCut
       end
 
       # Perform actual report data generation (passing the current @settings)
+      # Refresh settings to ensure we have the latest units/precision/currency
+      @settings = Config.get_cached_settings if @settings.nil?
+      
+      puts "═══════════════════════════════════════════════════════════"
+      puts "🔧 REPORT GENERATION SETTINGS DEBUG"
+      puts "═══════════════════════════════════════════════════════════"
+      puts "Units: #{@settings['units'] || 'NOT SET (defaulting to mm)'}"
+      puts "Precision: #{@settings['precision'] || 'NOT SET (defaulting to 1)'}"
+      puts "Area Units: #{@settings['area_units'] || 'NOT SET (defaulting to m2)'}"
+      puts "Currency: #{@settings['default_currency'] || 'NOT SET (defaulting to USD)'}"
+      puts "═══════════════════════════════════════════════════════════"
+      
       report_generator = ReportGenerator.new
       report_data = report_generator.generate_report_data(boards, @settings)
 

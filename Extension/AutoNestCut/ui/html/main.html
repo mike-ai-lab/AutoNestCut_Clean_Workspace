@@ -287,6 +287,115 @@
         #settingsModal .modal-content {
             z-index: 1001;
         }
+        
+        /* Fullscreen Overlay Styles */
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 10000;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .fullscreen-overlay.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .fullscreen-header {
+            background: #2323FF;
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .fullscreen-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .fullscreen-close-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .fullscreen-close-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+        
+        .fullscreen-content {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+        }
+        
+        .fullscreen-table-wrapper {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 100%;
+        }
+        
+        .fullscreen-table-wrapper table {
+            width: 100%;
+            font-size: 14px;
+        }
+        
+        .fullscreen-canvas-wrapper {
+            background: #1a1a1a;
+            border-radius: 8px;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .maximize-btn:hover {
+            background: rgba(255,255,255,0.3) !important;
+            transform: scale(1.05);
+        }
+        
+        /* Combined fullscreen view */
+        .fullscreen-combined-wrapper {
+            display: flex;
+            gap: 20px;
+            height: 100%;
+            padding: 0;
+        }
+        
+        .fullscreen-combined-wrapper .parts-table-container,
+        .fullscreen-combined-wrapper .parts-canvas-container {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .fullscreen-combined-wrapper .parts-canvas-container {
+            background: #1a1a1a;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -446,11 +555,25 @@
             </div>
             
             <!-- PARTS PREVIEW - Horizontal Layout -->
-            <div class="parts-preview-wrapper">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #24292e;">Parts Preview & 3D Viewer</h3>
+                <button onclick="maximizeBothSections()" class="maximize-btn" title="Maximize Both Sections" style="background: #007cba; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; transition: all 0.2s;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                    </svg>
+                    <span>Maximize View</span>
+                </button>
+            </div>
+            <div class="parts-preview-wrapper" id="partsPreviewWrapper">
                 <!-- Table Container -->
-                <div class="parts-table-container">
-                    <div class="parts-table-header">
-                        Parts Preview
+                <div class="parts-table-container" id="partsTableContainer">
+                    <div class="parts-table-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Parts Preview</span>
+                        <button onclick="maximizePartsTable()" class="maximize-btn" title="Maximize Table" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; width: 32px; height: 32px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                            </svg>
+                        </button>
                     </div>
                     <div class="parts-table-scroll">
                         <table>
@@ -475,10 +598,15 @@
                 </div>
                 
                 <!-- Canvas Container -->
-                <div class="parts-canvas-container">
+                <div class="parts-canvas-container" id="partsCanvasContainer">
                     <div class="canvas-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <span>3D Component Viewer</span>
                         <div style="display: flex; gap: 8px;">
+                            <button onclick="maximize3DViewer()" class="maximize-btn" title="Maximize 3D Viewer" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; width: 32px; height: 32px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                                </svg>
+                            </button>
                             <div class="channel-button" onclick="toggleDimensions()">
                                 <a href="#" onclick="event.preventDefault();">DIMS</a>
                             </div>
@@ -2528,7 +2656,8 @@
         });
     </script>
     <script src="app.js"></script>
-    <script src="diagrams_report.js?v=20250121_fixed"></script>
+    <script src="unit_debug.js"></script>
+    <script src="diagrams_report.js?v=20250131_OFFCUTS_FIX"></script>
     <script src="card_visualizations.js"></script>
     <script src="resizer_fix.js"></script>
     <script src="table_customization.js"></script>
@@ -2588,6 +2717,35 @@
                 console.log('Report data loaded:', g_reportData);
                 console.log('Boards data loaded:', g_boardsData);
                 console.log('Assembly data loaded:', window.assemblyData);
+                
+                // ✅ CRITICAL FIX: Extract settings from report data and apply to global variables
+                if (g_reportData && g_reportData.summary) {
+                    console.log('═══════════════════════════════════════════════════════════');
+                    console.log('🔧 APPLYING SETTINGS FROM REPORT DATA');
+                    console.log('═══════════════════════════════════════════════════════════');
+                    console.log('Settings from Ruby:', g_reportData.summary);
+                    
+                    window.currentUnits = g_reportData.summary.units || 'mm';
+                    window.reportUnits = g_reportData.summary.units || 'mm';
+                    window.currentPrecision = g_reportData.summary.precision ?? 1;
+                    window.currentAreaUnits = g_reportData.summary.area_units || 'm2';
+                    window.defaultCurrency = g_reportData.summary.currency || 'USD';
+                    
+                    console.log('✅ Global variables updated:');
+                    console.log('  - window.currentUnits:', window.currentUnits);
+                    console.log('  - window.reportUnits:', window.reportUnits);
+                    console.log('  - window.currentPrecision:', window.currentPrecision);
+                    console.log('  - window.currentAreaUnits:', window.currentAreaUnits);
+                    console.log('  - window.defaultCurrency:', window.defaultCurrency);
+                    console.log('═══════════════════════════════════════════════════════════');
+                    
+                    // ✅ NEW: Update config tab headers with new settings
+                    if (typeof updateConfigTabHeaders === 'function') {
+                        updateConfigTabHeaders();
+                    }
+                } else {
+                    console.error('⚠️ WARNING: g_reportData.summary is missing!');
+                }
                 
                 // Render with delay to ensure DOM is ready
                 setTimeout(() => {
@@ -2816,6 +2974,48 @@
             btn.querySelector('svg').style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
         }
         
+        // ✅ NEW: Function to update all Configuration tab table headers with dynamic units
+        function updateConfigTabHeaders() {
+            const currentUnits = window.currentUnits || 'mm';
+            const currentAreaUnitLabel = getAreaUnitLabel ? getAreaUnitLabel() : 'm²';
+            
+            // Update Components Found table headers
+            const componentsTable = document.querySelector('#componentsTableBody').closest('table');
+            if (componentsTable) {
+                const headers = componentsTable.querySelectorAll('thead th');
+                if (headers.length >= 5) {
+                    headers[1].textContent = `Width (${currentUnits})`;
+                    headers[2].textContent = `Height (${currentUnits})`;
+                    headers[3].textContent = `Thickness (${currentUnits})`;
+                }
+            }
+            
+            // Update Parts Preview table headers
+            const partsTable = document.querySelector('#partsTableBody').closest('table');
+            if (partsTable) {
+                const headers = partsTable.querySelectorAll('thead th');
+                if (headers.length >= 7) {
+                    headers[1].textContent = `Width (${currentUnits})`;
+                    headers[2].textContent = `Height (${currentUnits})`;
+                    headers[3].textContent = `Thickness (${currentUnits})`;
+                    headers[6].textContent = `Area (${currentAreaUnitLabel})`;
+                }
+            }
+            
+            // Update Stock Materials table headers
+            const materialsTable = document.getElementById('materialsTable');
+            if (materialsTable) {
+                const headers = materialsTable.querySelectorAll('thead th');
+                if (headers.length >= 6) {
+                    headers[1].textContent = `Width (${currentUnits})`;
+                    headers[2].textContent = `Height (${currentUnits})`;
+                    headers[3].textContent = `Thickness (${currentUnits})`;
+                }
+            }
+            
+            console.log(`✅ Config tab headers updated to: ${currentUnits}, ${currentAreaUnitLabel}`);
+        }
+        
         function updateComponentsList(originalComponents) {
             const tbody = document.getElementById('componentsTableBody');
             const count = document.getElementById('totalComponentsCount');
@@ -2992,6 +3192,14 @@
             setTimeout(() => {
                 initResizer();
             }, 100);
+            
+            // ✅ NEW: Update config tab headers with current units
+            setTimeout(() => {
+                if (typeof updateConfigTabHeaders === 'function') {
+                    updateConfigTabHeaders();
+                }
+            }, 200);
+            
             if (typeof callRuby === 'function') {
                 callRuby('ready');
             }
@@ -6237,3 +6445,165 @@ td .cost-breakdown-wrapper {
     </script>
 </body>
 </html>
+
+    
+    <!-- Fullscreen Overlay for Parts Table and 3D Viewer -->
+    <div id="fullscreenOverlay" class="fullscreen-overlay">
+        <div class="fullscreen-header">
+            <div class="fullscreen-title" id="fullscreenTitle">Fullscreen View</div>
+            <button onclick="exitFullscreen()" class="fullscreen-close-btn" title="Close (ESC)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="fullscreen-content" id="fullscreenContent">
+            <!-- Content will be dynamically inserted here -->
+        </div>
+    </div>
+    
+    <script>
+        // Fullscreen functionality
+        let fullscreenMode = null; // 'table', '3d', or 'both'
+        
+        function maximizeBothSections() {
+            const overlay = document.getElementById('fullscreenOverlay');
+            const content = document.getElementById('fullscreenContent');
+            const title = document.getElementById('fullscreenTitle');
+            
+            // Clone the entire wrapper
+            const wrapper = document.querySelector('.parts-preview-wrapper');
+            const wrapperClone = wrapper.cloneNode(true);
+            
+            // Remove maximize buttons from clones
+            const maxBtns = wrapperClone.querySelectorAll('.maximize-btn');
+            maxBtns.forEach(btn => btn.remove());
+            
+            // Wrap in fullscreen combined wrapper
+            content.innerHTML = '';
+            const combinedWrapper = document.createElement('div');
+            combinedWrapper.className = 'fullscreen-combined-wrapper';
+            combinedWrapper.appendChild(wrapperClone);
+            content.appendChild(combinedWrapper);
+            
+            title.textContent = 'Parts Preview & 3D Viewer - Fullscreen';
+            overlay.classList.add('active');
+            fullscreenMode = 'both';
+            
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+            
+            // If 3D viewer is active, reinitialize
+            setTimeout(() => {
+                const canvas = wrapperClone.querySelector('#parts3DCanvas');
+                if (canvas && canvas.style.display !== 'none') {
+                    if (typeof window.resize3DViewer === 'function') {
+                        window.resize3DViewer();
+                    }
+                }
+            }, 100);
+        }
+        
+        function maximizePartsTable() {
+            const overlay = document.getElementById('fullscreenOverlay');
+            const content = document.getElementById('fullscreenContent');
+            const title = document.getElementById('fullscreenTitle');
+            
+            // Clone the table
+            const tableContainer = document.querySelector('.parts-table-container');
+            const tableClone = tableContainer.cloneNode(true);
+            
+            // Remove the maximize button from clone
+            const maxBtn = tableClone.querySelector('.maximize-btn');
+            if (maxBtn) maxBtn.remove();
+            
+            // Wrap in fullscreen wrapper
+            content.innerHTML = '';
+            const wrapper = document.createElement('div');
+            wrapper.className = 'fullscreen-table-wrapper';
+            wrapper.appendChild(tableClone);
+            content.appendChild(wrapper);
+            
+            title.textContent = 'Parts Preview - Fullscreen';
+            overlay.classList.add('active');
+            fullscreenMode = 'table';
+            
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function maximize3DViewer() {
+            const overlay = document.getElementById('fullscreenOverlay');
+            const content = document.getElementById('fullscreenContent');
+            const title = document.getElementById('fullscreenTitle');
+            
+            // Clone the canvas container
+            const canvasContainer = document.querySelector('.parts-canvas-container');
+            const canvasClone = canvasContainer.cloneNode(true);
+            
+            // Remove the maximize button from clone
+            const maxBtn = canvasClone.querySelector('.maximize-btn');
+            if (maxBtn) maxBtn.remove();
+            
+            // Wrap in fullscreen wrapper
+            content.innerHTML = '';
+            const wrapper = document.createElement('div');
+            wrapper.className = 'fullscreen-canvas-wrapper';
+            wrapper.appendChild(canvasClone);
+            content.appendChild(wrapper);
+            
+            title.textContent = '3D Component Viewer - Fullscreen';
+            overlay.classList.add('active');
+            fullscreenMode = '3d';
+            
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+            
+            // If 3D viewer is active, we need to reinitialize it in the fullscreen view
+            setTimeout(() => {
+                const canvas = canvasClone.querySelector('#parts3DCanvas');
+                if (canvas && canvas.style.display !== 'none') {
+                    // Trigger resize or reinit if needed
+                    if (typeof window.resize3DViewer === 'function') {
+                        window.resize3DViewer();
+                    }
+                }
+            }, 100);
+        }
+        
+        function exitFullscreen() {
+            const overlay = document.getElementById('fullscreenOverlay');
+            overlay.classList.remove('active');
+            fullscreenMode = null;
+            
+            // Restore body scroll
+            document.body.style.overflow = '';
+        }
+        
+        // ESC key handler
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && fullscreenMode) {
+                exitFullscreen();
+            }
+        });
+        
+        // Click outside to close (optional) - but NOT on the close button
+        document.getElementById('fullscreenOverlay').addEventListener('click', function(e) {
+            // Only close if clicking the overlay itself, not its children
+            if (e.target === this) {
+                exitFullscreen();
+            }
+        });
+        
+        // Make sure close button works by stopping propagation
+        document.addEventListener('DOMContentLoaded', function() {
+            const closeBtn = document.querySelector('.fullscreen-close-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Prevent event from bubbling
+                    exitFullscreen();
+                });
+            }
+        });
+    </script>

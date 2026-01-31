@@ -58,20 +58,36 @@ module AutoNestCut
           
           # MIGRATION: Add flagged_no_material to existing no_material_ entries
           materials.each do |name, data|
-            if name.start_with?('no_material_') && !data.key?('flagged_no_material')
-              data['flagged_no_material'] = true
-              puts "✓ Migrated #{name} - added flagged_no_material flag"
+            # Handle both array and hash formats
+            data_array = data.is_a?(Array) ? data : [data]
+            
+            data_array.each do |mat|
+              if name.start_with?('no_material_') && !mat.key?('flagged_no_material')
+                mat['flagged_no_material'] = true
+                puts "✓ Migrated #{name} - added flagged_no_material flag"
+              end
+            end
+          end
+          
+          # CRITICAL FIX: Convert array format to single object for frontend
+          # Frontend UI doesn't support multiple thicknesses yet, so flatten to first entry
+          flattened_materials = {}
+          materials.each do |name, data|
+            if data.is_a?(Array) && data.length > 0
+              flattened_materials[name] = data[0]  # Take first thickness
+            elsif data.is_a?(Hash)
+              flattened_materials[name] = data
             end
           end
           
           # Save migrated data
           MaterialsDatabase.save_database(materials)
           
-          # Send data to frontend
-          json_data = JSON.generate(materials)
+          # Send flattened data to frontend
+          json_data = JSON.generate(flattened_materials)
           @dialog.execute_script("receiveMaterialsData('#{escape_js(json_data)}');")
           
-          puts "✓ Sent #{materials.keys.length} materials to frontend"
+          puts "✓ Sent #{flattened_materials.keys.length} materials to frontend"
         rescue => e
           puts "ERROR loading materials: #{e.message}"
           puts e.backtrace.join("\n")
@@ -82,22 +98,71 @@ module AutoNestCut
       # Callback: Save materials data
       @dialog.add_action_callback('save_materials_data') do |action_context, json_string|
         begin
-          materials = JSON.parse(json_string)
+          puts "\n" + "="*80
+          puts "💾 SAVE MATERIALS DATA - START"
+          puts "="*80
           
-          # Convert string keys to proper types
-          materials.each do |name, data|
-            data['width'] = data['width'].to_f
-            data['height'] = data['height'].to_f
-            data['thickness'] = data['thickness'].to_f
-            data['price'] = data['price'].to_f
-            data['currency'] = data['currency'].to_s.upcase
-            data['density'] = data['density'] || 600
+          materials = JSON.parse(json_string)
+          puts "📊 Received #{materials.keys.length} materials from frontend"
+          
+          # Show first 3 materials with prices
+          materials.keys.take(3).each do |name|
+            data = materials[name]
+            if data.is_a?(Hash)
+              puts "  - #{name}: price=#{data['price']}, currency=#{data['currency']}"
+            end
           end
           
+          # ✅ FIX: Handle both Hash and Array formats
+          materials.each do |name, data|
+            # Check if data is an Array (multiple thicknesses) or Hash (single thickness)
+            if data.is_a?(Array)
+              # Handle array of thickness variations
+              data.each do |thickness_data|
+                thickness_data['width'] = thickness_data['width'].to_f
+                thickness_data['height'] = thickness_data['height'].to_f
+                thickness_data['thickness'] = thickness_data['thickness'].to_f
+                thickness_data['price'] = thickness_data['price'].to_f
+                thickness_data['currency'] = thickness_data['currency'].to_s.upcase
+                thickness_data['density'] = thickness_data['density'] || 600
+              end
+            elsif data.is_a?(Hash)
+              # Handle single thickness
+              data['width'] = data['width'].to_f
+              data['height'] = data['height'].to_f
+              data['thickness'] = data['thickness'].to_f
+              data['price'] = data['price'].to_f
+              data['currency'] = data['currency'].to_s.upcase
+              data['density'] = data['density'] || 600
+            else
+              puts "WARNING: Unexpected data type for material '#{name}': #{data.class}"
+            end
+          end
+          
+          puts "\n💾 Saving to database..."
           # Save to database
           MaterialsDatabase.save_database(materials)
           
-          puts "✓ Saved #{materials.keys.length} materials to database"
+          puts "✅ Saved #{materials.keys.length} materials to database"
+          puts "📁 Database file: #{MaterialsDatabase.database_file}"
+          
+          # Verify save by reloading
+          puts "\n🔍 Verifying save..."
+          reloaded = MaterialsDatabase.load_database
+          puts "✅ Verification: #{reloaded.keys.length} materials in database"
+          
+          # Show first 3 materials after reload
+          reloaded.keys.take(3).each do |name|
+            data = reloaded[name]
+            if data.is_a?(Array) && data.length > 0
+              data = data[0]
+            end
+            if data.is_a?(Hash)
+              puts "  - #{name}: price=#{data['price']}, currency=#{data['currency']}"
+            end
+          end
+          
+          puts "="*80 + "\n"
           
           # Show success toast via JavaScript
           @dialog.execute_script("showToast('Materials saved successfully');")

@@ -242,7 +242,8 @@ function addCutListPageClean(pdf, pageWidth, pageHeight, margin, startY) {
     pdf.text('Part List', margin, yPos);
     yPos += 15;
 
-    const headers = ['Part', 'W x H (mm)', 'Mat.', 'Qty', 'Sheet'];
+    const reportUnits = window.currentUnits || 'mm';
+    const headers = ['Part', `W x H (${reportUnits})`, 'Mat.', 'Qty', 'Sheet'];
     const colWidths = [50, 40, 50, 20, 20]; // approx mm widths
     
     // Draw Header

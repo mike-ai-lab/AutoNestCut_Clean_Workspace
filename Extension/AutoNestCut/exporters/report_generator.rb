@@ -1,6 +1,7 @@
 # filename: report_generator.rb
 require 'csv'
 require_relative '../util' # Ensure Util module is loaded
+require_relative '../materials_database' # Load materials database
 
 # Safely require optional dependencies
 begin
@@ -28,12 +29,44 @@ module AutoNestCut
     def generate_report_data(boards, settings = {})
       current_settings = Config.get_cached_settings
       
-      # CRITICAL FIX: Ensure stock_materials is always a Hash
-      if current_settings['stock_materials'] && !current_settings['stock_materials'].is_a?(Hash)
-        puts "CRITICAL: stock_materials is #{current_settings['stock_materials'].class}, resetting to empty Hash"
-        current_settings['stock_materials'] = {}
+      puts "\n" + "="*80
+      puts "🔍 PRICING DEBUG - REPORT GENERATION START"
+      puts "="*80
+      
+      # CRITICAL FIX: Load materials from database instead of config
+      # This ensures we always use the latest material prices from the Material Database Manager
+      stock_materials = MaterialsDatabase.load_database
+      
+      puts "📊 RAW DATABASE LOAD:"
+      puts "  - Total materials loaded: #{stock_materials.length}"
+      puts "  - Database file: #{MaterialsDatabase.database_file}"
+      puts "  - Sample materials (first 5):"
+      stock_materials.keys.take(5).each do |name|
+        data = stock_materials[name]
+        puts "    • #{name}: #{data.class} - #{data.inspect[0..100]}"
       end
-      current_settings['stock_materials'] ||= {}
+      
+      # Flatten array format to single objects (take first thickness)
+      stock_materials.each do |name, data|
+        if data.is_a?(Array) && data.length > 0
+          puts "  - Converting array to object for: #{name}"
+          puts "    BEFORE: #{data.inspect[0..200]}"
+          stock_materials[name] = data[0]
+          puts "    AFTER: #{stock_materials[name].inspect[0..200]}"
+          puts "    PRICE AFTER FLATTEN: #{stock_materials[name]['price']}"
+        end
+      end
+      
+      puts "\n📋 FLATTENED MATERIALS FOR PRICING:"
+      puts "  - Total materials: #{stock_materials.length}"
+      puts "  - All material names: #{stock_materials.keys.sort.inspect}"
+      puts "\n💰 MATERIAL PRICES:"
+      stock_materials.each do |name, data|
+        price = data['price'] || 0
+        currency = data['currency'] || 'USD'
+        puts "  - #{name}: #{currency} #{price}"
+      end
+      puts "="*80 + "\n"
       
       currency = current_settings['default_currency'] || 'USD'
       units = current_settings['units'] || 'mm'
@@ -62,12 +95,8 @@ module AutoNestCut
         puts "board.material: #{board_material.inspect}"
         puts "============================\n"
         
-        stock_materials = current_settings['stock_materials'] || {}
-        # Ensure stock_materials is a Hash, not an Array
-        unless stock_materials.is_a?(Hash)
-          puts "WARNING: stock_materials is #{stock_materials.class}, converting to Hash"
-          stock_materials = {}
-        end
+        # ✅ CRITICAL FIX: Don't reload stock_materials here - use the flattened version from above!
+        # The old code was resetting stock_materials to the config version (with Arrays) on every iteration
         
         # DEBUG: Check what we're working with
         puts "DEBUG: stock_materials class: #{stock_materials.class}"
@@ -78,22 +107,12 @@ module AutoNestCut
         puts "DEBUG: material_data class: #{material_data.class if material_data}"
         puts "DEBUG: material_data: #{material_data.inspect if material_data}"
         
-        # CRITICAL FIX: Handle case where material_data is an Array (should be a Hash)
-        if material_data.is_a?(Array) && material_data.length > 0
-          puts "WARNING: material_data is an Array, extracting first element"
-          material_data = material_data.first
-        end
-        
-        # Ensure material_data is also a Hash
+        # Ensure material_data is a Hash
         material_data = {} unless material_data.is_a?(Hash)
         
         density = material_data['density'] || 600
         
-        # Fix stock_materials for board.total_weight_kg call
-        fixed_stock_materials = stock_materials.transform_values do |val|
-          val.is_a?(Array) && val.length > 0 ? val.first : val
-        end
-        board_weight = board.total_weight_kg(fixed_stock_materials)
+        board_weight = board.total_weight_kg(stock_materials)
         
         board_info = {
           board_number: board_number,
@@ -127,27 +146,76 @@ module AutoNestCut
         unique_board_types[board_key][:total_area] += board.total_area
         
         # Add pricing calculation with currency (using global default currency for new materials)
-        stock_materials = current_settings['stock_materials'] || {} # FIX: Use current_settings
-        # Ensure stock_materials is a Hash, not an Array
-        stock_materials = {} unless stock_materials.is_a?(Hash)
+        # ✅ PRICING: Look up material price from database
+        # CRITICAL FIX: Material names in database may have thickness suffix (e.g., "Material_18.0mm")
+        # but board.material is just "Material", so we need fuzzy matching
         material_info = stock_materials[board_material]
         
-        # Handle Array case
-        if material_info.is_a?(Array) && material_info.length > 0
-          material_info = material_info.first
+        # If exact match not found, try to find material that starts with board_material
+        if !material_info || !material_info.is_a?(Hash)
+          # Try fuzzy match: find any material that starts with the board material name
+          matching_key = stock_materials.keys.find { |k| k.start_with?(board_material) }
+          material_info = stock_materials[matching_key] if matching_key
+          puts "  🔍 Fuzzy match: '#{board_material}' → '#{matching_key}'" if matching_key
+        end
+        
+        # ✅ EXTENSIVE DEBUG: Pricing lookup
+        puts "\n" + "🔍"*40
+        puts "💰 PRICING LOOKUP FOR BOARD"
+        puts "🔍"*40
+        puts "  📦 Board Material Name: '#{board_material}'"
+        puts "  📏 Board Dimensions: #{board.stock_width}x#{board.stock_height}mm"
+        puts "  🔎 Exact match lookup: stock_materials['#{board_material}']"
+        puts "  ✅ Material found: #{material_info ? 'YES' : 'NO'}"
+        
+        if material_info
+          puts "  📊 Material data type: #{material_info.class}"
+          puts "  📊 Material data: #{material_info.inspect}"
+          
+          if material_info.is_a?(Hash)
+            price = material_info['price']
+            puts "  💵 Price value: #{price.inspect} (#{price.class})"
+            puts "  💱 Currency: #{material_info['currency'].inspect}"
+            puts "  📐 Width: #{material_info['width']}"
+            puts "  📐 Height: #{material_info['height']}"
+            puts "  📐 Thickness: #{material_info['thickness']}"
+          end
+        else
+          puts "  ❌ MATERIAL NOT FOUND IN DATABASE!"
+          puts "  📋 Available materials in database:"
+          stock_materials.keys.sort.each do |name|
+            puts "     - '#{name}'"
+          end
+          puts "  🔍 Checking for similar names:"
+          similar = stock_materials.keys.select { |k| k.downcase.include?(board_material.downcase) || board_material.downcase.include?(k.downcase) }
+          if similar.any?
+            puts "     Similar: #{similar.inspect}"
+          else
+            puts "     No similar names found"
+          end
         end
         
         if material_info && material_info.is_a?(Hash)
           price = material_info['price'] || 0
-          material_currency = material_info['currency'] || currency # Use material's specific currency if saved, else global default
+          material_currency = material_info['currency'] || currency
+          puts "  ✅ FINAL PRICE: #{material_currency} #{price}"
+          puts "  🔍 DEBUG: material_info['price'] = #{material_info['price'].inspect}"
+          puts "  🔍 DEBUG: price variable = #{price.inspect}"
+          puts "  🔍 DEBUG: Is price 0? #{price == 0}"
+          puts "  🔍 DEBUG: Is price nil? #{price.nil?}"
           unique_board_types[board_key][:price_per_sheet] = price
           unique_board_types[board_key][:currency] = material_currency
           unique_board_types[board_key][:total_cost] = unique_board_types[board_key][:count] * price
-        else # Fallback for materials not found in stock_materials
+          puts "  ✅ TOTAL COST: #{material_currency} #{unique_board_types[board_key][:total_cost]} (#{unique_board_types[board_key][:count]} sheets × #{price})"
+        else
+          puts "  ⚠️ USING FALLBACK: Price = 0"
+          puts "  🔍 DEBUG: material_info is Hash? #{material_info.is_a?(Hash) if material_info}"
+          puts "  🔍 DEBUG: material_info class: #{material_info.class if material_info}"
           unique_board_types[board_key][:price_per_sheet] = 0
           unique_board_types[board_key][:currency] = currency
           unique_board_types[board_key][:total_cost] = 0
         end
+        puts "🔍"*40 + "\n"
 
         total_waste_area += board.waste_area
         overall_total_stock_area += board.total_area
@@ -174,19 +242,14 @@ module AutoNestCut
 
           part_material = part_instance.material
           if part_material == 'No Material' || part_material.nil? || part_material.empty?
-            stock_materials_local = current_settings['stock_materials'] || {}
-            stock_materials_local = {} unless stock_materials_local.is_a?(Hash)
-            part_material = stock_materials_local.keys.first || 'No Material'
+            # ✅ Use the flattened stock_materials from above
+            part_material = stock_materials.keys.first || 'No Material'
           end
           
-          stock_materials_local = current_settings['stock_materials'] || {}
-          stock_materials_local = {} unless stock_materials_local.is_a?(Hash)
-          material_data = stock_materials_local[part_material]
+          # ✅ Use the flattened stock_materials from above (already flattened at start of method)
+          material_data = stock_materials[part_material]
           
-          # Handle Array case
-          if material_data.is_a?(Array) && material_data.length > 0
-            material_data = material_data.first
-          end
+          # Ensure material_data is a Hash
           material_data = {} unless material_data.is_a?(Hash)
           
           density = material_data['density'] || 600
@@ -233,11 +296,8 @@ module AutoNestCut
       
       total_project_cost = unique_board_types.values.sum { |board| board[:total_cost] || 0 }
       
-      # Fix stock_materials for total_weight_kg calls (handle Array values)
-      fixed_stock_materials_for_weight = (current_settings['stock_materials'] || {}).transform_values do |val|
-        val.is_a?(Array) && val.length > 0 ? val.first : val
-      end
-      total_project_weight = boards.sum { |board| board.total_weight_kg(fixed_stock_materials_for_weight) }
+      # ✅ Use the flattened stock_materials for weight calculations
+      total_project_weight = boards.sum { |board| board.total_weight_kg(stock_materials) }
 
       # Generate cut sequences with error handling
       cut_sequences = []
@@ -260,13 +320,23 @@ module AutoNestCut
         usable_offcuts = []
       end
       
+      # Area conversion factors (from mm²)
+      area_factors = {
+        'mm2' => 1,
+        'cm2' => 100,
+        'm2' => 1000000,
+        'in2' => 645.16,
+        'ft2' => 92903.04
+      }
+      
+      area_factor = area_factors[area_units] || area_factors['m2']
+      
       report_data = {
         parts_placed: parts_placed_on_boards,
         unique_part_types: unique_part_types_summary.values.sort_by { |p| p[:name] },
         unique_board_types: unique_board_types.values.sort_by { |b| (b[:material] || '').to_s },
         boards: boards_summary, # This contains per-board data, not unique types
         cut_sequences: cut_sequences,
-
         usable_offcuts: usable_offcuts,
         summary: {
           total_parts_instances: parts_placed_on_boards.length,
@@ -275,7 +345,7 @@ module AutoNestCut
           total_stock_area: overall_total_stock_area.round(precision),
           total_used_area: (overall_total_stock_area - total_waste_area).round(precision),
           total_waste_area: total_waste_area.round(precision),
-          total_waste_area_absolute: "#{(total_waste_area / (area_units == 'm2' ? 1000000 : window.areaFactors[area_units] || 1000000)).round(2)} #{area_units == 'm2' ? 'm²' : area_units}",
+          total_waste_area_absolute: "#{(total_waste_area / area_factor).round(2)} #{area_units == 'm2' ? 'm²' : area_units}",
           overall_waste_percentage: overall_waste_percentage,
           overall_efficiency: (100.0 - overall_waste_percentage),
           total_project_cost: total_project_cost.round(2),
@@ -1167,7 +1237,9 @@ module AutoNestCut
           offcuts << {
             board_number: index + 1,
             material: board.material,
-            estimated_dimensions: "#{estimated_width} x #{estimated_height}mm",
+            estimated_dimensions: "#{estimated_width} x #{estimated_height}mm", # Keep for backward compatibility
+            estimated_width_mm: estimated_width,  # ✅ NEW: Separate width in mm
+            estimated_height_mm: estimated_height, # ✅ NEW: Separate height in mm
             area: remaining_area.round(0),
             area_m2: (remaining_area / 1000000.0).round(3)
           }

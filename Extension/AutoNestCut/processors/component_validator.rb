@@ -348,15 +348,19 @@ module AutoNestCut
     end
     
     def calculate_material_price(width, height, thickness, existing_materials, default_currency)
+      # CRITICAL FIX: Default price for auto-generated materials is now 300
+      # This ensures materials have a reasonable default price instead of 0
+      
       # Calculate area of the new material
       new_area = (width * height) / 1_000_000.0  # Convert to m²
       
-      # Find closest standard material by area
+      # Find closest standard material by area with non-zero price
       closest_material = nil
       closest_ratio = nil
       
       existing_materials.each do |name, data|
         next if name.start_with?('user_')  # Skip other user-created materials
+        next if data['price'].to_f == 0  # Skip materials with 0 price
         
         std_width = data['width'].to_f
         std_height = data['height'].to_f
@@ -370,10 +374,10 @@ module AutoNestCut
         end
       end
       
-      # If no standard material found, use default pricing
+      # If no standard material found with non-zero price, use default pricing of 300
       if closest_material.nil?
-        # Default: 50 per m² for sheet materials
-        return (new_area * 50).round(2)
+        # Default: 300 for auto-generated materials
+        return 300
       end
       
       # Calculate price based on area ratio

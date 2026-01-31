@@ -22,6 +22,29 @@ window.currencySymbols = window.currencySymbols || {
 window.currentUnits = window.currentUnits || 'mm';
 window.currentPrecision = window.currentPrecision ?? 1; // Use nullish coalescing for precision
 window.currentAreaUnits = window.currentAreaUnits || 'm2'; // Ensure this is also global
+
+// ============================================================================
+// UNIT SYSTEM DEBUG LOGGER
+// ============================================================================
+function debugUnitSystem(section, data = {}) {
+    const debugInfo = {
+        section: section,
+        timestamp: new Date().toISOString(),
+        currentUnits: window.currentUnits,
+        currentPrecision: window.currentPrecision,
+        currentAreaUnits: window.currentAreaUnits,
+        defaultCurrency: window.defaultCurrency,
+        ...data
+    };
+    
+    console.log(`🔍 [UNIT DEBUG] ${section}:`, debugInfo);
+    
+    // Check for hardcoded units
+    if (data.detectedUnit && data.detectedUnit !== window.currentUnits) {
+        console.warn(`⚠️ [UNIT MISMATCH] ${section}: Using "${data.detectedUnit}" but settings say "${window.currentUnits}"`);
+    }
+}
+
 window.areaFactors = window.areaFactors || {
     'mm2': 1,
     'cm2': 100,
@@ -152,9 +175,28 @@ function receiveData(data) {
         window.currentPrecision = g_reportData.summary.precision ?? 1;
         window.defaultCurrency = g_reportData.summary.currency || 'USD';
         window.currentAreaUnits = g_reportData.summary.area_units || 'm2';
-        console.log('✓ Report summary settings loaded');
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('🔧 FRONTEND SETTINGS DEBUG');
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('✓ Report summary settings loaded:');
+        console.log('  - Units:', window.currentUnits);
+        console.log('  - Precision:', window.currentPrecision);
+        console.log('  - Currency:', window.defaultCurrency);
+        console.log('  - Area Units:', window.currentAreaUnits);
+        console.log('  - Unit Factors:', window.unitFactors);
+        console.log('');
+        console.log('🧪 CONVERSION TEST:');
+        console.log('  - 300mm in current units:', (300 / window.unitFactors[window.currentUnits]).toFixed(window.currentPrecision), window.currentUnits);
+        console.log('  - 2440mm in current units:', (2440 / window.unitFactors[window.currentUnits]).toFixed(window.currentPrecision), window.currentUnits);
+        console.log('═══════════════════════════════════════════════════════════');
+        
+        // Update the unit debug display
+        if (typeof updateUnitDebugDisplay === 'function') {
+            updateUnitDebugDisplay();
+        }
     } else {
-        console.warn('⚠️  No report summary found');
+        console.error('⚠️  No report summary found or g_reportData is null!');
+        console.error('g_reportData:', g_reportData);
     }
 
     console.log('🎨 Calling renderDiagrams()...');
@@ -771,19 +813,45 @@ function renderOffcutsTable(reportData) {
         return;
     }
     
+    const currentAreaUnitLabel = getAreaUnitLabel();
+    const reportUnits = window.reportUnits || window.currentUnits || 'mm';
+    
     if (reportData.usable_offcuts.length === 0) {
-        table.innerHTML = '<thead><tr><th>Sheet #</th><th>Material</th><th>Estimated Size</th><th>Area (m²)</th></tr></thead><tbody><tr><td colspan="4">No significant offcuts</td></tr></tbody>';
+        table.innerHTML = `<thead><tr><th>Sheet #</th><th>Material</th><th>Width (${reportUnits})</th><th>Height (${reportUnits})</th><th>Area (${currentAreaUnitLabel})</th></tr></thead><tbody><tr><td colspan="5">No significant offcuts</td></tr></tbody>`;
         return;
     }
     
-    let html = '<thead><tr><th>Sheet #</th><th>Material</th><th>Estimated Size</th><th>Area (m²)</th></tr></thead><tbody>';
+    let html = `<thead><tr><th>Sheet #</th><th>Material</th><th>Width (${reportUnits})</th><th>Height (${reportUnits})</th><th>Area (${currentAreaUnitLabel})</th></tr></thead><tbody>`;
     
     reportData.usable_offcuts.forEach(offcut => {
+        // Convert area from m² to current area units
+        const areaMM2 = offcut.area_m2 * 1000000; // Convert m² to mm²
+        const convertedArea = getAreaDisplay(areaMM2);
+        
+        // ✅ NEW: Convert dimensions from mm to current units
+        let width, height;
+        if (offcut.estimated_width_mm !== undefined && offcut.estimated_height_mm !== undefined) {
+            // Use separate fields if available
+            width = formatDimension(offcut.estimated_width_mm);
+            height = formatDimension(offcut.estimated_height_mm);
+        } else {
+            // Fallback: Parse the old format "1952 x 922mm"
+            const match = offcut.estimated_dimensions.match(/(\d+)\s*x\s*(\d+)/);
+            if (match) {
+                width = formatDimension(parseFloat(match[1]));
+                height = formatDimension(parseFloat(match[2]));
+            } else {
+                width = offcut.estimated_dimensions;
+                height = '';
+            }
+        }
+        
         html += `<tr>
             <td>${offcut.board_number}</td>
             <td>${escapeHtml(offcut.material)}</td>
-            <td>${escapeHtml(offcut.estimated_dimensions)}</td>
-            <td>${formatNumber(offcut.area_m2, 2)}</td>
+            <td>${width}</td>
+            <td>${height}</td>
+            <td>${convertedArea}</td>
         </tr>`;
     });
     
@@ -2490,12 +2558,35 @@ function copyFullReportAsMarkdown() {
     
     // Usable Offcuts
     if (g_reportData.usable_offcuts && g_reportData.usable_offcuts.length > 0) {
+        const currentAreaUnitLabel = getAreaUnitLabel();
+        const reportUnits = window.reportUnits || window.currentUnits || 'mm';
         markdown += `## Usable Offcuts\n\n`;
-        markdown += `| Sheet # | Material | Estimated Size | Area (m²) |\n`;
-        markdown += `|---------|----------|----------------|----------|\n`;
+        markdown += `| Sheet # | Material | Width (${reportUnits}) | Height (${reportUnits}) | Area (${currentAreaUnitLabel}) |\n`;
+        markdown += `|---------|----------|------------|-------------|----------|\n`;
         
         g_reportData.usable_offcuts.forEach(offcut => {
-            markdown += `| ${offcut.board_number} | ${offcut.material} | ${offcut.estimated_dimensions} | ${formatNumber(offcut.area_m2, 2)} |\n`;
+            // Convert area from m² to current area units
+            const areaMM2 = offcut.area_m2 * 1000000;
+            const convertedArea = getAreaDisplay(areaMM2);
+            
+            // ✅ NEW: Convert dimensions from mm to current units
+            let width, height;
+            if (offcut.estimated_width_mm !== undefined && offcut.estimated_height_mm !== undefined) {
+                width = formatDimension(offcut.estimated_width_mm);
+                height = formatDimension(offcut.estimated_height_mm);
+            } else {
+                // Fallback: Parse the old format
+                const match = offcut.estimated_dimensions.match(/(\d+)\s*x\s*(\d+)/);
+                if (match) {
+                    width = formatDimension(parseFloat(match[1]));
+                    height = formatDimension(parseFloat(match[2]));
+                } else {
+                    width = offcut.estimated_dimensions;
+                    height = '';
+                }
+            }
+            
+            markdown += `| ${offcut.board_number} | ${offcut.material} | ${width} | ${height} | ${convertedArea} |\n`;
         });
         markdown += `\n`;
     }
