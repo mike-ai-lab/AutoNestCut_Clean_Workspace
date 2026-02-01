@@ -302,7 +302,9 @@ module AutoNestCut
       end
 
     rescue => e
-      UI.messagebox("An error occurred during part extraction:\n#{e.message}")
+      error_details = "An error occurred during part extraction:\n#{e.message}\n\nBacktrace:\n#{e.backtrace.first(10).join("\n")}"
+      puts error_details
+      UI.messagebox(error_details)
     end
   end
 
@@ -715,6 +717,62 @@ module AutoNestCut
     end
     
     SvgExportUI.show_svg_export_dialog(entity)
+  end
+  
+  def self.show_label_sheet_generator
+    # Get selected components
+    model = Sketchup.active_model
+    selection = model.selection
+    
+    if selection.empty?
+      UI.messagebox(
+        "Please select components or groups first.\n\nThe label sheet generator needs parts to create labels for.",
+        MB_OK,
+        "Selection Required"
+      )
+      return
+    end
+    
+    begin
+      # Analyze selection to get parts
+      analyzer = ModelAnalyzer.new
+      parts_by_material = analyzer.analyze_selection(selection)
+      
+      if parts_by_material.empty?
+        UI.messagebox("No valid parts found in selection.")
+        return
+      end
+      
+      # Flatten parts data for label generation
+      all_parts = []
+      parts_by_material.each do |material, part_entries|
+        part_entries.each do |entry|
+          part_obj = entry.is_a?(Hash) && entry.key?(:part_type) ? entry[:part_type] : entry
+          
+          # Extract part data
+          part_data = {
+            part_id: part_obj.respond_to?(:id) ? part_obj.id : "N/A",
+            name: part_obj.respond_to?(:name) ? part_obj.name : "Unknown",
+            width: part_obj.respond_to?(:width) ? part_obj.width : 0,
+            height: part_obj.respond_to?(:height) ? part_obj.height : 0,
+            thickness: part_obj.respond_to?(:thickness) ? part_obj.thickness : 0,
+            material: material,
+            board_number: entry.is_a?(Hash) ? entry[:board_number] : nil
+          }
+          
+          all_parts << part_data
+        end
+      end
+      
+      # Generate label sheet with preview
+      generator = LabelSheetGenerator.new('custom')
+      generator.generate_label_sheet(all_parts, nil, true) # true = preview mode
+      
+    rescue => e
+      error_msg = "Error generating label sheet:\n#{e.message}\n\n#{e.backtrace.first(3).join("\n")}"
+      puts error_msg
+      UI.messagebox(error_msg)
+    end
   end
   
   def self.show_material_database

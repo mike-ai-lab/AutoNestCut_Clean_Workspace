@@ -129,10 +129,12 @@ module AutoNestCut
         part_type = AutoNestCut::Part.new(entity, detected_material)
         material_name = part_type.material
         thickness = part_type.thickness
+        grain_direction = part_type.grain_direction || 'Any'
         
-        # CRITICAL FIX: Group by BOTH material AND thickness
-        # Parts with same material but different thickness MUST be on separate sheets!
-        material_key = "#{material_name}_#{thickness.round(2)}mm"
+        # CRITICAL FIX: Group by material, thickness, AND grain direction
+        # Parts with different grain directions CANNOT be cut from the same sheet!
+        # A sheet has a fixed grain direction - you cannot mix vertical and horizontal grain parts
+        material_key = "#{material_name}_#{thickness.round(2)}mm_grain_#{grain_direction}"
         
         # Material detection complete
         
@@ -140,36 +142,21 @@ module AutoNestCut
         part_types_by_material[material_key] << { part_type: part_type, total_quantity: total_count_for_type }
       end
       
-      # Parts by material analysis complete
-
-      puts "\n=== FINAL MATERIAL GROUPING ==="
-      part_types_by_material.each do |mat, parts|
-        puts "Material: #{mat.inspect} => #{parts.length} part types"
-      end
-      puts "================================\n"
-      
-      # CRITICAL: Generate unique names for unnamed parts
-      puts "\n🔧 GENERATING UNIQUE NAMES FOR UNNAMED PARTS..."
+      # Generate unique names for unnamed parts
       global_part_counter = 1
       part_types_by_material.each do |material_name, parts_array|
         parts_array.each do |part_data|
           part = part_data[:part_type]
           original_name = part.name
           
-          puts "🔍 Checking part: '#{original_name.inspect}'"
-          
           # Check if name is nil, empty, "Part", or starts with "Unnamed"
           if original_name.nil? || original_name.empty? || original_name == "Part" || original_name.start_with?("Unnamed")
             new_name = "Part_#{global_part_counter}"
             part.name = new_name
             global_part_counter += 1
-            puts "✅ Renamed '#{original_name}' → '#{new_name}'"
-          else
-            puts "⚠️ Keeping original name '#{original_name}'"
           end
         end
       end
-      puts "🔧 UNIQUE NAME GENERATION COMPLETE\n"
       
       # Check for material mismatches and generate warnings
       warnings = []

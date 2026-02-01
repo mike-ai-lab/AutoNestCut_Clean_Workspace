@@ -588,16 +588,21 @@ module AutoNestCut
             <style>
                 @page {
                     size: A4;
-                    margin: 15mm;
+                    margin: 20mm;
+                }
+                
+                * {
+                    box-sizing: border-box;
                 }
                 
                 body {
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    line-height: 1.6;
-                    color: #333;
-                    background: #f5f5f5;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                    line-height: 1.5;
+                    color: #1a1a1a;
+                    background: #f8f9fa;
                     margin: 0;
                     padding: 0;
+                    font-size: 10pt;
                 }
                 
                 @media print {
@@ -618,178 +623,328 @@ module AutoNestCut
                     h2, h3 {
                         page-break-after: avoid;
                     }
+                    .section-card {
+                        page-break-inside: avoid;
+                    }
                 }
                 
                 .pdf-container {
                     max-width: 210mm;
                     min-height: 297mm;
                     margin: 0 auto;
-                    padding: 15mm;
+                    padding: 20mm;
                     background: white;
-                    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
                 }
                 
                 @media print {
                     .pdf-container {
                         box-shadow: none;
                         margin: 0;
-                        padding: 15mm;
+                        padding: 20mm;
                         max-width: 100%;
                     }
                 }
                 
+                /* Cover Page */
                 .cover-page {
                     display: flex;
                     flex-direction: column;
                     justify-content: center;
                     align-items: center;
-                    height: 100%;
+                    min-height: 250mm;
                     text-align: center;
-                    border-bottom: 3px solid #007cba;
-                    padding-bottom: 40px;
+                    position: relative;
+                }
+                
+                .cover-page::after {
+                    content: '';
+                    position: absolute;
+                    bottom: 60px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    width: 80%;
+                    height: 1px;
+                    background: linear-gradient(to right, transparent, #2c3e50, transparent);
                 }
                 
                 .cover-page h1 {
-                    font-size: 48px;
-                    color: #007cba;
-                    margin-bottom: 20px;
-                    font-weight: 700;
+                    font-size: 52px;
+                    color: #2c3e50;
+                    margin: 0 0 16px 0;
+                    font-weight: 300;
+                    letter-spacing: -1px;
                 }
                 
                 .cover-page .project-name {
-                    font-size: 28px;
-                    color: #333;
-                    margin-bottom: 40px;
+                    font-size: 32px;
+                    color: #2c3e50;
+                    margin: 0 0 60px 0;
                     font-weight: 600;
+                    letter-spacing: -0.5px;
                 }
                 
                 .cover-page .metadata {
-                    font-size: 14px;
-                    color: #666;
-                    line-height: 2;
-                    margin-bottom: 40px;
+                    font-size: 13px;
+                    color: #5a6c7d;
+                    line-height: 2.2;
+                    margin-bottom: 60px;
+                }
+                
+                .cover-page .metadata div {
+                    margin: 8px 0;
+                }
+                
+                .cover-page .metadata strong {
+                    color: #2c3e50;
+                    font-weight: 600;
+                    display: inline-block;
+                    min-width: 120px;
+                    text-align: right;
+                    margin-right: 12px;
                 }
                 
                 .cover-page .footer {
-                    font-size: 12px;
-                    color: #999;
+                    font-size: 11px;
+                    color: #95a5a6;
                     font-style: italic;
-                    margin-top: 60px;
+                    margin-top: 80px;
+                    line-height: 1.8;
                 }
                 
+                /* Section Headers */
                 h2 {
-                    font-size: 24px;
-                    color: #007cba;
-                    margin: 30px 0 20px 0;
-                    padding-bottom: 10px;
-                    border-bottom: 2px solid #007cba;
-                    font-weight: 700;
+                    font-size: 22px;
+                    color: #2c3e50;
+                    margin: 40px 0 24px 0;
+                    padding: 0 0 12px 0;
+                    font-weight: 600;
+                    letter-spacing: -0.3px;
+                    border-bottom: 2px solid #e9ecef;
+                    position: relative;
+                }
+                
+                h2::before {
+                    content: '';
+                    position: absolute;
+                    bottom: -2px;
+                    left: 0;
+                    width: 60px;
+                    height: 2px;
+                    background: #2c3e50;
                 }
                 
                 h3 {
-                    font-size: 18px;
-                    color: #333;
-                    margin: 20px 0 15px 0;
+                    font-size: 16px;
+                    color: #2c3e50;
+                    margin: 28px 0 16px 0;
                     font-weight: 600;
+                    letter-spacing: -0.2px;
                 }
                 
                 h4 {
-                    font-size: 14px;
-                    color: #555;
-                    margin: 15px 0 10px 0;
+                    font-size: 13px;
+                    color: #495057;
+                    margin: 20px 0 12px 0;
                     font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    font-size: 11px;
                 }
                 
+                /* Tables */
                 table {
                     width: 100%;
-                    border-collapse: collapse;
-                    margin: 15px 0;
-                    font-size: 12px;
+                    border-collapse: separate;
+                    border-spacing: 0;
+                    margin: 20px 0;
+                    font-size: 10pt;
+                    border: 1px solid #dee2e6;
+                    border-radius: 4px;
+                    overflow: hidden;
                 }
                 
                 th {
-                    background: #007cba;
+                    background: #2c3e50;
                     color: white;
-                    padding: 12px;
+                    padding: 12px 14px;
                     text-align: left;
                     font-weight: 600;
-                    border: 1px solid #005a87;
+                    font-size: 10pt;
+                    letter-spacing: 0.3px;
+                    border-bottom: 2px solid #1a252f;
                 }
                 
                 td {
-                    padding: 10px 12px;
-                    border: 1px solid #ddd;
+                    padding: 11px 14px;
+                    border-bottom: 1px solid #e9ecef;
+                    color: #495057;
+                }
+                
+                tr:last-child td {
+                    border-bottom: none;
                 }
                 
                 tr:nth-child(even) {
-                    background: #f9f9f9;
+                    background: #f8f9fa;
                 }
                 
                 tr:hover {
-                    background: #f0f0f0;
+                    background: #f1f3f5;
                 }
                 
+                /* Summary Cards */
                 .summary-box {
-                    background: #f0f9ff;
-                    border-left: 4px solid #007cba;
-                    padding: 15px;
-                    margin: 15px 0;
+                    border: 1px solid #dee2e6;
+                    border-left: 4px solid #2c3e50;
+                    padding: 20px 24px;
+                    margin: 24px 0;
                     border-radius: 4px;
+                    background: #ffffff;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
                 }
                 
                 .summary-box strong {
-                    color: #007cba;
+                    color: #2c3e50;
+                    font-weight: 600;
+                    display: inline-block;
+                    min-width: 180px;
                 }
                 
-                .diagram-section {
+                .summary-box br {
+                    display: block;
+                    content: '';
+                    margin: 10px 0;
+                }
+                
+                /* Section Cards */
+                .section-card {
+                    border: 1px solid #dee2e6;
+                    border-radius: 6px;
+                    padding: 24px;
                     margin: 20px 0;
+                    background: #ffffff;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+                }
+                
+                .section-card h3 {
+                    margin-top: 0;
+                    padding-bottom: 12px;
+                    border-bottom: 1px solid #e9ecef;
+                }
+                
+                /* Diagram Section */
+                .diagram-section {
+                    margin: 24px 0;
+                    padding: 20px;
+                    border: 1px solid #dee2e6;
+                    border-radius: 6px;
+                    background: #ffffff;
                     page-break-inside: avoid;
+                }
+                
+                .diagram-section h3 {
+                    margin-top: 0;
+                    color: #2c3e50;
+                    font-size: 15px;
+                    padding-bottom: 12px;
+                    border-bottom: 1px solid #e9ecef;
+                }
+                
+                .diagram-section p {
+                    margin: 8px 0;
+                    font-size: 10pt;
+                    color: #495057;
+                }
+                
+                .diagram-section p strong {
+                    color: #2c3e50;
+                    font-weight: 600;
+                    display: inline-block;
+                    min-width: 100px;
                 }
                 
                 .diagram-image {
                     max-width: 100%;
                     height: auto;
-                    border: 1px solid #ddd;
+                    border: 1px solid #dee2e6;
                     border-radius: 4px;
-                    margin: 10px 0;
+                    margin: 16px 0;
                 }
                 
                 .diagram-info {
-                    font-size: 11px;
-                    color: #666;
-                    margin-top: 8px;
+                    font-size: 10px;
+                    color: #6c757d;
+                    margin-top: 12px;
                     font-style: italic;
+                    padding: 12px;
+                    background: #f8f9fa;
+                    border-radius: 4px;
+                    text-align: center;
                 }
                 
+                /* Stats Grid */
+                .stats-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 16px;
+                    margin: 24px 0;
+                }
+                
+                .stat-card {
+                    border: 1px solid #dee2e6;
+                    border-radius: 4px;
+                    padding: 16px;
+                    background: #ffffff;
+                }
+                
+                .stat-label {
+                    font-size: 10px;
+                    color: #6c757d;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 6px;
+                    font-weight: 600;
+                }
+                
+                .stat-value {
+                    font-size: 20px;
+                    color: #2c3e50;
+                    font-weight: 600;
+                }
+                
+                /* Page Break */
                 .page-break {
                     page-break-after: always;
-                    margin: 40px 0;
+                    margin: 0;
+                    height: 0;
                 }
                 
+                /* Print Controls */
                 .print-controls {
                     position: fixed;
-                    top: 20px;
-                    right: 20px;
+                    top: 24px;
+                    right: 24px;
                     z-index: 1000;
                     background: white;
                     padding: 20px;
                     border-radius: 8px;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
                     display: flex;
                     flex-direction: column;
-                    gap: 10px;
+                    gap: 12px;
                 }
                 
                 .print-controls button {
-                    background: #007cba;
+                    background: #2c3e50;
                     color: white;
                     border: none;
                     padding: 12px 24px;
                     border-radius: 6px;
                     cursor: pointer;
-                    font-size: 15px;
+                    font-size: 14px;
                     font-weight: 600;
-                    transition: all 0.3s;
+                    transition: all 0.2s;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -798,9 +953,9 @@ module AutoNestCut
                 }
                 
                 .print-controls button:hover {
-                    background: #005a87;
-                    transform: translateY(-2px);
-                    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+                    background: #1a252f;
+                    transform: translateY(-1px);
+                    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
                 }
                 
                 .print-controls button.close {
@@ -811,13 +966,14 @@ module AutoNestCut
                     background: #5a6268;
                 }
                 
+                /* Efficiency Indicators */
                 .efficiency-high {
                     color: #28a745;
                     font-weight: 600;
                 }
                 
                 .efficiency-medium {
-                    color: #ffc107;
+                    color: #fd7e14;
                     font-weight: 600;
                 }
                 
@@ -826,17 +982,25 @@ module AutoNestCut
                     font-weight: 600;
                 }
                 
+                /* Material Row */
                 .material-row {
                     page-break-inside: avoid;
                 }
                 
+                .material-row td:last-child {
+                    font-weight: 600;
+                    color: #2c3e50;
+                }
+                
+                /* Footer */
                 .footer-text {
-                    font-size: 10px;
-                    color: #999;
+                    font-size: 9px;
+                    color: #95a5a6;
                     text-align: center;
-                    margin-top: 20px;
-                    padding-top: 10px;
-                    border-top: 1px solid #ddd;
+                    margin-top: 32px;
+                    padding-top: 16px;
+                    border-top: 1px solid #e9ecef;
+                    line-height: 1.6;
                 }
             </style>
         </head>

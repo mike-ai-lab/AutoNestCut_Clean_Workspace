@@ -766,6 +766,21 @@
             border-color: #FEB2B2;
             color: #E53E3E;
         }
+        
+        /* ========================================
+           SVG PART HIGHLIGHTING (CSS-based)
+           ======================================== */
+        
+        /* Highlighted part - orange stroke with increased width */
+        .part-group.highlighted rect[stroke] {
+            stroke: #ff6b00 !important;
+            stroke-width: 5 !important;
+        }
+        
+        /* Smooth transition for highlighting */
+        .part-group rect[stroke] {
+            transition: stroke 0.2s ease, stroke-width 0.2s ease;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -1122,6 +1137,12 @@
                 <div class="report-table-container">
                     <table id="sheetInventoryTable"></table>
                 </div>
+                
+                <h2 class="report-subsection-title">Boards Summary</h2>
+                <div id="boardsSummaryContainer"></div>
+                
+                <h2 class="report-subsection-title">Cut Sequences</h2>
+                <div id="cutSequencesContainer"></div>
                 
                 <h2 class="report-subsection-title">Usable Offcuts</h2>
                 <div class="report-table-container">
@@ -3183,6 +3204,7 @@
     </script>
     <script src="app.js"></script>
     <script src="unit_debug.js"></script>
+    <script src="svg_diagram_generator.js"></script>
     <script src="diagrams_report.js?v=20250201_AGGRESSIVE_FIX"></script>
     <script src="card_visualizations.js"></script>
     <script src="resizer_fix.js"></script>
@@ -3391,7 +3413,7 @@
         }
         
         function exportToPDF() {
-            // Call showPDFPreview which triggers Ruby PDF export with ReportPdfExporter
+            // Use the ORIGINAL Ruby-based PDF export with preview window
             showPDFPreview();
         }
         
@@ -3805,12 +3827,27 @@
             const reportPrecision = window.currentPrecision ?? 1;
             const currentAreaUnitLabel = getAreaUnitLabel();
             
-            let html = `<thead><tr><th>Part Name</th><th>Width (${reportUnits})</th><th>Height (${reportUnits})</th><th>Thickness (${reportUnits})</th><th>Material</th><th>Grain</th><th>Qty</th><th>Area (${currentAreaUnitLabel})</th></tr></thead><tbody>`;
+            let html = `<thead><tr><th>Part Name</th><th>Width (${reportUnits})</th><th>Height (${reportUnits})</th><th>Thickness (${reportUnits})</th><th>Material</th><th>Grain</th><th>Edge Banding</th><th>Qty</th><th>Area (${currentAreaUnitLabel})</th></tr></thead><tbody>`;
             
             reportData.unique_part_types.forEach(part_type => {
                 const width = part_type.width / window.unitFactors[reportUnits];
                 const height = part_type.height / window.unitFactors[reportUnits];
                 const thickness = part_type.thickness / window.unitFactors[reportUnits];
+                
+                // Handle edge banding display
+                let edgeBandingDisplay = 'None';
+                if (part_type.edge_banding_display) {
+                    edgeBandingDisplay = part_type.edge_banding_display;
+                } else if (part_type.edge_banding && typeof part_type.edge_banding === 'object' && part_type.edge_banding.type !== 'None') {
+                    const edges = part_type.edge_banding.edges || [];
+                    if (edges.length > 0) {
+                        edgeBandingDisplay = `${part_type.edge_banding.type} (${edges.join(', ')})`;
+                    } else {
+                        edgeBandingDisplay = part_type.edge_banding.type;
+                    }
+                } else if (part_type.edge_banding && part_type.edge_banding !== 'None') {
+                    edgeBandingDisplay = typeof part_type.edge_banding === 'object' ? part_type.edge_banding.type || 'None' : part_type.edge_banding;
+                }
                 
                 html += `<tr>
                     <td>${part_type.name}</td>
@@ -3819,6 +3856,7 @@
                     <td>${formatNumber(thickness, reportPrecision)}</td>
                     <td>${part_type.material}</td>
                     <td>${part_type.grain_direction || 'Any'}</td>
+                    <td>${escapeHtml(edgeBandingDisplay)}</td>
                     <td class="total-highlight">${part_type.total_quantity}</td>
                     <td>${getAreaDisplay(part_type.total_area)}</td>
                 </tr>`;
@@ -3928,11 +3966,18 @@
                 const height = (part.height || 0) / window.unitFactors[reportUnits];
                 const partId = part.part_unique_id || part.instance_id || `P${index + 1}`;
                 
-                // Handle edge banding display
+                // Handle edge banding display - use edge_banding_display if available
                 let edgeBandingDisplay = 'None';
-                if (part.edge_banding_summary && part.edge_banding_summary.type !== 'None') {
-                    const summary = part.edge_banding_summary;
-                    edgeBandingDisplay = `${summary.type} (${summary.total_length}mm)`;
+                if (part.edge_banding_display) {
+                    edgeBandingDisplay = part.edge_banding_display;
+                } else if (part.edge_banding && typeof part.edge_banding === 'object' && part.edge_banding.type !== 'None') {
+                    // Fallback: construct display from edge_banding object
+                    const edges = part.edge_banding.edges || [];
+                    if (edges.length > 0) {
+                        edgeBandingDisplay = `${part.edge_banding.type} (${edges.join(', ')})`;
+                    } else {
+                        edgeBandingDisplay = part.edge_banding.type;
+                    }
                 } else if (part.edge_banding && part.edge_banding !== 'None') {
                     edgeBandingDisplay = typeof part.edge_banding === 'object' ? part.edge_banding.type || 'None' : part.edge_banding;
                 }
@@ -3994,15 +4039,17 @@
             reportData.cut_sequences.forEach(board => {
                 html += `<div class="board-summary">
                     <h3>Sheet ${board.board_number}: ${escapeHtml(board.material)}</h3>
-                    <p><strong>Stock Size:</strong> ${escapeHtml(board.stock_dimensions)}</p>
+                    <p><strong>Stock Size:</strong> ${escapeHtml(board.stock_size || board.stock_dimensions)}</p>
                     <table>
                         <thead><tr><th>Step</th><th>Operation</th><th>Description</th><th>Measurement</th></tr></thead>
                         <tbody>`;
                 
-                board.cut_sequence.forEach(step => {
+                // Handle both 'steps' (new) and 'cut_sequence' (old) for backwards compatibility
+                const steps = board.steps || board.cut_sequence || [];
+                steps.forEach(step => {
                     html += `<tr>
                         <td>${step.step}</td>
-                        <td>${escapeHtml(step.type)}</td>
+                        <td>${escapeHtml(step.operation || step.type)}</td>
                         <td>${escapeHtml(step.description)}</td>
                         <td>${escapeHtml(step.measurement)}</td>
                     </tr>`;
@@ -4911,31 +4958,31 @@ th:nth-child(n+2):not(#uniquePartTypesTable th:nth-child(5)):not(#uniquePartType
     text-align: left;
 }
 #uniquePartTypesTable th:nth-child(1), #uniquePartTypesTable td:nth-child(1) { /* Name */
-    width: 20%;
+    width: 18%;
 }
 #uniquePartTypesTable th:nth-child(2), #uniquePartTypesTable td:nth-child(2) { /* W */
-    width: 9%;
+    width: 8%;
 }
 #uniquePartTypesTable th:nth-child(3), #uniquePartTypesTable td:nth-child(3) { /* H */
-    width: 9%;
+    width: 8%;
 }
 #uniquePartTypesTable th:nth-child(4), #uniquePartTypesTable td:nth-child(4) { /* Thick */
-    width: 9%;
+    width: 8%;
 }
 #uniquePartTypesTable th:nth-child(5), #uniquePartTypesTable td:nth-child(5) { /* Material */
-    width: 15%;
+    width: 13%;
 }
 #uniquePartTypesTable th:nth-child(6), #uniquePartTypesTable td:nth-child(6) { /* Grain */
-    width: 8%; /* Reduced width */
+    width: 7%;
 }
 #uniquePartTypesTable th:nth-child(7), #uniquePartTypesTable td:nth-child(7) { /* Edge Banding */
-    width: 10%;
+    width: 12%;
 }
 #uniquePartTypesTable th:nth-child(8), #uniquePartTypesTable td:nth-child(8) { /* Qty */
     width: 5%;
 }
 #uniquePartTypesTable th:nth-child(9), #uniquePartTypesTable td:nth-child(9) { /* Total Area */
-    width: 15%; /* Increased width */
+    width: 13%;
 }
 @media (max-width: 768px) {
     .table-wrapper, .table-with-controls {
@@ -6210,19 +6257,28 @@ td .cost-breakdown-wrapper {
             console.log('Cost table HTML:', costTable);
             
             if (typeof callRuby === 'function') {
-                // Capture diagram images from canvas elements
-                const diagramImages = captureDiagramImages();
-                
-                // Send JSON with assembly data and diagram images
-                const dataToSend = {
-                    report: currentReportData?.report || g_reportData || {},
-                    diagrams: currentReportData?.diagrams || g_boardsData || [],
-                    diagram_images: diagramImages,
-                    original_components: currentReportData?.original_components || window.originalComponents || [],
-                    hierarchy_tree: currentReportData?.hierarchy_tree || window.hierarchyTree || [],
-                    assembly_data: currentReportData?.assembly_data || window.assemblyData || null
-                };
-                callRuby('print_pdf', JSON.stringify(dataToSend));
+                // CRITICAL FIX: Await async diagram capture
+                (async () => {
+                    try {
+                        console.log('📸 Starting async diagram capture for PDF...');
+                        const diagramImages = await captureDiagramImages();
+                        console.log(`📸 Captured ${diagramImages.length} diagram images for PDF`);
+                        
+                        // Send JSON with assembly data and diagram images
+                        const dataToSend = {
+                            report: currentReportData?.report || g_reportData || {},
+                            diagrams: currentReportData?.diagrams || g_boardsData || [],
+                            diagram_images: diagramImages,
+                            original_components: currentReportData?.original_components || window.originalComponents || [],
+                            hierarchy_tree: currentReportData?.hierarchy_tree || window.hierarchyTree || [],
+                            assembly_data: currentReportData?.assembly_data || window.assemblyData || null
+                        };
+                        callRuby('print_pdf', JSON.stringify(dataToSend));
+                    } catch (error) {
+                        console.error('❌ Error capturing diagrams for PDF:', error);
+                        alert('Error capturing diagrams for PDF export. Please try again.');
+                    }
+                })();
             } else {
                 // Fallback: open in new window for printing
                 const printWindow = window.open('', '_blank');

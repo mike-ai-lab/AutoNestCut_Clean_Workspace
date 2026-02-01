@@ -62,7 +62,7 @@ module AutoNestCut
       'avery_5160' => { cols: 3, rows: 10, width: 66.7, height: 25.4, margin_top: 12.7, margin_left: 4.8, spacing_h: 3.2, spacing_v: 0 },
       'avery_5163' => { cols: 2, rows: 5, width: 101.6, height: 50.8, margin_top: 12.7, margin_left: 4.8, spacing_h: 3.2, spacing_v: 0 },
       'avery_5164' => { cols: 2, rows: 3, width: 101.6, height: 84.7, margin_top: 16.9, margin_left: 4.8, spacing_h: 3.2, spacing_v: 0 },
-      'custom' => { cols: 3, rows: 8, width: 70, height: 35, margin_top: 10, margin_left: 5, spacing_h: 5, spacing_v: 5 }
+      'custom' => { cols: 3, rows: 4, width: 65, height: 35, spacing_h: 5, spacing_v: 8 }  # Balanced layout: 3x4 with proper spacing
     }
     
     def initialize(format = 'custom')
@@ -77,32 +77,54 @@ module AutoNestCut
       puts "LABEL SHEET GENERATOR"
       puts "="*80
       puts "Format: #{@format[:width]}mm x #{@format[:height]}mm"
+      puts "Grid: #{@format[:cols]} cols x #{@format[:rows]} rows"
       puts "Total parts: #{parts_data.length}"
       puts "Preview mode: #{preview_mode}"
       
       Prawn::Document.generate(output_path, 
-        page_size: 'LETTER',
-        margin: 0,
+        page_size: 'A4',
+        page_layout: :portrait,
+        margin: [50, 50, 50, 50],  # Consistent margins
         info: { Title: 'Part Labels', Creator: 'AutoNestCut' }
       ) do |pdf|
         
-        # Set a clean sans-serif font standard
+        # Set a clean sans-serif font
         pdf.font "Helvetica"
         
         labels_per_page = @format[:cols] * @format[:rows]
         
+        # Calculate total width needed for labels
+        total_width_needed_mm = (@format[:cols] * @format[:width]) + ((@format[:cols] - 1) * @format[:spacing_h])
+        
+        # Get available width from PDF bounds and convert to mm
+        available_width_pt = pdf.bounds.width
+        available_width_mm = available_width_pt / 2.83465
+        
+        # Calculate left margin to center labels
+        margin_left_mm = (available_width_mm - total_width_needed_mm) / 2
+        
+        # Starting Y position
+        start_y_pt = pdf.cursor
+        
         parts_data.each_with_index do |part, index|
-          # Calculate position logic
+          # Start new page if needed
+          if index > 0 && index % labels_per_page == 0
+            pdf.start_new_page
+            start_y_pt = pdf.cursor
+          end
+          
+          # Calculate position on current page
           label_on_page = index % labels_per_page
           row = label_on_page / @format[:cols]
           col = label_on_page % @format[:cols]
           
-          # Start new page if needed
-          pdf.start_new_page if label_on_page == 0 && index > 0
+          # Calculate position in mm
+          x_mm = margin_left_mm + (col * (@format[:width] + @format[:spacing_h]))
+          y_offset_mm = row * (@format[:height] + @format[:spacing_v])
           
-          # Calculate coordinates (mm -> pt conversion happens here)
-          x_pos = mm_to_pt(@format[:margin_left] + (col * (@format[:width] + @format[:spacing_h])))
-          y_pos = pdf.bounds.height - mm_to_pt(@format[:margin_top] + (row * (@format[:height] + @format[:spacing_v])))
+          # Convert to points
+          x_pos = mm_to_pt(x_mm)
+          y_pos = start_y_pt - mm_to_pt(y_offset_mm)
           
           # Render the modern label
           render_modern_label(pdf, part, x_pos, y_pos)
@@ -125,23 +147,23 @@ module AutoNestCut
     private
     
     def format_qr_data(part_data)
-      # Create a multi-line text format that displays nicely when scanned
-      # Most QR scanners will show this as plain text
+      # Create COMPACT format for better QR scannability
+      # Shorter labels = smaller QR code = easier to scan
       
       id = (part_data[:part_id] || part_data['part_id'] || "N/A").to_s
-      name = (part_data[:name] || part_data['name'] || "Unknown Part").to_s
-      w_dim = (part_data[:width] || part_data['width'] || 0).to_f.round(1)
-      h_dim = (part_data[:height] || part_data['height'] || 0).to_f.round(1)
-      thick = (part_data[:thickness] || part_data['thickness'] || 0).to_f.round(1)
+      name = (part_data[:name] || part_data['name'] || "Unknown").to_s
+      w_dim = (part_data[:width] || part_data['width'] || 0).to_f.round(0) # No decimals
+      h_dim = (part_data[:height] || part_data['height'] || 0).to_f.round(0)
+      thick = (part_data[:thickness] || part_data['thickness'] || 0).to_f.round(0)
       material = (part_data[:material] || part_data['material'] || "").to_s
       board = part_data[:board_number] || part_data['board_number']
       
-      # Format as readable multi-line text
-      qr_text = "PART: #{id}\n"
-      qr_text += "NAME: #{name}\n"
-      qr_text += "SIZE: #{w_dim} x #{h_dim} x #{thick}mm\n"
-      qr_text += "MATERIAL: #{material}\n" unless material.empty?
-      qr_text += "BOARD: ##{board}" if board
+      # COMPACT format - shorter text for better scanning
+      qr_text = "ID:#{id}\n"
+      qr_text += "#{name}\n" # Name without label
+      qr_text += "#{w_dim}x#{h_dim}x#{thick}mm\n" # Compact dimensions
+      qr_text += "#{material}\n" unless material.empty?
+      qr_text += "B#{board}" if board # Shorter board label
       
       qr_text
     end
@@ -164,8 +186,8 @@ module AutoNestCut
       inner_h = height_pt - (padding * 2)
       
       # 2. Layout Calculation
-      # Split label: Left 35% for QR, Right 65% for Data
-      qr_area_width = inner_w * 0.35
+      # Split label: Left 40% for QR (INCREASED from 35%), Right 60% for Data
+      qr_area_width = inner_w * 0.40 # Larger QR for better scanning
       text_area_x = inner_x + qr_area_width + mm_to_pt(3) # 3mm gap
       text_area_w = inner_w - qr_area_width - mm_to_pt(3)
       
@@ -251,20 +273,30 @@ module AutoNestCut
     # Draws the QR code using rectangles to avoid external image dependencies
     def draw_qr_code(pdf, content, x, y, size)
       # Create QR object using the real rqrcode gem
-      qr = RQRCode::QRCode.new(content.to_s, level: :m)
+      # Use LOW error correction for maximum data capacity
+      qr = RQRCode::QRCode.new(content.to_s, level: :l)
       
-      # Calculate module (pixel) size
-      module_size = size / qr.modules.size.to_f
+      # QR codes REQUIRE a quiet zone (white border) of at least 4 modules
+      quiet_zone_modules = 4
+      total_modules = qr.modules.size + (quiet_zone_modules * 2)
+      module_size = size / total_modules.to_f
       
+      # Draw WHITE background (CRITICAL for scanning!)
+      pdf.fill_color 'FFFFFF'
+      pdf.fill_rectangle [x, y], size, size
+      
+      # Calculate QR code position (offset by quiet zone)
+      qr_x = x + (quiet_zone_modules * module_size)
+      qr_y = y - (quiet_zone_modules * module_size)
+      
+      # Draw BLACK modules
       pdf.fill_color '000000'
-      
-      # Iterate over QR modules and draw black squares
       qr.modules.each_with_index do |row, row_index|
         row.each_with_index do |col, col_index|
           if col # If the module is true (black)
             # Calculate precise coordinates
-            rect_x = x + (col_index * module_size)
-            rect_y = y - (row_index * module_size)
+            rect_x = qr_x + (col_index * module_size)
+            rect_y = qr_y - (row_index * module_size)
             
             # Draw square
             pdf.fill_rectangle [rect_x, rect_y], module_size, module_size
@@ -272,11 +304,10 @@ module AutoNestCut
         end
       end
       
-      # Add text label below QR
-      pdf.font("Helvetica", style: :normal)
-      pdf.font_size 5
-      truncated = truncate_text(content, 15)
-      pdf.draw_text truncated, at: [x + (size/2) - (truncated.length * 1.5), y - size - 5]
+      # Add thin border for visual reference (optional)
+      pdf.stroke_color 'CCCCCC'
+      pdf.line_width 0.5
+      pdf.stroke_rectangle [x, y], size, size
     end
     
     def mm_to_pt(mm)

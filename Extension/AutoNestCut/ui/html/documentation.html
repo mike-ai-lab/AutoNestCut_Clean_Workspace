@@ -3,677 +3,1247 @@
 <head>
     <meta charset="UTF-8">
     <title>AutoNestCut Documentation</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="diagrams_style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --gitbook-primary: #3b82f6;
-            --gitbook-primary-dark: #2563eb;
-            --gitbook-bg: #ffffff;
-            --gitbook-sidebar: #f8fafc;
-            --gitbook-border: #e2e8f0;
-            --gitbook-text: #1e293b;
-            --gitbook-text-muted: #64748b;
-            --gitbook-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --bg: #ffffff;
+            --sidebar-bg: #f8fafc;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --hover-bg: #f1f5f9;
+            --active-bg: #dbeafe;
         }
         
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
         
         body {
             font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 0;
-            background: var(--gitbook-bg);
-            color: var(--gitbook-text);
-            line-height: 1.7;
+            background: #f5f7fa;
+            color: var(--text);
+            line-height: 1.6;
             font-size: 15px;
-            display: flex;
-            min-height: 100vh;
         }
 
-        .sidebar {
-            width: 280px;
-            background: var(--gitbook-sidebar);
-            border-right: 1px solid var(--gitbook-border);
-            padding: 24px 0;
-            position: fixed;
+        .container {
+            display: flex;
             height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Tree Navigation */
+        .sidebar {
+            width: 320px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
             overflow-y: auto;
-            z-index: 100;
-            transition: width 0.3s ease, transform 0.3s ease;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
         }
 
         .sidebar.collapsed {
-            width: 0;
-            transform: translateX(-280px);
+            transform: translateX(-320px);
         }
 
-        .sidebar-toggle {
-            position: fixed;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 20px;
-            height: 60px;
-            background: var(--gitbook-primary);
-            color: white;
-            border: none;
-            border-radius: 0 4px 4px 0;
+        .sidebar-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid var(--border);
+            background: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .sidebar-header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .sidebar-header .subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* Tree Structure */
+        .tree {
+            padding: 16px 0;
+        }
+
+        .tree-item {
+            user-select: none;
+        }
+
+        .tree-item-header {
+            padding: 8px 20px;
             cursor: pointer;
-            z-index: 101;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.15s ease;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .tree-item-header:hover {
+            background: var(--hover-bg);
+        }
+
+        .tree-item-header.active {
+            background: var(--active-bg);
+            color: var(--primary);
+            border-left: 3px solid var(--primary);
+            padding-left: 17px;
+        }
+
+        .tree-item-icon {
+            width: 16px;
+            height: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
-            transition: left 0.3s ease;
+            transition: transform 0.2s ease;
         }
 
-        .sidebar-toggle svg {
-            width: 12px;
-            height: 12px;
+        .tree-item-icon.expanded {
+            transform: rotate(90deg);
+        }
+
+        .tree-item-children {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .tree-item-children.expanded {
+            max-height: 2000px;
+        }
+
+        .tree-item-child {
+            padding: 6px 20px 6px 44px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-muted);
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tree-item-child:hover {
+            background: var(--hover-bg);
+            color: var(--text);
+        }
+
+        .tree-item-child.active {
+            background: var(--active-bg);
+            color: var(--primary);
+            font-weight: 500;
+            border-left: 3px solid var(--primary);
+            padding-left: 41px;
+        }
+
+        .tree-item-child::before {
+            content: '•';
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        /* Toggle Button */
+        .sidebar-toggle {
+            position: fixed;
+            left: 320px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 60px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0 6px 6px 0;
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: left 0.3s ease;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
         }
 
         .sidebar.collapsed ~ .sidebar-toggle {
             left: 0;
         }
 
-        .sidebar:not(.collapsed) ~ .sidebar-toggle {
-            left: 280px;
+        .sidebar-toggle svg {
+            width: 14px;
+            height: 14px;
         }
-        
-        .sidebar-header {
-            padding: 0 24px 24px;
-            border-bottom: 1px solid var(--gitbook-border);
-            margin-bottom: 24px;
-        }
-        
-        .sidebar-header h1 {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--gitbook-text);
-            letter-spacing: -0.025em;
-        }
-        
-        .sidebar-header .developer-credit {
-            margin: 8px 0 0 0;
-            font-size: 13px;
-            color: var(--gitbook-text-muted);
-            font-weight: 500;
-        }
-        
-        .nav-menu {
-            padding: 0 16px;
-        }
-        
-        .nav-item {
-            margin-bottom: 4px;
-        }
-        
-        .nav-link {
-            display: block;
-            padding: 8px 16px;
-            color: var(--gitbook-text-muted);
-            text-decoration: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.15s ease;
-        }
-        
-        .nav-link:hover, .nav-link.active {
-            background: var(--gitbook-primary);
-            color: white;
-        }
-        
+
+        /* Main Content */
         .main-content {
             flex: 1;
-            margin-left: 280px;
-            padding: 0;
+            overflow-y: auto;
+            background: #f5f7fa;
             transition: margin-left 0.3s ease;
         }
 
         .sidebar.collapsed ~ .main-content {
             margin-left: 0;
         }
-        
-        .content-header {
-            background: var(--gitbook-bg);
-            border-bottom: 1px solid var(--gitbook-border);
-            padding: 20px 40px;
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            backdrop-filter: blur(8px);
+
+        .content-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 60px;
         }
-        
-        .content-header h1 {
-            margin: 0;
+
+        .content-section {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            scroll-margin-top: 20px;
+        }
+
+        .content-section h2 {
             font-size: 28px;
             font-weight: 700;
-            color: var(--gitbook-text);
-            letter-spacing: -0.025em;
+            color: var(--text);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border);
         }
-        
-        .doc-container {
-            max-width: 800px;
-            margin: 0;
-            padding: 40px;
-            background: var(--gitbook-bg);
-            min-height: calc(100vh - 80px);
-        }
-        .doc-section {
-            margin-bottom: 30px;
-        }
-        .doc-section h2 {
-            color: var(--gitbook-text);
-            border-bottom: 1px solid var(--gitbook-border);
-            padding-bottom: 16px;
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: -0.025em;
-            margin: 48px 0 24px 0;
-            scroll-margin-top: 100px;
-        }
-        
-        .doc-section h3 {
-            color: var(--gitbook-text);
+
+        .content-section h3 {
             font-size: 20px;
             font-weight: 600;
+            color: var(--text);
             margin: 32px 0 16px 0;
-            scroll-margin-top: 100px;
         }
-        
-        .doc-section h4 {
-            color: var(--gitbook-text);
+
+        .content-section h4 {
             font-size: 16px;
             font-weight: 600;
+            color: var(--text);
             margin: 24px 0 12px 0;
         }
-        
-        .doc-section p {
+
+        .content-section p {
+            margin: 12px 0;
+            color: var(--text);
+            line-height: 1.7;
+        }
+
+        .content-section ul, .content-section ol {
             margin: 16px 0;
-            color: var(--gitbook-text);
+            padding-left: 24px;
         }
-        .step-list {
-            counter-reset: step-counter;
+
+        .content-section li {
+            margin: 8px 0;
+            line-height: 1.7;
         }
-        .step-list li {
-            counter-increment: step-counter;
-            margin-bottom: 15px;
-            padding-left: 30px;
-            position: relative;
-        }
-        .step-list li::before {
-            content: counter(step-counter);
-            position: absolute;
-            left: 0;
-            top: 0;
-            background: #3b82f6;
-            color: white;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
+
+        .content-section li strong {
+            color: var(--text);
             font-weight: 600;
         }
+
+        /* Feature Grid */
         .feature-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
-            margin: 20px 0;
+            margin: 24px 0;
         }
+
         .feature-card {
-            background: var(--gitbook-sidebar);
+            background: var(--sidebar-bg);
             padding: 24px;
-            border-radius: 12px;
-            border: 1px solid var(--gitbook-border);
-            box-shadow: var(--gitbook-shadow);
-            transition: all 0.15s ease;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
         }
-        
+
         .feature-card:hover {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
         }
+
+        .feature-card h4 {
+            margin: 0 0 12px 0;
+            color: var(--primary);
+        }
+
+        .feature-card p {
+            margin: 0;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .feature-card ul {
+            margin: 12px 0 0 0;
+            padding-left: 20px;
+            font-size: 13px;
+        }
+
+        .feature-card li {
+            margin: 6px 0;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: #dbeafe;
+            border-left: 4px solid var(--primary);
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+
+        .info-box strong {
+            color: var(--primary-dark);
+        }
+
+        /* Warning Box */
+        .warning-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+
+        /* Code */
+        code {
+            background: var(--sidebar-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #e11d48;
+        }
+
+        /* Footer */
         .footer {
-            background: var(--gitbook-sidebar);
-            color: var(--gitbook-text);
-            padding: 20px;
+            background: white;
+            padding: 40px;
             margin-top: 40px;
-            border-top: 1px solid var(--gitbook-border);
+            border-radius: 12px;
             text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
+
         .footer h3 {
-            margin: 0 0 10px 0;
-            color: var(--gitbook-text);
-            font-size: 16px;
-            font-weight: 600;
+            margin: 0 0 16px 0;
+            font-size: 18px;
         }
+
         .social-links {
             display: flex;
-            gap: 15px;
+            gap: 16px;
             justify-content: center;
-            align-items: center;
             flex-wrap: wrap;
+            margin: 20px 0;
         }
+
         .social-links a {
-            color: var(--gitbook-text-muted);
+            color: var(--text-muted);
             text-decoration: none;
-            padding: 8px;
+            padding: 8px 12px;
             border-radius: 6px;
-            transition: all 0.15s ease;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 6px;
         }
+
         .social-links a:hover {
-            color: var(--gitbook-primary);
-            background: var(--gitbook-bg);
-            transform: translateY(-1px);
+            color: var(--primary);
+            background: var(--hover-bg);
         }
+
         .social-links svg {
-            width: 20px;
-            height: 20px;
-            transition: transform 0.15s ease;
+            width: 18px;
+            height: 18px;
         }
+
+        /* Bug Report Form */
         .bug-report {
-            background: #f9fafb;
-            padding: 24px;
+            background: var(--sidebar-bg);
+            padding: 32px;
             border-radius: 12px;
             margin: 32px 0;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
         }
+
         .bug-form {
             display: grid;
-            gap: 15px;
-            margin-top: 15px;
+            gap: 16px;
+            margin-top: 20px;
         }
+
         .bug-form input, .bug-form textarea {
             padding: 12px 16px;
-            border: 1px solid #d1d5db;
+            border: 1px solid var(--border);
             border-radius: 8px;
             font-family: inherit;
             font-size: 14px;
-            transition: border-color 0.15s ease;
+            transition: border-color 0.2s ease;
         }
+
         .bug-form input:focus, .bug-form textarea:focus {
             outline: none;
-            border-color: #3b82f6;
+            border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
+
         .bug-form button {
-            background: var(--gitbook-primary);
+            background: var(--primary);
             color: white;
             border: none;
             padding: 12px 24px;
             border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
-            font-weight: 500;
-            transition: all 0.15s ease;
+            font-weight: 600;
+            transition: all 0.2s ease;
         }
+
         .bug-form button:hover {
-            background: var(--gitbook-primary-dark);
+            background: var(--primary-dark);
         }
+
         .bug-form button:disabled {
-            background: var(--gitbook-text-muted);
+            background: var(--text-muted);
             cursor: not-allowed;
+        }
+
+        /* Purchase Button */
+        .purchase-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 32px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 32px 0;
+        }
+
+        .purchase-box h3 {
+            margin: 0 0 12px 0;
+            color: white;
+        }
+
+        .purchase-box p {
+            margin: 0 0 20px 0;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .purchase-box button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .purchase-box button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h1>AutoNestCut</h1>
-            <p class="developer-credit">by Int. Arch. M.Shkeir</p>
-        </div>
-        <nav class="nav-menu">
-            <div class="nav-item"><a href="#overview" class="nav-link">Overview</a></div>
-            <div class="nav-item"><a href="#features" class="nav-link">Key Features</a></div>
-            <div class="nav-item"><a href="#usage" class="nav-link">How to Use</a></div>
-            <div class="nav-item"><a href="#configuration" class="nav-link">Configuration</a></div>
-            <div class="nav-item"><a href="#reports" class="nav-link">Understanding Reports</a></div>
-            <div class="nav-item"><a href="#export" class="nav-link">Export Formats</a></div>
-            <div class="nav-item"><a href="#performance" class="nav-link">Performance</a></div>
-            <div class="nav-item"><a href="#tips" class="nav-link">Tips & Best Practices</a></div>
-            <div class="nav-item"><a href="#troubleshooting" class="nav-link">Troubleshooting</a></div>
-            <div class="nav-item"><a href="#bug-report" class="nav-link">Report a Bug</a></div>
-        </nav>
-    </div>
-
-    <button class="sidebar-toggle" onclick="toggleSidebar()">
-        <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m9 18 6-6-6-6"/>
-        </svg>
-    </button>
-    
-    <div class="main-content">
-        <div class="content-header">
-            <h1>Documentation</h1>
-        </div>
-        
-        <div class="doc-container">
-        <div class="doc-section">
-            <h2 id="overview">Overview</h2>
-            <p>AutoNestCut is a professional SketchUp extension designed for woodworkers, furniture makers, and architects who need to optimize material usage and generate cutting diagrams for sheet goods. The extension automatically analyzes your 3D model components and creates efficient nesting layouts to minimize waste and reduce costs.</p>
-        </div>
-
-        <div class="doc-section">
-            <h2 id="features">Key Features</h2>
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <h4>Automatic Part Detection</h4>
-                    <p>Intelligently identifies sheet good components in your model based on dimensions and thickness.</p>
-                </div>
-                <div class="feature-card">
-                    <h4>Material Management</h4>
-                    <p>Configure stock materials with custom dimensions and pricing for accurate cost calculations.</p>
-                </div>
-                <div class="feature-card">
-                    <h4>Optimized Nesting</h4>
-                    <p>Advanced algorithms minimize waste by efficiently arranging parts on stock sheets.</p>
-                </div>
-                <div class="feature-card">
-                    <h4>Visual Diagrams</h4>
-                    <p>Generate clear cutting diagrams with part labels and dimensions for workshop use.</p>
-                </div>
-                <div class="feature-card">
-                    <h4>Detailed Reports</h4>
-                    <p>Comprehensive reports with material lists, costs, and efficiency metrics.</p>
-                </div>
-                <div class="feature-card">
-                    <h4>Export Options</h4>
-                    <p>Export to PDF, CSV, or interactive HTML formats for sharing and documentation.</p>
-                </div>
+    <div class="container">
+        <!-- Sidebar Tree Navigation -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>AutoNestCut</h1>
+                <p class="subtitle">by Int. Arch. M.Shkeir</p>
+            </div>
+            
+            <div class="tree" id="tree">
+                <!-- Tree will be generated by JavaScript -->
             </div>
         </div>
 
-        <div class="doc-section">
-            <h2 id="usage">How to Use AutoNestCut</h2>
-            
-            <div class="image-container" style="text-align: center; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                <div style="background: #fff; padding: 10px; border-radius: 4px; display: inline-block;">
-                    <img src="images/kitchen_cabinets_model_showcase.JPG" alt="Kitchen Cabinet Model Example" style="max-width: 600px; height: auto; border-radius: 4px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                    <div style="display: none; width: 600px; height: 400px; background: #e9ecef; border: 2px dashed #6c757d; align-items: center; justify-content: center; color: #6c757d; font-size: 14px;">Kitchen Cabinet Model Example<br><small>(Image not found: kitchen_cabinets_model_showcase.JPG)</small></div>
+        <!-- Toggle Button -->
+        <button class="sidebar-toggle" onclick="toggleSidebar()">
+            <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m9 18 6-6-6-6"/>
+            </svg>
+        </button>
+
+        <!-- Main Content -->
+        <div class="main-content" id="mainContent">
+            <div class="content-wrapper">
+
+                <!-- 1. OVERVIEW -->
+                <div class="content-section" id="overview">
+                    <h2>Overview</h2>
+                    <p>AutoNestCut is a professional SketchUp extension designed for woodworkers, furniture makers, fabricators, and architects who need to optimize material usage and generate cutting diagrams for sheet goods. The extension automatically analyzes your 3D model components and creates efficient nesting layouts to minimize waste and reduce costs.</p>
+                    
+                    <h3 id="overview-whats-new">What's New in Latest Version</h3>
+                    <ul>
+                        <li><strong>Smart Material Matching:</strong> Intelligent fuzzy matching automatically suggests compatible materials from your database</li>
+                        <li><strong>Interactive 3D Assembly Viewer:</strong> Explore your assemblies in a full 3D viewer with component selection and highlighting</li>
+                        <li><strong>QR Code Label Sheets:</strong> Generate professional label sheets for part tracking and workshop organization</li>
+                        <li><strong>CNC/Laser SVG Export:</strong> Flatten 3D components to true vector SVG files for CNC routers and laser cutters</li>
+                        <li><strong>Cut Sequence Optimization:</strong> Visual guides show the optimal cutting order for each sheet</li>
+                        <li><strong>Performance Boost:</strong> Intelligent caching reduces processing time by up to 90%</li>
+                        <li><strong>Material Database Manager:</strong> Comprehensive material management with multiple thickness support</li>
+                        <li><strong>Usable Offcuts Tracking:</strong> Identify and track leftover material for future projects</li>
+                    </ul>
+                    
+                    <h3 id="overview-requirements">System Requirements</h3>
+                    <ul>
+                        <li>SketchUp 2020 or later (Windows or macOS)</li>
+                        <li>Internet connection for license validation</li>
+                        <li>PDF reader for viewing exported reports</li>
+                        <li>Modern web browser for interactive HTML exports</li>
+                    </ul>
                 </div>
-                <p style="font-style: italic; color: #666; margin-top: 10px;">Example: Kitchen cabinet model ready for cut list generation</p>
-            </div>
-            
-            <ol class="step-list">
-                <li><strong>Prepare Your Model:</strong> Create your furniture or project in SketchUp using components for each part. Ensure sheet good parts have realistic thickness (3-50mm) and sufficient area.</li>
-                <li><strong>Select Components:</strong> Select the components or groups you want to include in your cutting list. You can select individual parts or entire assemblies.</li>
-                <li><strong>Launch Extension:</strong> Go to Extensions > AutoNestCut or click the toolbar button to open the configuration window.</li>
-                <li><strong>Configure Settings:</strong> Set your kerf width (saw blade thickness) and choose whether to allow part rotation for better nesting.</li>
-                <li><strong>Setup Materials:</strong> Add or modify stock materials with their dimensions and prices. The extension will automatically detect materials from your model.
-                    <div class="image-container" style="text-align: center; margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 4px;">
-                        <div style="background: #fff; padding: 8px; border-radius: 4px; display: inline-block;">
-                            <div style="width: 400px; height: 250px; background: #e9ecef; border: 2px dashed #6c757d; display: flex; align-items: center; justify-content: center; color: #6c757d; font-size: 12px;">Stock Materials Configuration<br><small>(Image placeholder - configure materials in extension)</small></div>
+
+                <!-- 2. KEY FEATURES -->
+                <div class="content-section" id="features">
+                    <h2>Key Features</h2>
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h4>Automatic Part Detection</h4>
+                            <p>Intelligently identifies sheet good components in your model based on dimensions and thickness.</p>
                         </div>
-                        <p style="font-style: italic; color: #666; margin-top: 5px; font-size: 0.9em;">Configure materials with dimensions and pricing</p>
-                    </div>
-                </li>
-                <li><strong>Review Parts:</strong> Check the parts preview to ensure all components are detected correctly with proper dimensions.</li>
-                <li><strong>Generate Report:</strong> Click "Generate Cut List" to process the nesting optimization and switch to the report tab.</li>
-                <li><strong>Review Results:</strong> Examine the cutting diagrams and detailed reports. Add project information like name, address, and date.
-                    <div class="image-container" style="text-align: center; margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 4px;">
-                        <div style="background: #fff; padding: 8px; border-radius: 4px; display: inline-block;">
-                            <img src="images/diagram_example.JPG" alt="Cutting Diagram Example" style="max-width: 500px; height: auto; border-radius: 4px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                            <div style="display: none; width: 500px; height: 300px; background: #e9ecef; border: 2px dashed #6c757d; align-items: center; justify-content: center; color: #6c757d; font-size: 12px;">Cutting Diagram Example<br><small>(Image not found: diagram_example.JPG)</small></div>
+                        <div class="feature-card">
+                            <h4>Smart Material Matching</h4>
+                            <p>Automatically detects missing materials and suggests compatible matches from your database with intelligent fuzzy matching.</p>
                         </div>
-                        <p style="font-style: italic; color: #666; margin-top: 5px; font-size: 0.9em;">Generated cutting diagrams with part labels and dimensions</p>
+                        <div class="feature-card">
+                            <h4>Material Database Manager</h4>
+                            <p>Comprehensive material stock management with pricing, dimensions, and multiple thickness variations per material.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Optimized Nesting</h4>
+                            <p>Advanced algorithms minimize waste by efficiently arranging parts on stock sheets with configurable kerf width and rotation.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Interactive 3D Assembly Viewer</h4>
+                            <p>View your assembly in an interactive 3D viewer with component selection, highlighting, and multiple display modes.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>QR Code Label Sheets</h4>
+                            <p>Generate professional label sheets with QR codes for part tracking and workshop organization.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>CNC/Laser SVG Export</h4>
+                            <p>Flatten 3D components to true vector SVG files for CNC routers and laser cutters with multi-face projection.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Visual Cutting Diagrams</h4>
+                            <p>Generate clear cutting diagrams with part labels, dimensions, and clickable 3D previews.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Cut Sequences</h4>
+                            <p>Optimized cutting sequences with visual guides showing the order of cuts for efficient workshop execution.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Detailed Reports</h4>
+                            <p>Comprehensive reports with material lists, costs, efficiency metrics, and usable offcuts tracking.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Multiple Export Formats</h4>
+                            <p>Export to PDF, CSV, interactive HTML, SVG, and QR label sheets for complete workflow integration.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Component Caching</h4>
+                            <p>Intelligent caching system reduces processing time by up to 90% for repeated analyses.</p>
+                        </div>
                     </div>
-                </li>
-                <li><strong>Export:</strong> Save your results as PDF for printing, CSV for spreadsheets, or HTML for interactive viewing.</li>
-            </ol>
-        </div>
-
-        <div class="doc-section">
-            <h2 id="configuration">Configuration Options</h2>
-            <h3>General Settings</h3>
-            <ul>
-                <li><strong>Kerf Width:</strong> The thickness of your saw blade cut (typically 2-4mm). This ensures proper spacing between parts.</li>
-                <li><strong>Allow Rotation:</strong> Permits the algorithm to rotate parts for better nesting efficiency, unless grain direction is specified.</li>
-            </ul>
-            
-            <h3>Stock Materials</h3>
-            <ul>
-                <li><strong>Material Name:</strong> Descriptive name for the material (e.g., "Plywood_19mm", "Oak_Veneer")</li>
-                <li><strong>Dimensions:</strong> Width and height of standard stock sheets in millimeters</li>
-                <li><strong>Price:</strong> Cost per sheet for accurate project costing</li>
-            </ul>
-        </div>
-
-        <div class="doc-section">
-            <h2 id="reports">Understanding Reports</h2>
-            <h3>Materials Used</h3>
-            <p>Shows all materials in your project with their associated costs.</p>
-            
-            <h3>Overall Summary</h3>
-            <p>Key metrics including total parts, boards needed, efficiency percentage, and total project cost.</p>
-            
-            <h3>Cutting Diagrams</h3>
-            <p>Visual layouts showing how parts are arranged on each sheet, with part labels and dimensions. Click on any part to view it in 3D:</p>
-            
-            <div style="display: flex; gap: 20px; margin: 20px 0; justify-content: center;">
-                <div class="image-container" style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 4px;">
-                    <div style="background: #fff; padding: 8px; border-radius: 4px;">
-                        <img src="images/orthographic_view.jpg" alt="Orthographic 3D View" style="width: 200px; height: 150px; border-radius: 4px; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                        <div style="display: none; width: 200px; height: 150px; background: #e9ecef; border: 2px dashed #6c757d; align-items: center; justify-content: center; color: #6c757d; font-size: 10px;">Orthographic 3D View<br><small>(Image not found)</small></div>
-                    </div>
-                    <p style="font-style: italic; color: #666; margin-top: 5px; font-size: 0.8em;">Orthographic 3D view</p>
                 </div>
-                <div class="image-container" style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 4px;">
-                    <div style="background: #fff; padding: 8px; border-radius: 4px;">
-                        <img src="images/perspective_view.jpg" alt="Perspective 3D View" style="width: 200px; height: 150px; border-radius: 4px; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                        <div style="display: none; width: 200px; height: 150px; background: #e9ecef; border: 2px dashed #6c757d; align-items: center; justify-content: center; color: #6c757d; font-size: 10px;">Perspective 3D View<br><small>(Image not found)</small></div>
-                    </div>
-                    <p style="font-style: italic; color: #666; margin-top: 5px; font-size: 0.8em;">Perspective 3D view</p>
+
+                <!-- 3. GETTING STARTED -->
+                <div class="content-section" id="getting-started">
+                    <h2>Getting Started</h2>
+                    
+                    <h3 id="getting-started-workflow">Basic Workflow</h3>
+                    <ol>
+                        <li><strong>Prepare Your Model:</strong> Create your furniture or project in SketchUp using components for each part. Ensure sheet good parts have realistic thickness (3-50mm) and sufficient area.</li>
+                        <li><strong>Select Components:</strong> Select the components or groups you want to include in your cutting list. You can select individual parts or entire assemblies.</li>
+                        <li><strong>Launch Extension:</strong> Go to Extensions > AutoNestCut > Generate Cut List or click the toolbar button to open the configuration window.</li>
+                        <li><strong>Configure Settings:</strong> Set your kerf width and rotation preferences in the Config tab.</li>
+                        <li><strong>Generate Report:</strong> Click "Generate Cut List" to process the nesting optimization and view results.</li>
+                        <li><strong>Export:</strong> Choose your preferred export format (PDF, HTML, CSV, etc.).</li>
+                    </ol>
+                    
+                    <h3 id="getting-started-first-run">First Run Tips</h3>
+                    <ul>
+                        <li>Start with a simple project (5-10 components) to familiarize yourself with the workflow</li>
+                        <li>Set up your material database before processing large projects</li>
+                        <li>Review the Config tab settings to understand available options</li>
+                        <li>Check the Parts Preview tab to verify component detection</li>
+                    </ul>
                 </div>
+
+                <!-- 4. CONFIGURATION -->
+                <div class="content-section" id="configuration">
+                    <h2>Configuration</h2>
+                    
+                    <h3 id="configuration-general">General Settings</h3>
+                    <ul>
+                        <li><strong>Kerf Width:</strong> The thickness of your saw blade cut (typically 2-4mm). This ensures proper spacing between parts on cutting diagrams.</li>
+                        <li><strong>Allow Rotation:</strong> Permits the algorithm to rotate parts for better nesting efficiency, unless grain direction is specified.</li>
+                        <li><strong>Units:</strong> Choose between millimeters (mm) or inches for all measurements.</li>
+                        <li><strong>Precision:</strong> Set decimal precision for dimensions (0-3 decimal places).</li>
+                        <li><strong>Currency:</strong> Select your preferred currency for cost calculations (USD, EUR, GBP, etc.).</li>
+                        <li><strong>Area Units:</strong> Display areas in square meters (m²) or square feet (ft²).</li>
+                    </ul>
+                    
+                    <h3 id="configuration-materials">Material Stock Management</h3>
+                    <p>Access via Extensions > AutoNestCut > Material Stock</p>
+                    <ul>
+                        <li><strong>Material Name:</strong> Descriptive name for the material (e.g., "Plywood_19mm", "Oak_Veneer")</li>
+                        <li><strong>Dimensions:</strong> Width and height of standard stock sheets in millimeters</li>
+                        <li><strong>Thickness:</strong> Material thickness - supports multiple thickness variations per material</li>
+                        <li><strong>Price:</strong> Cost per sheet for accurate project costing</li>
+                        <li><strong>Currency:</strong> Currency for pricing (USD, EUR, GBP, etc.)</li>
+                        <li><strong>Density:</strong> Material density for weight calculations (kg/m³)</li>
+                        <li><strong>Import/Export:</strong> Share material databases via CSV files</li>
+                        <li><strong>Highlight:</strong> Click any material to highlight all components using it in your model</li>
+                    </ul>
+                    
+                    <h3 id="configuration-smart-materials">Smart Material Detection</h3>
+                    <p>When materials are detected in your model but not in your database, AutoNestCut offers intelligent options:</p>
+                    <ul>
+                        <li><strong>Match to Existing:</strong> Fuzzy matching suggests similar materials from your database</li>
+                        <li><strong>Create Standard Sheet:</strong> Add as a new standard sheet material with custom dimensions</li>
+                        <li><strong>Create Custom Part:</strong> Create a material matching the exact part dimensions</li>
+                        <li><strong>Automatic Remapping:</strong> Materials with thickness suffixes are automatically matched</li>
+                    </ul>
+                </div>
+
+                <!-- 5. REPORTS -->
+                <div class="content-section" id="reports">
+                    <h2>Understanding Reports</h2>
+                    
+                    <h3 id="reports-summary">Project Summary</h3>
+                    <p>Key metrics including total parts, unique components, boards needed, material efficiency percentage, waste area, and total project cost.</p>
+                    
+                    <h3 id="reports-materials">Materials Used</h3>
+                    <p>Shows all materials in your project with sheet counts, unit costs, and total costs per material type.</p>
+                    
+                    <h3 id="reports-diagrams">Cutting Diagrams</h3>
+                    <p>Visual layouts showing how parts are arranged on each sheet, with part labels and dimensions. Interactive features include:</p>
+                    <ul>
+                        <li><strong>Click to View 3D:</strong> Click any part in the diagram to see it rendered in 3D with both orthographic and perspective views</li>
+                        <li><strong>Efficiency Metrics:</strong> Each sheet shows material efficiency and waste percentage</li>
+                        <li><strong>Part Labels:</strong> Clear identification with part names and dimensions</li>
+                        <li><strong>Color Coding:</strong> Different colors for different part types</li>
+                    </ul>
+                    
+                    <h3 id="reports-sequences">Cut Sequences</h3>
+                    <p>Optimized cutting sequences show the recommended order of cuts for each sheet:</p>
+                    <ul>
+                        <li><strong>Visual Guides:</strong> Numbered sequence showing cut order</li>
+                        <li><strong>Efficiency:</strong> Minimizes repositioning and maximizes accuracy</li>
+                        <li><strong>Workshop Ready:</strong> Clear instructions for production</li>
+                    </ul>
+                    
+                    <h3 id="reports-assembly">3D Assembly Viewer</h3>
+                    <p>When you select a single component or group, the report includes an interactive 3D assembly viewer:</p>
+                    <ul>
+                        <li><strong>Interactive Controls:</strong> Orbit, zoom, and pan with mouse</li>
+                        <li><strong>Component Selection:</strong> Click components to highlight and view details</li>
+                        <li><strong>Display Modes:</strong> Toggle wireframe, transparency, and lighting</li>
+                        <li><strong>Assembly Info:</strong> View bounds, component count, and statistics</li>
+                        <li><strong>Multiple Views:</strong> Front, Back, Left, Right, Top, Bottom orthographic views</li>
+                    </ul>
+                    
+                    <h3 id="reports-tables">Detailed Tables</h3>
+                    <ul>
+                        <li><strong>Unique Part Types:</strong> List of different parts with quantities, dimensions, materials, grain direction, and total areas</li>
+                        <li><strong>Sheet Inventory:</strong> Summary of different sheet materials, dimensions, quantities needed, and costs</li>
+                        <li><strong>Parts Placed:</strong> Complete list of every part instance with board assignments and positions</li>
+                        <li><strong>Usable Offcuts:</strong> Track leftover material pieces large enough for future projects</li>
+                    </ul>
+                </div>
+
+                <!-- 6. EXPORT FORMATS -->
+                <div class="content-section" id="export">
+                    <h2>Export Formats</h2>
+                    
+                    <h3 id="export-pdf">PDF Export</h3>
+                    <p>Professional print-ready reports with all cutting layouts, part lists, assembly views, and project summary. Perfect for workshop documentation.</p>
+                    <ul>
+                        <li>High-quality cutting diagrams</li>
+                        <li>Complete part tables</li>
+                        <li>Assembly orthographic views</li>
+                        <li>Cost breakdowns</li>
+                    </ul>
+                    
+                    <h3 id="export-html">Interactive HTML</h3>
+                    <p>Fully interactive standalone report with embedded 3D viewer, clickable diagrams, and resizable layouts. No internet required.</p>
+                    <ul>
+                        <li>3D assembly viewer with Three.js</li>
+                        <li>Interactive cutting diagrams</li>
+                        <li>Click parts to view in 3D</li>
+                        <li>Self-contained single file</li>
+                    </ul>
+                    
+                    <h3 id="export-csv">CSV Export</h3>
+                    <p>Spreadsheet-compatible format for inventory management, cost analysis, and integration with other systems.</p>
+                    <ul>
+                        <li>Part lists with dimensions</li>
+                        <li>Material requirements</li>
+                        <li>Cost breakdowns</li>
+                        <li>Excel/Google Sheets ready</li>
+                    </ul>
+                    
+                    <h3 id="export-labels">QR Label Sheets</h3>
+                    <p>Generate professional label sheets with QR codes for part tracking, inventory management, and workshop organization.</p>
+                    <ul>
+                        <li>Standard label formats (Avery compatible)</li>
+                        <li>QR codes for digital tracking</li>
+                        <li>Part information and dimensions</li>
+                        <li>Print-ready PDF output</li>
+                    </ul>
+                    
+                    <h3 id="export-svg">SVG Vector Export (CNC/Laser)</h3>
+                    <p>Flatten 3D components to true vector SVG files for CNC routers and laser cutters. Access via Extensions > AutoNestCut > 🎯 Flatten for CNC.</p>
+                    <ul>
+                        <li>6 orthographic projections (Front, Back, Left, Right, Top, Bottom)</li>
+                        <li>True scalable vectors</li>
+                        <li>Compatible with all major software</li>
+                        <li>Automatic dimensions</li>
+                    </ul>
+                    
+                    <h3 id="export-cnc-workflow">CNC/Laser Cutting Workflow</h3>
+                    <ol>
+                        <li>Select a component or group in SketchUp</li>
+                        <li>Go to Extensions > AutoNestCut > 🎯 Flatten for CNC (SVG Export)</li>
+                        <li>Choose which face to export (Front, Back, Left, Right, Top, Bottom)</li>
+                        <li>Toggle dimensions and metadata options</li>
+                        <li>Click "Export SVG" - file opens automatically in Downloads folder</li>
+                        <li>Import SVG into your CNC/laser software</li>
+                    </ol>
+                    
+                    <h3 id="export-cnc-software">Supported CNC/Laser Software</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 15px 0;">
+                        <div style="padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">Adobe Illustrator</div>
+                        <div style="padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">Inkscape</div>
+                        <div style="padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">CorelDRAW</div>
+                        <div style="padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">LightBurn</div>
+                        <div style="padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">LaserCut</div>
+                        <div style="padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">RDWorks</div>
+                    </div>
+                </div>
+
+                <!-- 7. ADVANCED FEATURES -->
+                <div class="content-section" id="advanced">
+                    <h2>Advanced Features</h2>
+                    
+                    <h3 id="advanced-database">Material Database Management</h3>
+                    <p>Access the Material Stock window (Extensions > AutoNestCut > Material Stock) for advanced material management:</p>
+                    <ul>
+                        <li><strong>Multiple Thickness Support:</strong> Store multiple thickness variations for the same material (e.g., Plywood in 12mm, 18mm, 25mm)</li>
+                        <li><strong>Import/Export Database:</strong> Share material databases between projects or team members via CSV</li>
+                        <li><strong>Component Highlighting:</strong> Click any material to highlight all components using it in your SketchUp model</li>
+                        <li><strong>Auto-Generated Materials:</strong> Purge old auto-generated materials to keep your database clean</li>
+                        <li><strong>Search & Filter:</strong> Quickly find materials in large databases</li>
+                    </ul>
+                    
+                    <h3 id="advanced-resolution">Smart Material Resolution</h3>
+                    <p>When the extension detects materials not in your database, it offers intelligent options:</p>
+                    <ul>
+                        <li><strong>Fuzzy Matching:</strong> Suggests existing materials with similar names or matching thickness</li>
+                        <li><strong>Automatic Remapping:</strong> Materials with thickness suffixes (e.g., "Plywood_19mm") are automatically matched to base materials</li>
+                        <li><strong>Batch Resolution:</strong> Resolve multiple missing materials at once with consistent choices</li>
+                        <li><strong>Session vs. Database:</strong> Choose whether to save new materials permanently or use them for current session only</li>
+                    </ul>
+                    
+                    <h3 id="advanced-3d">Interactive 3D Features</h3>
+                    <ul>
+                        <li><strong>Part Preview:</strong> Click any part in cutting diagrams to view it in 3D with orthographic and perspective views</li>
+                        <li><strong>Assembly Viewer:</strong> When selecting a single component/group, get a full 3D assembly viewer with interactive controls</li>
+                        <li><strong>Material Textures:</strong> View actual SketchUp material textures in 3D previews</li>
+                    </ul>
+                    
+                    <h3 id="advanced-sequences">Cut Sequence Optimization</h3>
+                    <p>The extension generates optimized cutting sequences for each sheet:</p>
+                    <ul>
+                        <li>Minimizes repositioning and maximizes accuracy</li>
+                        <li>Visual numbered guides show cut order</li>
+                        <li>Considers grain direction and part orientation</li>
+                        <li>Workshop-ready instructions</li>
+                    </ul>
+                    
+                    <h3 id="advanced-offcuts">Offcuts Management</h3>
+                    <p>Track usable leftover material for future projects:</p>
+                    <ul>
+                        <li>Automatically identifies offcuts large enough to be useful</li>
+                        <li>Shows estimated dimensions and area</li>
+                        <li>Links offcuts to specific sheets</li>
+                        <li>Helps reduce material waste and costs</li>
+                    </ul>
+                </div>
+
+                <!-- 8. PERFORMANCE -->
+                <div class="content-section" id="performance">
+                    <h2>Performance & Optimization</h2>
+                    
+                    <h3 id="performance-features">Performance Features</h3>
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h4>Intelligent Component Caching</h4>
+                            <p>Caches analyzed components to avoid re-processing. Subsequent runs are up to 90% faster - from ~10 seconds to under 1 second.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Material Lookup Caching</h4>
+                            <p>Material database lookups are cached during processing, eliminating repeated expensive operations.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Single-Pass Processing</h4>
+                            <p>Optimized algorithms process components in a single iteration, dramatically reducing processing time.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Selective Entity Search</h4>
+                            <p>Focuses only on selected entities instead of searching the entire model, improving performance with large projects.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Async Nesting</h4>
+                            <p>Nesting calculations run in background threads with progress indicators, keeping the UI responsive.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Smart Validation</h4>
+                            <p>Intelligent limits prevent processing extremely large datasets that could cause performance issues.</p>
+                        </div>
+                    </div>
+                    
+                    <h3 id="performance-tips">Performance Tips</h3>
+                    <ul>
+                        <li><strong>Select Specific Components:</strong> For large models, select only the components you need rather than the entire model</li>
+                        <li><strong>Use Component Caching:</strong> The cache is automatically cleared when you modify materials or settings</li>
+                        <li><strong>Material Database:</strong> Keep your material database organized - remove unused auto-generated materials</li>
+                        <li><strong>Batch Processing:</strong> Process similar components together for better cache utilization</li>
+                    </ul>
+                </div>
+
+                <!-- 9. TIPS & BEST PRACTICES -->
+                <div class="content-section" id="tips">
+                    <h2>Tips & Best Practices</h2>
+                    
+                    <h3 id="tips-modeling">Modeling Best Practices</h3>
+                    <ul>
+                        <li><strong>Component Organization:</strong> Model parts as separate components with realistic dimensions and consistent naming</li>
+                        <li><strong>Material Assignment:</strong> Assign SketchUp materials to components for automatic material detection</li>
+                        <li><strong>Grain Direction:</strong> Set grain direction attributes for wood parts to ensure proper orientation</li>
+                    </ul>
+                    
+                    <h3 id="tips-workflow">Workflow Tips</h3>
+                    <ul>
+                        <li><strong>Material Database:</strong> Build your material database before starting - use Material Stock window to add common materials</li>
+                        <li><strong>Smart Material Matching:</strong> When prompted about missing materials, review suggestions carefully - fuzzy matching often finds the right material</li>
+                        <li><strong>Kerf Width:</strong> Set accurate kerf width for your saw blade - this affects part spacing and material efficiency</li>
+                        <li><strong>Parts Preview:</strong> Always review the parts preview tab before generating reports to catch detection issues</li>
+                    </ul>
+                    
+                    <h3 id="tips-features">Feature Usage Tips</h3>
+                    <ul>
+                        <li><strong>Performance:</strong> For large models, select only the components you need rather than the entire model</li>
+                        <li><strong>Assembly Export:</strong> Select a single component or group to enable the 3D assembly viewer in reports</li>
+                        <li><strong>QR Labels:</strong> Generate label sheets after finalizing your cut list for workshop organization</li>
+                        <li><strong>CNC Export:</strong> Use SVG export for precision cutting - vectors are infinitely scalable without quality loss</li>
+                        <li><strong>Offcuts Tracking:</strong> Review usable offcuts in reports to save material for future projects</li>
+                        <li><strong>Interactive HTML:</strong> Share interactive HTML reports with clients - they can explore the 3D assembly viewer</li>
+                    </ul>
+                </div>
+
+                <!-- 10. TROUBLESHOOTING -->
+                <div class="content-section" id="troubleshooting">
+                    <h2>Troubleshooting</h2>
+                    
+                    <h3 id="troubleshooting-parts">Parts Not Detected</h3>
+                    <ul>
+                        <li><strong>Not Components:</strong> Ensure parts are modeled as components or groups, not loose geometry</li>
+                        <li><strong>Thickness Issues:</strong> Check that thickness is between 3-50mm (configurable range for sheet goods)</li>
+                        <li><strong>Too Small:</strong> Verify parts meet minimum area requirements (typically 100cm²)</li>
+                        <li><strong>Nested Too Deep:</strong> Components nested more than 3 levels deep may not be detected</li>
+                        <li><strong>Selection:</strong> Make sure you've selected the components before running the extension</li>
+                    </ul>
+                    
+                    <h3 id="troubleshooting-materials">Material Issues</h3>
+                    <ul>
+                        <li><strong>Missing Materials Dialog:</strong> If you see missing materials, use the smart matching suggestions or create new materials</li>
+                        <li><strong>Wrong Material Assigned:</strong> Check SketchUp material assignments on components - the extension reads these</li>
+                        <li><strong>Thickness Mismatch:</strong> Ensure material thickness in database matches component thickness (±1mm tolerance)</li>
+                        <li><strong>Multiple Thicknesses:</strong> Use the Material Stock window to add thickness variations to existing materials</li>
+                        <li><strong>Auto-Generated Materials:</strong> Clean up old auto-generated materials using the "Purge" function</li>
+                    </ul>
+                    
+                    <h3 id="troubleshooting-nesting">Poor Nesting Results</h3>
+                    <ul>
+                        <li><strong>Low Efficiency:</strong> Enable rotation if grain direction allows - this can improve efficiency by 20-30%</li>
+                        <li><strong>Wrong Sheet Size:</strong> Adjust stock sheet sizes to better match your parts</li>
+                        <li><strong>Too Many Small Parts:</strong> Consider grouping similar small parts together</li>
+                        <li><strong>Kerf Width:</strong> Verify kerf width is set correctly - too large reduces efficiency</li>
+                        <li><strong>Large Assemblies:</strong> Break down large assemblies into individual components for better nesting</li>
+                    </ul>
+                    
+                    <h3 id="troubleshooting-performance">Performance Issues</h3>
+                    <ul>
+                        <li><strong>Slow First Run:</strong> First analysis takes longer - subsequent runs use cache and are 90% faster</li>
+                        <li><strong>Large Models:</strong> Select specific components rather than entire complex assemblies</li>
+                        <li><strong>Memory Usage:</strong> Caching systems are automatically cleared between sessions</li>
+                        <li><strong>Extension Reload:</strong> If experiencing issues after updates, reload via Ruby Console: <code>Sketchup.plugins_enabled = true</code></li>
+                        <li><strong>Clear Cache:</strong> Use "Clear Cache" button in Config tab if you suspect stale data</li>
+                    </ul>
+                    
+                    <h3 id="troubleshooting-export">Export Issues</h3>
+                    <ul>
+                        <li><strong>PDF Not Opening:</strong> Check that you have a PDF reader installed (Adobe Reader, browser, etc.)</li>
+                        <li><strong>SVG Export Fails:</strong> Ensure you've selected a single component or group before using SVG export</li>
+                        <li><strong>Interactive HTML Too Large:</strong> For very large projects, HTML files may be 10-20MB due to embedded 3D data</li>
+                        <li><strong>QR Labels Not Generating:</strong> Ensure Prawn gem is installed - extension will prompt if missing</li>
+                        <li><strong>CSV Encoding Issues:</strong> Open CSV files with UTF-8 encoding in Excel/Google Sheets</li>
+                    </ul>
+                    
+                    <h3 id="troubleshooting-3d">3D Viewer Issues</h3>
+                    <ul>
+                        <li><strong>Assembly Not Showing:</strong> 3D assembly viewer only appears when you select a single component/group</li>
+                        <li><strong>Textures Not Loading:</strong> Some SketchUp materials may not export correctly - use solid colors for best results</li>
+                        <li><strong>Viewer Performance:</strong> Very complex assemblies (1000+ components) may be slow in 3D viewer</li>
+                        <li><strong>Controls Not Working:</strong> Ensure JavaScript is enabled in your browser for interactive HTML exports</li>
+                    </ul>
+                    
+                    <h3 id="troubleshooting-help">Getting Help</h3>
+                    <ul>
+                        <li><strong>Bug Reports:</strong> Use the "Report a Bug" section below to submit detailed bug reports</li>
+                        <li><strong>Documentation:</strong> Review this documentation for detailed feature explanations</li>
+                        <li><strong>Ruby Console:</strong> Check SketchUp's Ruby Console (Window > Ruby Console) for error messages</li>
+                        <li><strong>Contact Developer:</strong> Reach out via email or social media links in the footer</li>
+                    </ul>
+                </div>
+
+                <!-- 11. BUG REPORT -->
+                <div class="content-section" id="bug-report">
+                    <h2>Report a Bug</h2>
+                    <div class="bug-report">
+                        <h3>Found an Issue?</h3>
+                        <p>Help us improve AutoNestCut by reporting bugs. Please provide as much detail as possible.</p>
+                        <form class="bug-form" onsubmit="submitBugReport(event)">
+                            <input type="text" id="bugTitle" placeholder="Brief description of the issue" required>
+                            <textarea id="bugDescription" rows="4" placeholder="Detailed description of what happened, steps to reproduce, and expected behavior" required></textarea>
+                            <input type="email" id="bugEmail" placeholder="Your email (optional, for follow-up)">
+                            <button type="submit">Send Bug Report</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- PURCHASE -->
+                <div class="purchase-box">
+                    <h3>Purchase AutoNestCut License</h3>
+                    <p>Get the full version with all features and lifetime updates!</p>
+                    <button onclick="openPurchasePage()">Purchase License</button>
+                </div>
+
+                <!-- FOOTER -->
+                <div class="footer">
+                    <h3>Connect with Int. Arch. Moe Shkeir</h3>
+                    <div class="social-links">
+                        <a href="https://www.behance.net/muhamadshkeir" target="_blank" title="Behance">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/>
+                                <polyline points="8,6 8,2 16,2 16,6"/>
+                            </svg>
+                            Behance
+                        </a>
+                        <a href="https://www.instagram.com/muhamad.a.shk/" target="_blank" title="Instagram">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+                                <path d="m16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+                            </svg>
+                            Personal
+                        </a>
+                        <a href="https://www.instagram.com/archi4.design/" target="_blank" title="Business Instagram">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+                                <path d="m16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+                            </svg>
+                            Business
+                        </a>
+                        <a href="http://www.linkedin.com/in/muhammad-s-shkeir" target="_blank" title="LinkedIn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+                                <rect width="4" height="12" x="2" y="9"/>
+                                <circle cx="4" cy="4" r="2"/>
+                            </svg>
+                            LinkedIn
+                        </a>
+                        <a href="mailto:muhamad.shkeir@gmail.com" title="Email">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                            Email
+                        </a>
+                    </div>
+                    <p style="margin-top: 20px; font-size: 13px; color: var(--text-muted);">
+                        © 2024 AutoNestCut Extension. Developed with passion for efficient woodworking and design.
+                    </p>
+                </div>
+
             </div>
-            
-            <h3>Detailed Tables</h3>
-            <ul>
-                <li><strong>Unique Part Types:</strong> List of different parts with quantities and total areas</li>
-                <li><strong>Board Types:</strong> Summary of different sheet materials and quantities needed</li>
-                <li><strong>Parts Placed:</strong> Complete list of every part instance with board assignments</li>
-            </ul>
         </div>
-
-        <div class="doc-section">
-            <h2 id="export">Export Formats</h2>
-            <p>AutoNestCut supports multiple export formats to suit different workflows:</p>
-            
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <h4>PDF Export</h4>
-                    <p>Perfect for printing workshop diagrams and documentation. Includes all cutting layouts and part lists.</p>
-                    <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0; border-left: 4px solid #ffc107;">
-                        <strong>Example File:</strong> pdf_output_example.pdf<br>
-                        <small>Contains complete cutting diagrams and part lists ready for printing</small>
-                    </div>
-                </div>
-                <div class="feature-card">
-                    <h4>CSV Export</h4>
-                    <p>Spreadsheet-compatible format for inventory management and cost analysis.</p>
-                    <div style="background: #d1ecf1; padding: 10px; border-radius: 4px; margin: 10px 0; border-left: 4px solid #17a2b8;">
-                        <strong>Example File:</strong> Cutting_List_cutlist_model_10.csv<br>
-                        <small>Structured data for Excel, Google Sheets, or database import</small>
-                    </div>
-                </div>
-                <div class="feature-card">
-                    <h4>Interactive HTML</h4>
-                    <p>Fully interactive report with 3D part views and resizable diagrams for digital sharing.</p>
-                    <div style="background: #d4edda; padding: 10px; border-radius: 4px; margin: 10px 0; border-left: 4px solid #28a745;">
-                        <strong>Example File:</strong> AutoNestCut_Interactive_Report.html<br>
-                        <small>Self-contained interactive report with 3D visualization</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="doc-section">
-            <h2 id="performance">Performance Optimizations</h2>
-            <p>AutoNestCut includes advanced performance optimizations to ensure smooth operation even with complex models:</p>
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <h4>Material Caching</h4>
-                    <p>Intelligent caching system stores material lookups to eliminate repeated expensive operations during processing.</p>
-                </div>
-                <div class="feature-card">
-                    <h4>Single-Pass Processing</h4>
-                    <p>Optimized algorithms process components in a single iteration, reducing processing time from ~10 seconds to under 1 second.</p>
-                </div>
-                <div class="feature-card">
-                    <h4>Selective Entity Search</h4>
-                    <p>Focuses only on selected entities instead of searching the entire model, dramatically improving performance with large projects.</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="doc-section">
-            <h2 id="tips">Tips for Best Results</h2>
-            <ul>
-                <li>Model parts as separate components with realistic dimensions</li>
-                <li>Use consistent naming conventions for similar parts</li>
-                <li>Set appropriate grain direction attributes for wood parts</li>
-                <li>Verify material assignments before generating reports</li>
-                <li>Consider kerf width when setting up your stock materials</li>
-                <li>Review the parts preview to catch any detection issues</li>
-                <li><strong>Performance:</strong> For large models, select only the components you need to process rather than the entire model</li>
-            </ul>
-        </div>
-
-        <div class="doc-section">
-            <h2 id="troubleshooting">Troubleshooting</h2>
-            <h3>Parts Not Detected</h3>
-            <ul>
-                <li>Ensure parts are modeled as components, not loose geometry</li>
-                <li>Check that thickness is between 3-50mm</li>
-                <li>Verify minimum area requirements are met</li>
-            </ul>
-            
-            <h3>Poor Nesting Results</h3>
-            <ul>
-                <li>Enable rotation if grain direction allows</li>
-                <li>Adjust stock sheet sizes to better match your parts</li>
-                <li>Consider breaking large assemblies into individual parts</li>
-            </ul>
-            
-            <h3>Performance Issues</h3>
-            <ul>
-                <li><strong>Slow Processing:</strong> The extension now includes automatic performance optimizations that reduce processing time by up to 90%</li>
-                <li><strong>Memory Usage:</strong> Caching systems are automatically cleared between sessions to prevent memory buildup</li>
-                <li><strong>Large Models:</strong> Select specific components rather than entire complex assemblies for faster processing</li>
-                <li><strong>Extension Reload:</strong> If experiencing issues after updates, reload the extension using the Ruby Console</li>
-            </ul>
-        </div>
-
-        <div class="bug-report" id="bug-report">
-            <h3>Report a Bug</h3>
-            <p>Found an issue? Help us improve AutoNestCut by reporting bugs:</p>
-            <form class="bug-form" onsubmit="submitBugReport(event)">
-                <input type="text" id="bugTitle" placeholder="Brief description of the issue" required>
-                <textarea id="bugDescription" rows="4" placeholder="Detailed description of what happened, steps to reproduce, and expected behavior" required></textarea>
-                <input type="email" id="bugEmail" placeholder="Your email (optional, for follow-up)">
-                <button type="submit">Send Bug Report</button>
-            </form>
-        </div>
-        
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #007bff; text-align: center;">
-            <h3 style="margin-top: 0; color: #007bff;">Purchase AutoNestCut License</h3>
-            <p style="color: #333; margin-bottom: 15px;">Get the full version with all features and lifetime updates!</p>
-            <button onclick="openPurchasePage()" style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: 500;">Purchase License</button>
-        </div>
-        </div>
-    </div>
-
-    <div class="footer">
-        <h3>Connect with Int. Arch. Moe Shkeir</h3>
-        <div class="social-links">
-            <a href="https://www.behance.net/muhamadshkeir" target="_blank" title="Behance">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/>
-                    <polyline points="8,6 8,2 16,2 16,6"/>
-                </svg>
-            </a>
-            <a href="https://www.instagram.com/muhamad.a.shk/" target="_blank" title="Instagram">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
-                    <path d="m16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
-                </svg>
-            </a>
-            <a href="https://www.instagram.com/archi4.design/" target="_blank" title="Business Instagram">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
-                    <path d="m16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
-                </svg>
-            </a>
-            <a href="http://www.linkedin.com/in/muhammad-s-shkeir" target="_blank" title="LinkedIn">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
-                    <rect width="4" height="12" x="2" y="9"/>
-                    <circle cx="4" cy="4" r="2"/>
-                </svg>
-            </a>
-            <a href="mailto:muhamad.shkeir@gmail.com" title="Email">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                    <polyline points="22,6 12,13 2,6"/>
-                </svg>
-            </a>
-        </div>
-        <p style="margin-top: 15px; font-size: 0.85em; opacity: 0.7;">
-            © 2024 AutoNestCut Extension. Developed with passion for efficient woodworking and design.
-        </p>
     </div>
 
     <script>
-        // Navigation highlighting
-        document.addEventListener('DOMContentLoaded', function() {
-            const navLinks = document.querySelectorAll('.nav-link');
-            const sections = document.querySelectorAll('.doc-section h2[id]');
-            
-            function updateActiveNav() {
-                let current = '';
-                sections.forEach(section => {
-                    const rect = section.getBoundingClientRect();
-                    if (rect.top <= 120) {
-                        current = section.getAttribute('id');
-                    }
-                });
-                
-                navLinks.forEach(link => {
-                    link.classList.remove('active');
-                    if (link.getAttribute('href') === `#${current}`) {
-                        link.classList.add('active');
-                    }
-                });
+        // Documentation Tree Structure
+        const docTree = [
+            {
+                id: 'overview',
+                title: 'Overview',
+                children: [
+                    { id: 'overview-whats-new', title: "What's New" },
+                    { id: 'overview-requirements', title: 'System Requirements' }
+                ]
+            },
+            {
+                id: 'features',
+                title: 'Key Features'
+            },
+            {
+                id: 'getting-started',
+                title: 'Getting Started',
+                children: [
+                    { id: 'getting-started-workflow', title: 'Basic Workflow' },
+                    { id: 'getting-started-first-run', title: 'First Run Tips' }
+                ]
+            },
+            {
+                id: 'configuration',
+                title: 'Configuration',
+                children: [
+                    { id: 'configuration-general', title: 'General Settings' },
+                    { id: 'configuration-materials', title: 'Material Stock Management' },
+                    { id: 'configuration-smart-materials', title: 'Smart Material Detection' }
+                ]
+            },
+            {
+                id: 'reports',
+                title: 'Understanding Reports',
+                children: [
+                    { id: 'reports-summary', title: 'Project Summary' },
+                    { id: 'reports-materials', title: 'Materials Used' },
+                    { id: 'reports-diagrams', title: 'Cutting Diagrams' },
+                    { id: 'reports-sequences', title: 'Cut Sequences' },
+                    { id: 'reports-assembly', title: '3D Assembly Viewer' },
+                    { id: 'reports-tables', title: 'Detailed Tables' }
+                ]
+            },
+            {
+                id: 'export',
+                title: 'Export Formats',
+                children: [
+                    { id: 'export-pdf', title: 'PDF Export' },
+                    { id: 'export-html', title: 'Interactive HTML' },
+                    { id: 'export-csv', title: 'CSV Export' },
+                    { id: 'export-labels', title: 'QR Label Sheets' },
+                    { id: 'export-svg', title: 'SVG Vector Export' },
+                    { id: 'export-cnc-workflow', title: 'CNC/Laser Workflow' },
+                    { id: 'export-cnc-software', title: 'Supported Software' }
+                ]
+            },
+            {
+                id: 'advanced',
+                title: 'Advanced Features',
+                children: [
+                    { id: 'advanced-database', title: 'Material Database Management' },
+                    { id: 'advanced-resolution', title: 'Smart Material Resolution' },
+                    { id: 'advanced-3d', title: 'Interactive 3D Features' },
+                    { id: 'advanced-sequences', title: 'Cut Sequence Optimization' },
+                    { id: 'advanced-offcuts', title: 'Offcuts Management' }
+                ]
+            },
+            {
+                id: 'performance',
+                title: 'Performance & Optimization',
+                children: [
+                    { id: 'performance-features', title: 'Performance Features' },
+                    { id: 'performance-tips', title: 'Performance Tips' }
+                ]
+            },
+            {
+                id: 'tips',
+                title: 'Tips & Best Practices',
+                children: [
+                    { id: 'tips-modeling', title: 'Modeling Best Practices' },
+                    { id: 'tips-workflow', title: 'Workflow Tips' },
+                    { id: 'tips-features', title: 'Feature Usage Tips' }
+                ]
+            },
+            {
+                id: 'troubleshooting',
+                title: 'Troubleshooting',
+                children: [
+                    { id: 'troubleshooting-parts', title: 'Parts Not Detected' },
+                    { id: 'troubleshooting-materials', title: 'Material Issues' },
+                    { id: 'troubleshooting-nesting', title: 'Poor Nesting Results' },
+                    { id: 'troubleshooting-performance', title: 'Performance Issues' },
+                    { id: 'troubleshooting-export', title: 'Export Issues' },
+                    { id: 'troubleshooting-3d', title: '3D Viewer Issues' },
+                    { id: 'troubleshooting-help', title: 'Getting Help' }
+                ]
+            },
+            {
+                id: 'bug-report',
+                title: 'Report a Bug'
             }
-            
-            window.addEventListener('scroll', updateActiveNav);
-            updateActiveNav();
-            
-            // Smooth scrolling for nav links
-            navLinks.forEach(link => {
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const targetId = this.getAttribute('href').substring(1);
-                    const targetElement = document.getElementById(targetId);
-                    if (targetElement) {
-                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        ];
+
+        // Generate Tree HTML
+        function generateTree() {
+            const treeContainer = document.getElementById('tree');
+            docTree.forEach(item => {
+                const treeItem = document.createElement('div');
+                treeItem.className = 'tree-item';
+                
+                const header = document.createElement('div');
+                header.className = 'tree-item-header';
+                header.onclick = () => {
+                    if (item.children) {
+                        toggleTreeItem(treeItem);
                     }
-                });
+                    scrollToSection(item.id);
+                    setActiveItem(header);
+                };
+                
+                if (item.children) {
+                    const icon = document.createElement('span');
+                    icon.className = 'tree-item-icon';
+                    icon.innerHTML = '▶';
+                    header.appendChild(icon);
+                }
+                
+                const title = document.createElement('span');
+                title.textContent = item.title;
+                header.appendChild(title);
+                
+                treeItem.appendChild(header);
+                
+                if (item.children) {
+                    const childrenContainer = document.createElement('div');
+                    childrenContainer.className = 'tree-item-children';
+                    
+                    item.children.forEach(child => {
+                        const childItem = document.createElement('div');
+                        childItem.className = 'tree-item-child';
+                        childItem.textContent = child.title;
+                        childItem.onclick = (e) => {
+                            e.stopPropagation();
+                            scrollToSection(child.id);
+                            setActiveItem(childItem);
+                        };
+                        childrenContainer.appendChild(childItem);
+                    });
+                    
+                    treeItem.appendChild(childrenContainer);
+                }
+                
+                treeContainer.appendChild(treeItem);
             });
-        });
-        
+        }
+
+        // Toggle Tree Item
+        function toggleTreeItem(treeItem) {
+            const icon = treeItem.querySelector('.tree-item-icon');
+            const children = treeItem.querySelector('.tree-item-children');
+            
+            if (children) {
+                children.classList.toggle('expanded');
+                icon.classList.toggle('expanded');
+            }
+        }
+
+        // Scroll to Section
+        function scrollToSection(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // Set Active Item
+        function setActiveItem(clickedItem) {
+            document.querySelectorAll('.tree-item-header, .tree-item-child').forEach(item => {
+                item.classList.remove('active');
+            });
+            clickedItem.classList.add('active');
+        }
+
+        // Toggle Sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleIcon = document.querySelector('.toggle-icon');
+            sidebar.classList.toggle('collapsed');
+            
+            if (sidebar.classList.contains('collapsed')) {
+                toggleIcon.innerHTML = '<path d="M15 18l-6-6 6-6"/>';
+            } else {
+                toggleIcon.innerHTML = '<path d="M9 18l6-6-6-6"/>';
+            }
+        }
+
+        // Highlight Active Section on Scroll
+        function highlightActiveSection() {
+            const sections = document.querySelectorAll('.content-section');
+            const scrollPosition = document.getElementById('mainContent').scrollTop + 100;
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionBottom = sectionTop + section.offsetHeight;
+                
+                if (scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
+                    const sectionId = section.id;
+                    const activeHeader = document.querySelector(`[onclick*="${sectionId}"]`);
+                    if (activeHeader && !activeHeader.classList.contains('active')) {
+                        setActiveItem(activeHeader);
+                    }
+                }
+            });
+        }
+
+        // Submit Bug Report
         async function submitBugReport(event) {
             event.preventDefault();
             
@@ -715,21 +1285,17 @@
                 button.textContent = originalText;
             }
         }
-        
+
+        // Open Purchase Page
         function openPurchasePage() {
             window.open('https://autonestcutserver-3srrv5rok-moeshks-projects.vercel.app/', '_blank');
         }
 
-        function toggleSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            const toggleIcon = document.querySelector('.toggle-icon');
-            sidebar.classList.toggle('collapsed');
-            if (sidebar.classList.contains('collapsed')) {
-                toggleIcon.innerHTML = '<path d="M15 18l-6-6 6-6"/>';
-            } else {
-                toggleIcon.innerHTML = '<path d="M9 18l6-6-6-6"/>';
-            }
-        }
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            generateTree();
+            document.getElementById('mainContent').addEventListener('scroll', highlightActiveSection);
+        });
     </script>
 </body>
 </html>

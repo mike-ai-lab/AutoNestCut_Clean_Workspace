@@ -362,10 +362,22 @@ function renderDiagrams() {
         header.appendChild(tagsContainer);
         card.appendChild(header);
 
+        // ✅ SVG REPLACEMENT: Generate SVG diagram instead of canvas
+        // This provides infinite scalability without blur
+        if (typeof window.generateBoardSVG === 'function') {
+            const containerWidth = card.offsetWidth || 600;
+            const svg = window.generateBoardSVG(board, containerWidth, reportUnits, reportPrecision);
+            if (svg) {
+                card.appendChild(svg);
+                container.appendChild(card);
+                return; // Skip canvas drawing for this board
+            }
+        }
+
+        // Fallback to canvas if SVG generation fails
         const canvas = document.createElement('canvas');
         canvas.className = 'diagram-canvas';
         card.appendChild(canvas);
-
         container.appendChild(card);
 
         canvas.drawCanvas = function() {
@@ -761,6 +773,10 @@ function renderReport() {
     }
     
     // Render new sections
+    if (g_reportData.boards) {
+        renderBoardsSummary(g_reportData);
+    }
+    
     if (g_reportData.cut_sequences) {
         renderCutSequences(g_reportData);
     }
@@ -777,14 +793,123 @@ function renderReport() {
     console.log('Finished rendering report');
 }
 
+function renderBoardsSummary(reportData) {
+    console.log('🔧 renderBoardsSummary called with data:', reportData);
+    console.log('🔧 Boards count:', reportData.boards?.length || 0);
+    
+    const container = document.getElementById('boardsSummaryContainer');
+    if (!container) {
+        console.error('❌ Boards summary container not found');
+        return;
+    }
+    
+    console.log('✅ Container found:', container);
+    
+    if (!reportData.boards || reportData.boards.length === 0) {
+        console.log('⚠️ No boards data available');
+        container.innerHTML = '<div class="report-table-container"><div class="report-table-header">No Boards Summary</div><div style="padding: 20px; text-align: center; color: #64748b;">No boards data available</div></div>';
+        return;
+    }
+    
+    // Get parts data for mapping
+    const parts_list = reportData.parts_placed || reportData.parts || [];
+    
+    // Use globals from app.js
+    const reportUnits = window.currentUnits || 'mm';
+    const reportPrecision = window.currentPrecision ?? 1;
+    
+    console.log('🎨 Building HTML for', reportData.boards.length, 'boards');
+    
+    // Build HTML from scratch with new design
+    let htmlOutput = '';
+    
+    reportData.boards.forEach(board => {
+        // Get parts on this board
+        const partsOnBoard = parts_list.filter(part => part.board_number === board.board_number);
+        
+        // Convert dimensions from mm to current units
+        const width = board.stock_width / window.unitFactors[reportUnits];
+        const height = board.stock_height / window.unitFactors[reportUnits];
+        const dimensionsStr = `${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)} ${reportUnits}`;
+        
+        // Create board summary section
+        htmlOutput += `
+            <div class="report-table-container" style="margin-bottom: 24px;">
+                <div class="report-table-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Board ${board.board_number}: ${escapeHtml(board.material)}</span>
+                </div>
+                <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 13px;">
+                        <div><strong style="color: #64748b;">Size:</strong> <span style="color: #0f172a;">${dimensionsStr}</span></div>
+                        <div><strong style="color: #64748b;">Parts:</strong> <span style="color: #0f172a;">${board.parts_count}</span></div>
+                        <div><strong style="color: #64748b;">Efficiency:</strong> <span style="color: #22863a; font-weight: 500;">${formatNumber(board.efficiency_percentage, reportPrecision)}%</span></div>
+                        <div><strong style="color: #64748b;">Waste:</strong> <span style="color: #d73a49; font-weight: 500;">${formatNumber(board.waste_percentage, reportPrecision)}%</span></div>
+                    </div>
+                </div>`;
+        
+        // Add parts table if there are parts on this board
+        if (partsOnBoard.length > 0) {
+            htmlOutput += `
+                <div style="padding: 16px 20px;">
+                    <div style="font-weight: 600; color: #0f172a; margin-bottom: 12px; font-size: 13px;">Parts on this board:</div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding: 8px 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Part ID</th>
+                                <th style="text-align: left; padding: 8px 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Name</th>
+                                <th style="text-align: left; padding: 8px 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Dimensions (${reportUnits})</th>
+                                <th style="text-align: left; padding: 8px 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Material</th>
+                                <th style="text-align: left; padding: 8px 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Grain</th>
+                                <th style="text-align: left; padding: 8px 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Edge Banding</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+            
+            partsOnBoard.forEach((part, index) => {
+                const partId = part.part_unique_id || part.part_number;
+                const partWidth = (part.width || 0) / window.unitFactors[reportUnits];
+                const partHeight = (part.height || 0) / window.unitFactors[reportUnits];
+                const dimensionsStr = `${formatNumber(partWidth, reportPrecision)} × ${formatNumber(partHeight, reportPrecision)}`;
+                const edgeBandingDisplay = typeof part.edge_banding === 'object' && part.edge_banding.type ? part.edge_banding.type : (part.edge_banding || 'None');
+                const isLast = index === partsOnBoard.length - 1;
+                const borderStyle = isLast ? 'border-bottom: none;' : 'border-bottom: 1px solid #e2e8f0;';
+                
+                htmlOutput += `
+                            <tr style="transition: background 0.15s;">
+                                <td style="padding: 8px 12px; color: #0f172a; ${borderStyle}">${escapeHtml(partId)}</td>
+                                <td style="padding: 8px 12px; color: #0f172a; ${borderStyle}" title="${escapeHtml(part.name)}">${escapeHtml(part.name)}</td>
+                                <td style="padding: 8px 12px; color: #0f172a; ${borderStyle}">${dimensionsStr}</td>
+                                <td style="padding: 8px 12px; color: #0f172a; ${borderStyle}" title="${escapeHtml(part.material)}">${escapeHtml(part.material)}</td>
+                                <td style="padding: 8px 12px; color: #0f172a; ${borderStyle}">${escapeHtml(part.grain_direction || 'Any')}</td>
+                                <td style="padding: 8px 12px; color: #0f172a; ${borderStyle}">${escapeHtml(edgeBandingDisplay)}</td>
+                            </tr>`;
+            });
+            
+            htmlOutput += `
+                        </tbody>
+                    </table>
+                </div>`;
+        }
+        
+        htmlOutput += `
+            </div>`;
+    });
+    
+    // Set the HTML
+    container.innerHTML = htmlOutput;
+    
+    console.log('✅ Boards summary rendered successfully');
+    console.log('📊 Total boards rendered:', reportData.boards.length);
+}
+
 function renderCutSequences(reportData) {
     console.log('🔧 renderCutSequences called with data:', reportData);
     console.log('🔧 Cut sequences count:', reportData.cut_sequences?.length || 0);
     
     // COMPLETELY NEW IMPLEMENTATION - NO OLD CODE
-    const container = document.getElementById('cutSequenceContainer');
+    const container = document.getElementById('cutSequencesContainer');
     if (!container) {
-        console.error('❌ Cut sequence container not found');
+        console.error('❌ Cut sequences container not found');
         return;
     }
     
@@ -804,11 +929,17 @@ function renderCutSequences(reportData) {
     reportData.cut_sequences.forEach(board => {
         const tableId = `cutSequenceTable_${board.board_number}`;
         
+        // Handle both 'steps' (new) and 'cut_sequence' (old) for backwards compatibility
+        const steps = board.steps || board.cut_sequence || [];
+        const stockSize = board.stock_size || board.stock_dimensions || 'N/A';
+        
+        console.log(`📋 Board ${board.board_number}: ${steps.length} steps`);
+        
         // Create table with report design classes
         htmlOutput += `
             <div class="report-table-container" style="margin-bottom: 24px;">
                 <div class="report-table-header" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>Sheet ${board.board_number}: ${escapeHtml(board.material)} - ${board.stock_dimensions}</span>
+                    <span>Sheet ${board.board_number}: ${escapeHtml(board.material)} - ${stockSize}</span>
                 </div>
                 <table id="${tableId}" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                     <colgroup>
@@ -828,20 +959,28 @@ function renderCutSequences(reportData) {
                     <tbody>`;
         
         // Add rows
-        board.cut_sequence.forEach((step, index) => {
-            const isLast = index === board.cut_sequence.length - 1;
-            const borderStyle = isLast ? 'border-bottom: none;' : 'border-bottom: 1px solid #e2e8f0;';
-            
-            htmlOutput += `
+        if (steps.length > 0) {
+            steps.forEach((step, index) => {
+                const isLast = index === steps.length - 1;
+                const borderStyle = isLast ? 'border-bottom: none;' : 'border-bottom: 1px solid #e2e8f0;';
+                const operation = step.operation || step.type || 'N/A';
+                
+                htmlOutput += `
                         <tr style="transition: background 0.15s;">
                             <td style="padding: 12px 20px; color: #0f172a; ${borderStyle}">
                                 <span style="background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 500; display: inline-block;">${step.step}</span>
                             </td>
-                            <td style="padding: 12px 20px; color: #0f172a; font-weight: 500; ${borderStyle}">${escapeHtml(step.type)}</td>
+                            <td style="padding: 12px 20px; color: #0f172a; font-weight: 500; ${borderStyle}">${escapeHtml(operation)}</td>
                             <td style="padding: 12px 20px; color: #0f172a; ${borderStyle}">${escapeHtml(step.description)}</td>
                             <td style="padding: 12px 20px; color: #0f172a; text-align: right; ${borderStyle}">${escapeHtml(step.measurement)}</td>
                         </tr>`;
-        });
+            });
+        } else {
+            htmlOutput += `
+                        <tr>
+                            <td colspan="4" style="padding: 20px; text-align: center; color: #64748b;">No cutting steps available</td>
+                        </tr>`;
+        }
         
         htmlOutput += `
                     </tbody>
@@ -1222,6 +1361,21 @@ function handleCanvasHover(e, canvas) {
 
 // Highlight part in the Report Assembly 3D Viewer
 function highlightPartInAssemblyViewer(part) {
+    console.log(`🎯 highlightPartInAssemblyViewer: ${part.name} (${part.part_unique_id})`);
+    
+    // CRITICAL FIX: Use centralized clear function
+    console.log('🧹 Clearing ALL highlights before 3D highlight');
+    
+    if (typeof window.clearAllHighlights === 'function') {
+        window.clearAllHighlights();
+    } else {
+        // Fallback to manual clearing
+        if (typeof window.clearAllSVGHighlights === 'function') {
+            window.clearAllSVGHighlights();
+        }
+        clearPieceHighlight();
+    }
+    
     // Ensure the Assembly 3D Viewer is visible and initialized
     const canvas = document.getElementById('reportAssembly3DCanvas');
     const offScreen = document.getElementById('reportViewer3DOffScreen');
@@ -1419,10 +1573,10 @@ function handle3DViewerClick(event, canvas) {
                 if (group && group.userData.partName) {
                     console.log('🖱️ 3D Viewer clicked:', group.userData.partName);
                     
-                    // Apply visual highlight to clicked component
-                    highlight3DViewerComponent(group);
+                    // Don't apply 3D highlight here - let the diagram highlighting handle it
+                    // This prevents duplicate highlights that persist
                     
-                    // Then highlight the diagram
+                    // Highlight the diagram (which will clear all highlights first)
                     highlightDiagramFromViewer(group.userData);
                     break;
                 }
@@ -2325,35 +2479,160 @@ function initAssemblyViewer(geometryData) {
     }
 }
 
-function captureDiagramImages() {
+async function captureDiagramImages() {
+    console.log('🎬 captureDiagramImages: Starting diagram capture for PDF');
+    
+    // CRITICAL FIX: Use centralized clear function before capturing
+    console.log('🧹 Clearing all highlights before PDF capture');
+    
+    if (typeof window.clearAllHighlights === 'function') {
+        window.clearAllHighlights();
+    } else {
+        // Fallback to manual clearing
+        if (typeof window.clearAllSVGHighlights === 'function') {
+            window.clearAllSVGHighlights();
+        }
+        clearPieceHighlight();
+        if (window.reportAssemblyGroups && window.reportAssemblyGroups.length > 0) {
+            window.reportAssemblyGroups.forEach(group => {
+                group.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        const originalMat = group.userData.originalMaterial || {};
+                        child.material.emissive.setHex(0x000000);
+                        child.material.emissiveIntensity = 0;
+                        child.material.color.setHex(originalMat.color || 0xcccccc);
+                        child.material.opacity = originalMat.opacity || 0.85;
+                        child.material.needsUpdate = true;
+                    }
+                    if (child.isLineSegments) {
+                        child.material.color.setHex(group.userData.originalEdgeColor || 0x666666);
+                        child.material.needsUpdate = true;
+                    }
+                });
+            });
+        }
+    }
+    
     const diagrams = [];
     const canvases = document.querySelectorAll('.diagram-canvas');
+    const svgs = document.querySelectorAll('svg.diagram-canvas');
+    
+    console.log(`📊 Found ${canvases.length} canvas diagrams and ${svgs.length} SVG diagrams`);
     
     // Set flag to enable high-resolution rendering for PDF capture
     window.capturingForPDF = true;
     
-    // Redraw all canvases at high resolution
+    // Redraw all canvases at high resolution (without highlights)
     canvases.forEach(canvas => {
         if (canvas.drawCanvas) {
             canvas.drawCanvas();
         }
     });
     
-    // Capture the high-resolution images
+    // Capture canvas diagrams (synchronous)
     canvases.forEach((canvas, index) => {
         try {
-            // Use maximum quality (1.0) for PDF export instead of 0.8
-            // PNG format with quality 1.0 ensures crisp, clear images
             const dataURL = canvas.toDataURL('image/png', 1.0);
             diagrams.push({
                 index: index,
                 image: dataURL,
                 board: canvas.boardData
             });
+            console.log(`✅ Captured canvas diagram ${index + 1}`);
         } catch (e) {
-            console.error('Failed to capture diagram:', e);
+            console.error('Failed to capture canvas diagram:', e);
         }
     });
+    
+    // Capture SVG diagrams by converting to PNG at high resolution for print (asynchronous)
+    const svgPromises = Array.from(svgs).map((svg, index) => {
+        return new Promise((resolve, reject) => {
+            try {
+                // Clone SVG to avoid modifying the original
+                const svgClone = svg.cloneNode(true);
+                
+                // Remove any highlight classes from the clone
+                svgClone.querySelectorAll('.highlighted').forEach(el => {
+                    el.classList.remove('highlighted');
+                });
+                
+                // CRITICAL: Use viewBox dimensions (actual board size), not display size
+                const viewBox = svg.getAttribute('viewBox');
+                let svgWidth, svgHeight;
+                
+                if (viewBox) {
+                    const [x, y, w, h] = viewBox.split(' ').map(parseFloat);
+                    svgWidth = w;
+                    svgHeight = h;
+                    console.log(`📐 SVG ${index + 1} viewBox dimensions: ${svgWidth}x${svgHeight}`);
+                } else {
+                    // Fallback to display size if no viewBox
+                    const bbox = svg.getBoundingClientRect();
+                    svgWidth = bbox.width;
+                    svgHeight = bbox.height;
+                    console.warn(`⚠️ SVG ${index + 1} has no viewBox, using display size: ${svgWidth}x${svgHeight}`);
+                }
+                
+                const svgData = new XMLSerializer().serializeToString(svgClone);
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                // CRITICAL FIX: Use 3x resolution for PRINT QUALITY (300 DPI equivalent)
+                // This ensures crisp, sharp details for printing
+                const printScale = 3;
+                canvas.width = svgWidth * printScale;
+                canvas.height = svgHeight * printScale;
+                
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(svgBlob);
+                
+                img.onload = function() {
+                    try {
+                        // Scale context for high-resolution rendering
+                        ctx.scale(printScale, printScale);
+                        ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
+                        
+                        // Use maximum quality (1.0) for print
+                        const dataURL = canvas.toDataURL('image/png', 1.0);
+                        URL.revokeObjectURL(url);
+                        
+                        console.log(`✅ Captured SVG diagram ${index + 1} at ${printScale}x for print (${canvas.width}x${canvas.height})`);
+                        resolve({
+                            index: canvases.length + index,
+                            image: dataURL,
+                            board: svg.boardData,
+                            width: svgWidth,
+                            height: svgHeight
+                        });
+                    } catch (err) {
+                        URL.revokeObjectURL(url);
+                        reject(err);
+                    }
+                };
+                
+                img.onerror = function(err) {
+                    URL.revokeObjectURL(url);
+                    console.error(`Failed to load SVG diagram ${index + 1}:`, err);
+                    reject(err);
+                };
+                
+                img.src = url;
+            } catch (e) {
+                console.error('Failed to capture SVG diagram:', e);
+                reject(e);
+            }
+        });
+    });
+    
+    // Wait for all SVG captures to complete
+    try {
+        const svgDiagrams = await Promise.all(svgPromises);
+        diagrams.push(...svgDiagrams);
+        console.log(`✅ All SVG diagrams captured: ${svgDiagrams.length}`);
+    } catch (error) {
+        console.error('Error capturing SVG diagrams:', error);
+    }
     
     // Reset flag and redraw at normal resolution for display
     window.capturingForPDF = false;
@@ -2363,10 +2642,11 @@ function captureDiagramImages() {
         }
     });
     
+    console.log(`✅ Captured ${diagrams.length} total diagrams for PDF`);
     return diagrams;
 }
 
-function exportInteractiveHTML() {
+async function exportInteractiveHTML() {
     console.log('=== exportInteractiveHTML START ===');
     console.log('g_reportData:', !!g_reportData);
     console.log('g_boardsData:', !!g_boardsData);
@@ -2381,7 +2661,9 @@ function exportInteractiveHTML() {
     
     showProgressOverlay('Preparing interactive HTML export...', 10);
     
-    const diagramImages = captureDiagramImages();
+    // CRITICAL FIX: Await the async diagram capture
+    const diagramImages = await captureDiagramImages();
+    console.log(`📸 Captured ${diagramImages.length} diagram images for HTML export`);
     
     const reportDataJSON = JSON.stringify({
         diagrams: g_boardsData,
@@ -2441,32 +2723,84 @@ function scrollToPieceDiagram(partId, boardNumber) {
         return;
     }
     
-    // Find the canvas for this board
+    // Find the diagram card for this board
     const diagrams = diagramContainer.querySelectorAll('.diagram-card');
-    let targetCanvas = null;
     let targetCard = null;
     
     if (boardIndex < diagrams.length) {
         targetCard = diagrams[boardIndex];
-        targetCanvas = targetCard.querySelector('canvas');
     }
     
-    if (!targetCanvas) {
-        console.warn(`Canvas for board ${boardNumber} not found`);
+    if (!targetCard) {
+        console.warn(`Diagram card for board ${boardNumber} not found`);
         return;
     }
+    
+    // Check if it's SVG or canvas
+    const svg = targetCard.querySelector('svg.diagram-canvas');
+    const canvas = targetCard.querySelector('canvas.diagram-canvas');
+    
+    if (svg) {
+        // Use SVG highlighting
+        if (typeof window.highlightPartInSVGDiagram === 'function') {
+            window.highlightPartInSVGDiagram(partId, boardNumber);
+        } else {
+            console.warn('highlightPartInSVGDiagram function not available');
+        }
+    } else if (canvas) {
+        // Use canvas highlighting (legacy)
+        handleCanvasHighlight(partId, boardNumber, canvas, targetCard);
+    } else {
+        console.warn(`No diagram (SVG or canvas) found for board ${boardNumber}`);
+    }
+}
+
+// Legacy canvas highlighting function
+function handleCanvasHighlight(partId, boardNumber, targetCanvas, targetCard) {
+    console.log(`🎯 handleCanvasHighlight: ${partId} on board ${boardNumber}`);
+    
+    // CRITICAL FIX: Use centralized clear function
+    console.log('🧹 Clearing ALL highlights before new highlight');
     
     // Check if this is the EXACT same piece (same partId AND same canvas) - only then toggle off
-    if (currentHighlightedPiece === partId && currentHighlightedCanvas === targetCanvas) {
-        console.log('Same piece clicked again - toggling off');
+    const isSamePiece = (currentHighlightedPiece === partId && currentHighlightedCanvas === targetCanvas);
+    
+    // Clear all highlights using centralized function
+    if (typeof window.clearAllHighlights === 'function') {
+        window.clearAllHighlights();
+    } else {
+        // Fallback to manual clearing
+        if (typeof window.clearAllSVGHighlights === 'function') {
+            window.clearAllSVGHighlights();
+        }
         clearPieceHighlight();
+        if (window.reportAssemblyGroups && window.reportAssemblyGroups.length > 0) {
+            window.reportAssemblyGroups.forEach(group => {
+                group.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        const originalMat = group.userData.originalMaterial || {};
+                        child.material.emissive.setHex(0x000000);
+                        child.material.emissiveIntensity = 0;
+                        child.material.color.setHex(originalMat.color || 0xcccccc);
+                        child.material.opacity = originalMat.opacity || 0.85;
+                        child.material.needsUpdate = true;
+                    }
+                    if (child.isLineSegments) {
+                        child.material.color.setHex(group.userData.originalEdgeColor || 0x666666);
+                        child.material.needsUpdate = true;
+                    }
+                });
+            });
+        }
+    }
+    
+    // If same piece clicked again, we're done (toggle off)
+    if (isSamePiece) {
+        console.log('✅ Same piece clicked - toggled off');
         return;
     }
     
-    // Different piece or different board - clear previous and highlight new
-    clearPieceHighlight();
-    
-    // Find the piece in the canvas data
+    // Find and highlight the new piece in the canvas
     if (targetCanvas.partData) {
         for (let partData of targetCanvas.partData) {
             const partLabel = String(partData.part.part_unique_id || partData.part.part_number || partData.part.instance_id || `P${partData.part.index || 0}`);
@@ -2475,7 +2809,7 @@ function scrollToPieceDiagram(partId, boardNumber) {
                 highlightPieceOnCanvas(targetCanvas, partData);
                 currentHighlightedPiece = partId;
                 currentHighlightedCanvas = targetCanvas;
-                console.log('✅ Highlighted piece:', partId, 'on board', boardNumber);
+                console.log('✅ Highlighted canvas piece:', partId, 'on board', boardNumber);
                 break;
             }
         }
@@ -2758,12 +3092,16 @@ function copyFullReportAsMarkdown() {
         
         g_reportData.cut_sequences.forEach(board => {
             markdown += `### Sheet ${board.board_number}: ${board.material}\n\n`;
-            markdown += `**Stock Size:** ${board.stock_dimensions}\n\n`;
+            const stockSize = board.stock_size || board.stock_dimensions || 'N/A';
+            markdown += `**Stock Size:** ${stockSize}\n\n`;
             markdown += `| Step | Operation | Description | Measurement |\n`;
             markdown += `|------|-----------|-------------|-------------|\n`;
             
-            board.cut_sequence.forEach(step => {
-                markdown += `| ${step.step} | ${step.type} | ${step.description} | ${step.measurement} |\n`;
+            // Handle both 'steps' (new) and 'cut_sequence' (old)
+            const steps = board.steps || board.cut_sequence || [];
+            steps.forEach(step => {
+                const operation = step.operation || step.type || 'N/A';
+                markdown += `| ${step.step} | ${operation} | ${step.description} | ${step.measurement} |\n`;
             });
             markdown += `\n`;
         });

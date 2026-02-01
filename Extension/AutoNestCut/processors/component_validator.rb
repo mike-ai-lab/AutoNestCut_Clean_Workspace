@@ -34,26 +34,17 @@ module AutoNestCut
       @validation_errors = []
       @missing_materials = []
       
-      log_validation_header(parts_by_material)
-      
       return { success: false, materials_created: [], warnings: [], errors: ['No components to validate'], missing_materials: [] } if parts_by_material.empty?
       
       # Load existing materials database
       existing_materials = MaterialsDatabase.load_database
-      log_database_status(existing_materials)
       
-      # CRITICAL FIX: Merge default materials so fuzzy matching has more options
+      # Merge default materials so fuzzy matching has more options
       default_materials = MaterialsDatabase.get_default_materials
-      
-      # Merge defaults with existing (existing takes precedence)
       existing_materials = default_materials.merge(existing_materials)
       
-      # CRITICAL FIX: Remove all old auto-materials to prevent dimension mismatches
-      # This ensures we regenerate with correct dimensions (no +10mm padding)
-      old_auto_count = existing_materials.length
+      # Remove all old auto-materials to prevent dimension mismatches
       existing_materials.reject! { |name, _| name.start_with?('Auto_user_') }
-      removed_count = old_auto_count - existing_materials.length
-      log_cleanup_status(removed_count) if removed_count > 0
       
       default_currency = Config.get_cached_settings['default_currency'] || 'USD'
       
@@ -69,8 +60,6 @@ module AutoNestCut
         )
         MaterialsDatabase.save_database(updated_materials)
       end
-      
-      log_validation_summary
       
       {
         success: @validation_errors.empty?,
@@ -153,32 +142,28 @@ module AutoNestCut
         height = part_obj.height.to_f
         thickness = part_obj.thickness.to_f
         
-        # HARD constraints
+        # Hard constraints
         if width > HARD_LIMIT_WIDTH || height > HARD_LIMIT_HEIGHT
-          log_validation_error(part_obj.name, "exceeds maximum limits (#{HARD_LIMIT_WIDTH}x#{HARD_LIMIT_HEIGHT}mm)", width, height, thickness)
           @validation_errors << "Component '#{part_obj.name}': #{width.round(0)}x#{height.round(0)}mm exceeds maximum limits (#{HARD_LIMIT_WIDTH}x#{HARD_LIMIT_HEIGHT}mm). This component is too large to fit on any standard sheet material."
           next
         end
         
         if width < MIN_DIMENSION || height < MIN_DIMENSION
-          log_validation_error(part_obj.name, "too small (minimum #{MIN_DIMENSION}mm)", width, height, thickness)
           @validation_errors << "Component '#{part_obj.name}': #{width.round(1)}x#{height.round(1)}mm is too small (minimum #{MIN_DIMENSION}mm)"
           next
         end
         
         if thickness > MAX_THICKNESS
-          log_validation_error(part_obj.name, "not a sheet material (maximum #{MAX_THICKNESS}mm)", width, height, thickness)
           @validation_errors << "Component '#{part_obj.name}': #{thickness.round(0)}mm thick - not a sheet material (maximum #{MAX_THICKNESS}mm)"
           next
         end
         
         if thickness < MIN_THICKNESS
-          log_validation_error(part_obj.name, "too thin (minimum #{MIN_THICKNESS}mm)", width, height, thickness)
           @validation_errors << "Component '#{part_obj.name}': #{thickness.round(2)}mm thick - too thin (minimum #{MIN_THICKNESS}mm)"
           next
         end
         
-        # WARN if it exceeds the common standard sheet (but do not auto-create on this alone)
+        # Warn if it exceeds the common standard sheet
         can_fit_on_standard_sheet = false
         if (width <= 2440 && height <= 1220) || (height <= 2440 && width <= 1220)
           can_fit_on_standard_sheet = true
@@ -188,36 +173,24 @@ module AutoNestCut
           @validation_warnings << "Component '#{part_obj.name}': #{width.round(1)}x#{height.round(1)}mm exceeds standard sheet size (2440x1220mm). This may require custom material sizing."
         end
         
-        # If no material name assigned -> flagged temporary material (unchanged)
+        # If no material name assigned -> flagged temporary material
         if material_name.nil? || material_name.to_s.strip.empty?
-          log_no_material_assigned(part_obj.name, width, height, thickness)
           auto_create_flagged_material(part_obj.name, width, height, thickness, default_currency, existing_materials)
           next
         end
         
-        # If material is already an auto-created placeholder, do not re-run matching/creation (prevents nested wrapping)
+        # If material is already an auto-created placeholder, skip
         if material_name.to_s.start_with?('Auto_user_') || material_name.to_s.start_with?('no_material_')
-          log_skip_auto_material(part_obj.name, material_name)
           next
         end
         
-        # --------- CORRECT BEHAVIOR: EXACT MATCH ONLY ----------
-        # Like a real carpenter: Do I have THIS material with THIS thickness?
-        # If YES → use it. If NO → collect as missing material for user decision.
-        # No fuzzy matching. No tolerance. No "candidates". Simple.
-        
+        # Exact match only - no fuzzy matching
         exact_match, material_data = exact_material_exists?(material_name, thickness, existing_materials)
         
-        log_component_check(part_obj.name, width, height, thickness, material_name, exact_match, material_data)
-        
-        if exact_match
-          # Perfect. The exact material exists. Use it.
-          # No remapping needed - material name stays the same
-        else
+        unless exact_match
           # Material doesn't exist exactly as specified. Collect as missing.
           collect_missing_material(material_name, thickness, part_obj, width, height)
         end
-        # --------- END CORRECT BEHAVIOR ----------
       end
     end
     
@@ -404,124 +377,6 @@ module AutoNestCut
     
     def get_validation_errors
       @validation_errors
-    end
-    
-    private
-    
-    # ========== LOGGING METHODS ==========
-    
-    def log_validation_header(parts_by_material)
-      puts "\n" + "="*80
-      puts "COMPONENT VALIDATOR - VALIDATION STARTED"
-      puts "="*80
-      puts "Materials to validate: #{parts_by_material.keys.length}"
-      puts "Total components: #{parts_by_material.values.flatten.length}"
-      parts_by_material.each do |mat_name, parts|
-        puts "  • #{mat_name}: #{parts.length} component(s)"
-      end
-      puts "="*80 + "\n"
-    end
-    
-    def log_database_status(existing_materials)
-      puts "📚 DATABASE STATUS:"
-      puts "  Loaded materials: #{existing_materials.length}"
-      
-      # Count material types
-      auto_materials = existing_materials.count { |name, _| name.start_with?('Auto_user_') }
-      flagged_materials = existing_materials.count { |name, _| name.start_with?('no_material_') }
-      standard_materials = existing_materials.length - auto_materials - flagged_materials
-      
-      puts "  • Standard materials: #{standard_materials}"
-      puts "  • Auto-created materials: #{auto_materials}" if auto_materials > 0
-      puts "  • Flagged materials: #{flagged_materials}" if flagged_materials > 0
-      puts ""
-    end
-    
-    def log_cleanup_status(removed_count)
-      puts "🧹 CLEANUP:"
-      puts "  Removed #{removed_count} old auto-material(s) to prevent conflicts"
-      puts ""
-    end
-    
-    def log_component_check(component_name, width, height, thickness, material_name, exact_match, actual_material_name)
-      puts "🔍 CHECKING: #{component_name}"
-      puts "  Dimensions: #{width.round(1)}mm × #{height.round(1)}mm × #{thickness.round(1)}mm"
-      puts "  Material: '#{material_name}' (thickness: #{thickness.round(1)}mm)"
-      
-      if exact_match
-        puts "  ✓ EXACT MATCH FOUND"
-        puts "    → Action: USE existing material"
-      else
-        puts "  ✗ NO EXACT MATCH"
-        puts "    → Action: COLLECT AS MISSING (user will decide)"
-      end
-      puts ""
-    end
-    
-    def log_validation_error(component_name, reason, width, height, thickness)
-      puts "❌ VALIDATION ERROR: #{component_name}"
-      puts "  Dimensions: #{width.round(1)}mm × #{height.round(1)}mm × #{thickness.round(1)}mm"
-      puts "  Reason: #{reason}"
-      puts ""
-    end
-    
-    def log_no_material_assigned(component_name, width, height, thickness)
-      puts "⚠️  NO MATERIAL: #{component_name}"
-      puts "  Dimensions: #{width.round(1)}mm × #{height.round(1)}mm × #{thickness.round(1)}mm"
-      puts "  Action: CREATE flagged temporary material"
-      puts ""
-    end
-    
-    def log_skip_auto_material(component_name, material_name)
-      puts "⏭️  SKIP: #{component_name}"
-      puts "  Material: '#{material_name}'"
-      puts "  Reason: Already an auto-created material (prevents nested wrapping)"
-      puts ""
-    end
-    
-    def log_validation_summary
-      puts "\n" + "="*80
-      puts "COMPONENT VALIDATOR - VALIDATION COMPLETE"
-      puts "="*80
-      
-      success = @validation_errors.empty?
-      status = success ? "✓ SUCCESS" : "✗ FAILED"
-      puts "Status: #{status}"
-      puts ""
-      
-      if @validation_errors.any?
-        puts "Errors: #{@validation_errors.length}"
-        @validation_errors.each_with_index do |error, i|
-          puts "  #{i+1}. #{error}"
-        end
-        puts ""
-      end
-      
-      if @validation_warnings.any?
-        puts "Warnings: #{@validation_warnings.length}"
-        @validation_warnings.each_with_index do |warning, i|
-          puts "  #{i+1}. #{warning}"
-        end
-        puts ""
-      end
-      
-      if @missing_materials.any?
-        puts "Missing Materials: #{@missing_materials.length}"
-        @missing_materials.each do |mat|
-          puts "  • #{mat[:name]} (#{mat[:thickness]}mm) - #{mat[:component_count]} component(s)"
-        end
-        puts ""
-      end
-      
-      if @auto_created_materials.any?
-        puts "Auto-Created Materials: #{@auto_created_materials.length}"
-        @auto_created_materials.each do |mat|
-          puts "  • #{mat[:name]} (#{mat[:dimensions]})"
-        end
-        puts ""
-      end
-      
-      puts "="*80 + "\n"
     end
   end
 end

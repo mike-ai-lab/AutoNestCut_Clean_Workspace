@@ -10,31 +10,36 @@ module AutoNestCut
     # Constructor now expects a component_definition_or_instance and optionally a specific Sketchup::Material object
     # or material_name string. Also handles Sketchup::Group entities.
     def initialize(component_definition_or_instance, specific_material = nil)
-      
-      # Determine if we're initialized with a ComponentDefinition, ComponentInstance, or Group
-      if component_definition_or_instance.is_a?(Sketchup::ComponentDefinition)
-        @original_definition = component_definition_or_instance
-        definition = component_definition_or_instance
-        instance_material = nil
-      elsif component_definition_or_instance.is_a?(Sketchup::ComponentInstance)
-        @original_definition = component_definition_or_instance.definition
-        definition = component_definition_or_instance.definition
-        instance_material = component_definition_or_instance.material
-      elsif component_definition_or_instance.is_a?(Sketchup::Group)
-        # Groups don't have definitions, treat the group itself as the definition
-        @original_definition = component_definition_or_instance
-        definition = component_definition_or_instance
-        instance_material = component_definition_or_instance.material
-      else
-        raise ArgumentError, "Part must be initialized with a Sketchup::ComponentDefinition, ComponentInstance, or Group"
+      begin
+        # Determine if we're initialized with a ComponentDefinition, ComponentInstance, or Group
+        if component_definition_or_instance.is_a?(Sketchup::ComponentDefinition)
+          @original_definition = component_definition_or_instance
+          definition = component_definition_or_instance
+          instance_material = nil
+        elsif component_definition_or_instance.is_a?(Sketchup::ComponentInstance)
+          @original_definition = component_definition_or_instance.definition
+          definition = component_definition_or_instance.definition
+          instance_material = component_definition_or_instance.material
+        elsif component_definition_or_instance.is_a?(Sketchup::Group)
+          # Groups don't have definitions, treat the group itself as the definition
+          @original_definition = component_definition_or_instance
+          definition = component_definition_or_instance
+          instance_material = component_definition_or_instance.material
+        else
+          raise ArgumentError, "Part must be initialized with a Sketchup::ComponentDefinition, ComponentInstance, or Group"
+        end
+
+        @name = definition.respond_to?(:name) ? definition.name : "Group_#{definition.entityID}"
+
+        dimensions_mm = Util.get_dimensions(definition.bounds).sort
+        @thickness = dimensions_mm[0]
+        @width = dimensions_mm[1]
+        @height = dimensions_mm[2]
+      rescue => e
+        puts "ERROR in Part.initialize: #{e.message}"
+        puts "ERROR backtrace: #{e.backtrace.first(5).join("\n")}"
+        raise
       end
-
-      @name = definition.respond_to?(:name) ? definition.name : "Group_#{definition.entityID}"
-
-      dimensions_mm = Util.get_dimensions(definition.bounds).sort
-      @thickness = dimensions_mm[0]
-      @width = dimensions_mm[1]
-      @height = dimensions_mm[2]
 
       detected_material = nil
       if specific_material.is_a?(Sketchup::Material)
@@ -79,21 +84,27 @@ module AutoNestCut
       
       # Get edge banding from attribute dictionaries
       edge_banding_raw = 'None'
+      edge_banding_edges_raw = nil
+      
       if component_definition_or_instance.is_a?(Sketchup::ComponentInstance)
         edge_banding_raw = component_definition_or_instance.get_attribute('AutoNestCut', 'edge_banding') ||
                           component_definition_or_instance.get_attribute('DynamicAttributes', 'edge_banding') ||
                           edge_banding_raw
+        edge_banding_edges_raw = component_definition_or_instance.get_attribute('AutoNestCut', 'edge_banding_edges')
       elsif component_definition_or_instance.is_a?(Sketchup::Group)
         edge_banding_raw = component_definition_or_instance.get_attribute('AutoNestCut', 'edge_banding') || 'None'
+        edge_banding_edges_raw = component_definition_or_instance.get_attribute('AutoNestCut', 'edge_banding_edges')
       end
+      
       if edge_banding_raw == 'None' && definition.respond_to?(:get_attribute)
         edge_banding_raw = definition.get_attribute('AutoNestCut', 'edge_banding') ||
                           definition.get_attribute('DynamicAttributes', 'edge_banding') ||
                           'None'
+        edge_banding_edges_raw ||= definition.get_attribute('AutoNestCut', 'edge_banding_edges')
       end
       
       # Parse edge banding specification (format: "PVC_White:top,bottom" or "PVC_White" for all edges)
-      @edge_banding = parse_edge_banding(edge_banding_raw)
+      @edge_banding = parse_edge_banding(edge_banding_raw, edge_banding_edges_raw)
       
       material_obj = nil
       if @material && @material != 'No Material'
@@ -184,8 +195,20 @@ module AutoNestCut
         total_length: total_length.round(2)
       }
     end
+    
+    def get_edge_banding_display
+      return 'None' if @edge_banding[:type] == 'None' || @edge_banding[:edges].empty?
+      
+      edges_str = @edge_banding[:edges].join(', ')
+      "#{@edge_banding[:type]} (#{edges_str})"
+    end
 
     def to_h
+      # DEBUG: Log edge_banding structure
+      if @edge_banding && @edge_banding[:type] != 'None'
+        puts "DEBUG [Part#to_h] #{@name}: edge_banding = #{@edge_banding.inspect}"
+      end
+      
       {
         name: @name,
         width: @width.round(2),
@@ -194,6 +217,7 @@ module AutoNestCut
         material: @material,
         grain_direction: @grain_direction,
         edge_banding: @edge_banding,
+        edge_banding_display: get_edge_banding_display,
         edge_banding_summary: get_edge_banding_summary,
         area: area.round(2),
         x: @x.round(2),
@@ -206,16 +230,61 @@ module AutoNestCut
 
     private
 
-    def parse_edge_banding(raw_value)
+    def parse_edge_banding(raw_value, edges_raw = nil)
+      puts "DEBUG parse_edge_banding called with: #{raw_value.inspect} (class: #{raw_value.class}), edges: #{edges_raw.inspect}"
+      
       return { type: 'None', edges: [] } if raw_value.nil? || raw_value == 'None'
       
-      parts = raw_value.split(':')
-      type = parts[0] || 'PVC_White'
+      # Ensure raw_value is a string
+      raw_value_str = raw_value.to_s
       
-      if parts.length > 1
-        edges = parts[1].split(',').map(&:strip)
+      # Check if edges are specified separately (new format with edge_banding_edges attribute)
+      if edges_raw && !edges_raw.to_s.empty?
+        type = raw_value_str
+        edge_spec = edges_raw.to_s.strip.downcase
+        puts "DEBUG using separate edges specification: #{edge_spec}"
       else
-        edges = ['top', 'bottom', 'left', 'right'] # Default to all edges
+        # Old format: "PVC_White:top,bottom,left,right"
+        parts = raw_value_str.split(':')
+        puts "DEBUG parts after split: #{parts.inspect}"
+        
+        type = parts[0] || 'None'
+        edge_spec = parts.length > 1 ? parts[1].strip.downcase : 'all'
+      end
+      
+      # STRICT VALIDATION: Only accept explicit edge names
+      valid_edges = ['top', 'bottom', 'left', 'right']
+      edges = []
+      
+      # REJECT ambiguous formats like "4 edges", "2 edges", "1 edge", "all_4_edges"
+      if edge_spec =~ /\d+\s*edge|all_\d+_edge/i
+        puts "⚠️  WARNING: Ambiguous edge banding format '#{edge_spec}' rejected"
+        puts "    Use explicit format: 'PVC_White:top,bottom,left,right' or 'PVC_White:all'"
+        return { type: 'None', edges: [] }
+      end
+      
+      # Accept "all" as shorthand for all 4 edges
+      if edge_spec == 'all'
+        edges = valid_edges.dup
+      else
+        # Parse comma-separated edge names
+        specified_edges = edge_spec.split(',').map(&:strip).map(&:downcase)
+        
+        # Validate each edge name
+        specified_edges.each do |edge|
+          if valid_edges.include?(edge)
+            edges << edge unless edges.include?(edge) # Avoid duplicates
+          else
+            puts "⚠️  WARNING: Invalid edge name '#{edge}' in edge banding"
+            puts "    Valid edges: top, bottom, left, right, all"
+          end
+        end
+        
+        # If no valid edges found, default to all edges
+        if edges.empty?
+          puts "⚠️  WARNING: No valid edges specified, defaulting to all edges"
+          edges = valid_edges.dup
+        end
       end
       
       { type: type, edges: edges }

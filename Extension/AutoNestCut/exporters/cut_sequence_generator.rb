@@ -25,9 +25,11 @@ module AutoNestCut
         
         board_sequence = {
           board_number: board_number,
+          title: "Sheet #{board_number}",
           material: board.material,
+          stock_size: "#{stock_width.round(precision)} x #{stock_height.round(precision)} #{units}",
           stock_dimensions: "#{stock_width.round(precision)} x #{stock_height.round(precision)} #{units}",
-          cut_sequence: generate_board_cut_sequence(board, units, precision)
+          steps: generate_board_cut_sequence(board, units, precision)
         }
         
         cut_sequences << board_sequence
@@ -48,7 +50,7 @@ module AutoNestCut
       
       sequence << {
         step: step_counter,
-        type: "Setup",
+        operation: "Setup",
         description: "Prepare stock material",
         measurement: "#{stock_width.round(precision)} x #{stock_height.round(precision)} #{units}"
       }
@@ -69,7 +71,7 @@ module AutoNestCut
           # Primary cut (usually length)
           sequence << {
             step: step_counter,
-            type: "Cut",
+            operation: "Cut",
             description: "Cut #{part_name} - Length",
             measurement: "#{part_width.round(precision)} #{units}"
           }
@@ -78,7 +80,7 @@ module AutoNestCut
           # Secondary cut (usually width)
           sequence << {
             step: step_counter,
-            type: "Cut", 
+            operation: "Cut", 
             description: "Cut #{part_name} - Width",
             measurement: "#{part_height.round(precision)} #{units}"
           }
@@ -102,7 +104,7 @@ module AutoNestCut
 
             sequence << {
               step: step_counter,
-              type: "Edge Band",
+              operation: "Edge Band",
               description: "Apply edge banding to #{part_name}",
               measurement: eb_value
             }
@@ -112,7 +114,7 @@ module AutoNestCut
       else
         sequence << {
           step: step_counter,
-          type: "Note",
+          operation: "Note",
           description: "No parts placed on this board",
           measurement: "N/A"
         }

@@ -6,19 +6,24 @@
 async function exportToPDFClean() {
     try {
         console.log('=== CLEAN PDF EXPORT STARTED ===');
+        
+        // Safety check: ensure we're in a browser context
+        if (typeof document === 'undefined' || typeof window === 'undefined') {
+            throw new Error('PDF export must be run in browser context');
+        }
+        
         showProgressOverlay('Generating Professional PDF...');
         
-        // Ensure jsPDF is available (usually bundled with html2pdf or loaded separately)
+        // Ensure jsPDF is available
         if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
-            // Fallback: Check if html2pdf carries jspdf
-            if (typeof html2pdf !== 'undefined' && html2pdf.worker) {
-                 // Try to access it via internal reference if needed, or error out
-            }
+            throw new Error("jsPDF library not loaded. Please wait for the page to fully load.");
         }
 
-        // Initialize PDF - Use 'p' for portrait, 'mm' for units, 'a4' for format
+        // Initialize PDF
         const { jsPDF } = window.jspdf || window; 
-        if (!jsPDF) throw new Error("jsPDF library not found. Please ensure html2pdf.bundle.min.js is loaded.");
+        if (!jsPDF) {
+            throw new Error("jsPDF library not found. Please ensure html2pdf.bundle.min.js is loaded.");
+        }
 
         const pdf = new jsPDF({
             orientation: 'portrait',
@@ -35,10 +40,30 @@ async function exportToPDFClean() {
         // 1. TITLE PAGE (Vector Text)
         addTitlePageClean(pdf, pageWidth, pageHeight, margin);
         
-        // 2. CUTTING DIAGRAMS (Images - Unavoidable for Canvas, but high res)
+        // 2. CUTTING DIAGRAMS (Images - High quality from SVG or Canvas)
         pdf.addPage();
         yPos = margin;
-        yPos = addCuttingDiagramsClean(pdf, pageWidth, pageHeight, margin, yPos);
+        
+        // Safety check: ensure diagrams exist before processing
+        const diagramsContainer = document.getElementById('diagramsContainer');
+        if (diagramsContainer && diagramsContainer.children.length > 0) {
+            try {
+                yPos = await addCuttingDiagramsClean(pdf, pageWidth, pageHeight, margin, yPos);
+            } catch (diagramError) {
+                console.error('Error adding diagrams:', diagramError);
+                // Continue without diagrams rather than failing completely
+                pdf.setFontSize(10);
+                pdf.setTextColor(255, 0, 0);
+                pdf.text('Note: Diagrams could not be exported', margin, yPos);
+                yPos += 10;
+            }
+        } else {
+            console.warn('No diagrams found to export');
+            pdf.setFontSize(10);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text('No cutting diagrams available', margin, yPos);
+            yPos += 10;
+        }
 
         // 3. PROJECT SUMMARY (Vector Text)
         pdf.addPage();
@@ -46,7 +71,7 @@ async function exportToPDFClean() {
         addSummaryPageClean(pdf, pageWidth, pageHeight, margin, yPos);
 
         // 4. CUT LIST (Vector Text)
-        if (g_reportData.parts_placed || g_reportData.parts) {
+        if (g_reportData && (g_reportData.parts_placed || g_reportData.parts)) {
             pdf.addPage();
             yPos = margin;
             addCutListPageClean(pdf, pageWidth, pageHeight, margin, yPos);
@@ -57,15 +82,21 @@ async function exportToPDFClean() {
         pdf.save(filename);
         
         hideProgressOverlay();
-        showSuccessMessage(`PDF exported successfully: ${filename}`);
+        console.log(`✅ PDF exported successfully: ${filename}`);
+        
+        // Use setTimeout to avoid blocking
+        setTimeout(() => {
+            alert(`PDF exported successfully!\n\nFilename: ${filename}`);
+        }, 100);
 
     } catch (error) {
         hideProgressOverlay();
         console.error('PDF Export Error:', error);
-        // Fallback to simple HTML export if PDF fails
-        if (confirm(`PDF Generation failed: ${error.message}\n\nDo you want to download the HTML report instead?`)) {
-            exportSimplePDF();
-        }
+        console.error('Error stack:', error.stack);
+        
+        setTimeout(() => {
+            alert(`PDF Generation failed: ${error.message}\n\nPlease ensure:\n1. The report is fully loaded\n2. Diagrams are visible\n3. Try again in a few seconds`);
+        }, 100);
     }
 }
 
@@ -115,7 +146,7 @@ function addTitlePageClean(pdf, pageWidth, pageHeight, margin) {
     });
 }
 
-function addCuttingDiagramsClean(pdf, pageWidth, pageHeight, margin, startY) {
+async function addCuttingDiagramsClean(pdf, pageWidth, pageHeight, margin, startY) {
     let yPos = startY;
     
     pdf.setFontSize(16);
@@ -132,12 +163,11 @@ function addCuttingDiagramsClean(pdf, pageWidth, pageHeight, margin, startY) {
     const diagramsContainer = document.getElementById('diagramsContainer');
     if (!diagramsContainer) return yPos;
 
-    const canvases = Array.from(diagramsContainer.querySelectorAll('canvas'));
+    // Get all diagram cards (could be SVG or canvas)
+    const diagramCards = Array.from(diagramsContainer.querySelectorAll('.diagram-card'));
     
-    canvases.forEach((canvas, index) => {
-        // Redraw to ensure fresh content
-        if (canvas.drawCanvas) canvas.drawCanvas();
-
+    for (let index = 0; index < diagramCards.length; index++) {
+        const card = diagramCards[index];
         const boardData = g_boardsData[index];
         const title = boardData ? `${boardData.material} - Sheet ${index + 1}` : `Sheet ${index + 1}`;
 
@@ -164,27 +194,122 @@ function addCuttingDiagramsClean(pdf, pageWidth, pageHeight, margin, startY) {
             yPos += 8;
         }
 
-        // Image
+        // Check if it's SVG or canvas
+        const svg = card.querySelector('svg.diagram-canvas');
+        const canvas = card.querySelector('canvas.diagram-canvas');
+
         try {
-            const imgData = canvas.toDataURL('image/png', 1.0); // Max quality
-            const imgProps = pdf.getImageProperties(imgData);
-            const pdfImgWidth = pageWidth - (margin * 2);
-            const pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
+            if (svg) {
+                // SVG EXPORT - Convert SVG to high-quality image
+                const imgData = await svgToDataURLAsync(svg);
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfImgWidth = pageWidth - (margin * 2);
+                const pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
 
-            // If image is too tall for remaining page, push to next page
-            if (yPos + pdfImgHeight > pageHeight - margin) {
-                pdf.addPage();
-                yPos = margin + 10; // Margin + top padding
+                // If image is too tall for remaining page, push to next page
+                if (yPos + pdfImgHeight > pageHeight - margin) {
+                    pdf.addPage();
+                    yPos = margin + 10;
+                }
+
+                pdf.addImage(imgData, 'PNG', margin, yPos, pdfImgWidth, pdfImgHeight);
+                yPos += pdfImgHeight + 15;
+                
+            } else if (canvas) {
+                // CANVAS EXPORT (legacy fallback)
+                if (canvas.drawCanvas) canvas.drawCanvas();
+                
+                const imgData = canvas.toDataURL('image/png', 1.0);
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfImgWidth = pageWidth - (margin * 2);
+                const pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
+
+                if (yPos + pdfImgHeight > pageHeight - margin) {
+                    pdf.addPage();
+                    yPos = margin + 10;
+                }
+
+                pdf.addImage(imgData, 'PNG', margin, yPos, pdfImgWidth, pdfImgHeight);
+                yPos += pdfImgHeight + 15;
             }
-
-            pdf.addImage(imgData, 'PNG', margin, yPos, pdfImgWidth, pdfImgHeight);
-            yPos += pdfImgHeight + 15;
         } catch (e) {
-            console.error('Canvas export error:', e);
+            console.error('Diagram export error:', e);
+            pdf.setFontSize(10);
+            pdf.setTextColor(255, 0, 0);
+            pdf.text('Error: Could not export diagram', margin, yPos);
+            yPos += 10;
         }
-    });
+    }
 
     return yPos;
+}
+
+// Convert SVG to high-quality data URL for PDF embedding (async version)
+async function svgToDataURLAsync(svgElement) {
+    return new Promise((resolve, reject) => {
+        try {
+            // CRITICAL FIX: Clear highlights from SVG before capturing
+            console.log('🧹 Clearing SVG highlights before PDF capture');
+            
+            // Clone the SVG to avoid modifying the original
+            const svgClone = svgElement.cloneNode(true);
+            
+            // Remove any highlighted classes and overlays from the clone
+            const highlightedGroups = svgClone.querySelectorAll('.part-group.highlighted');
+            highlightedGroups.forEach(group => {
+                group.classList.remove('highlighted');
+                
+                // Reset outline stroke
+                const outline = group.querySelector('rect[stroke]');
+                if (outline) {
+                    outline.setAttribute('stroke', '#1a1a1a');
+                    outline.setAttribute('stroke-width', '1.5');
+                }
+                
+                // Remove highlight overlays
+                const overlays = group.querySelectorAll('.highlight-overlay');
+                overlays.forEach(overlay => overlay.remove());
+            });
+            
+            // Get SVG dimensions
+            const viewBox = svgClone.getAttribute('viewBox');
+            const [, , width, height] = viewBox ? viewBox.split(' ').map(Number) : [0, 0, 800, 600];
+            
+            // Set explicit dimensions for rendering
+            svgClone.setAttribute('width', width);
+            svgClone.setAttribute('height', height);
+            
+            // Serialize SVG to string
+            const svgString = new XMLSerializer().serializeToString(svgClone);
+            
+            // Create an image element
+            const img = new Image();
+            
+            // Use higher resolution for PDF (3x scale for crisp output)
+            const scale = 3;
+            const canvas = document.createElement('canvas');
+            canvas.width = width * scale;
+            canvas.height = height * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(scale, scale);
+            
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0);
+                const dataURL = canvas.toDataURL('image/png', 1.0);
+                resolve(dataURL);
+            };
+            
+            img.onerror = function(err) {
+                reject(new Error('Failed to load SVG image: ' + err));
+            };
+            
+            // Convert SVG to data URL
+            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+            
+        } catch (error) {
+            reject(error);
+        }
+    });
 }
 
 function addSummaryPageClean(pdf, pageWidth, pageHeight, margin, startY) {

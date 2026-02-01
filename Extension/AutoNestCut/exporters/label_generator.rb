@@ -162,12 +162,22 @@ module AutoNestCut
       
       content = ""
       
-      # TEMPORARILY SKIP QR CODE - will add real implementation later
-      # For now, just show a placeholder box
-      if @options[:qr_enabled]
-        # Draw a simple placeholder box instead of complex QR
-        content += "<rect x=\"#{padding}\" y=\"#{padding}\" width=\"#{qr_size}\" height=\"#{qr_size}\" fill=\"#e0e0e0\" stroke=\"#666\" stroke-width=\"0.5\" rx=\"2\"/>"
-        content += "<text x=\"#{padding + qr_size/2}\" y=\"#{padding + qr_size/2}\" font-family=\"Arial\" font-size=\"8pt\" fill=\"#666\" text-anchor=\"middle\" dominant-baseline=\"middle\">QR</text>"
+      # Add real QR code if enabled and generated
+      if @options[:qr_enabled] && qr_svg
+        # Extract the SVG content (remove outer <svg> tags to embed properly)
+        if qr_svg.include?('<svg')
+          # Extract viewBox and content
+          qr_content = qr_svg.gsub(/<svg[^>]*>/, '').gsub(/<\/svg>/, '')
+          
+          # Embed QR code as a nested SVG with proper positioning
+          content += "<svg x=\"#{padding}\" y=\"#{padding}\" width=\"#{qr_size}\" height=\"#{qr_size}\" viewBox=\"0 0 #{extract_viewbox_size(qr_svg)} #{extract_viewbox_size(qr_svg)}\">"
+          content += qr_content
+          content += "</svg>"
+        else
+          # Fallback: show placeholder if QR generation failed
+          content += "<rect x=\"#{padding}\" y=\"#{padding}\" width=\"#{qr_size}\" height=\"#{qr_size}\" fill=\"#e0e0e0\" stroke=\"#666\" stroke-width=\"0.5\" rx=\"2\"/>"
+          content += "<text x=\"#{padding + qr_size/2}\" y=\"#{padding + qr_size/2}\" font-family=\"Arial\" font-size=\"8pt\" fill=\"#666\" text-anchor=\"middle\" dominant-baseline=\"middle\">QR</text>"
+        end
       end
       
       # Add text content with proper spacing
@@ -263,6 +273,16 @@ module AutoNestCut
           .gsub('>', '&gt;')
           .gsub('"', '&quot;')
           .gsub("'", '&apos;')
+    end
+    
+    # Utility: Extract viewBox size from SVG string
+    def extract_viewbox_size(svg_string)
+      # Extract viewBox attribute: viewBox="0 0 WIDTH HEIGHT"
+      if svg_string =~ /viewBox="0 0 (\d+) \d+"/
+        return $1.to_i
+      end
+      # Fallback: assume 21x21 (QR version 1)
+      21
     end
     
     # Update label options

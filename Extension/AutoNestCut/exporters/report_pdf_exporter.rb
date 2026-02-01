@@ -6,23 +6,39 @@ require 'json'
 require 'prawn'
 require 'tmpdir'
 
+# Load RQRCode for QR code generation
+begin
+  require 'rqrcode'
+rescue LoadError
+  puts "WARNING: rqrcode gem not available. QR code labels will not be generated."
+end
+
 module AutoNestCut
   class ReportPdfExporter
     
-    # --- DESIGN CONSTANTS (GitBook/Minimalist Style) ---
-    COLOR_TEXT_MAIN = '24292F'   # Dark Charcoal
-    COLOR_TEXT_LIGHT = '57606A'  # Light Grey for subtitles
-    COLOR_ACCENT = '0969DA'      # Minimalist Blue
-    COLOR_BORDER = 'D0D7DE'      # Very light grey for separators
-    FONT_SIZE_H1 = 24
-    FONT_SIZE_H2 = 16
+    # --- MODERN MINIMAL DESIGN CONSTANTS ---
+    COLOR_TEXT_MAIN = '1A1A1A'      # Almost black
+    COLOR_TEXT_SECONDARY = '6B7280'  # Gray-500
+    COLOR_ACCENT = '2563EB'          # Blue-600
+    COLOR_BORDER = 'E5E7EB'          # Gray-200
+    COLOR_SECTION_NUMBER = '9CA3AF'  # Gray-400
+    
+    FONT_SIZE_H1 = 28
+    FONT_SIZE_H2 = 18
+    FONT_SIZE_H3 = 14
     FONT_SIZE_BODY = 10
+    FONT_SIZE_SMALL = 9
+    
+    # Section numbering
+    @section_counter = 0
     
     def initialize
       @report_data = {}
       @diagrams_data = []
       @assembly_data = nil
       @diagram_images = []
+      @section_counter = 0
+      @toc_entries = []
     end
     
     # Set report data
@@ -45,56 +61,23 @@ module AutoNestCut
       @diagram_images << { index: index, image: deep_utf8_encode(image_data) }
     end
     
-    # Generate preview HTML for the report
-    def generate_preview_html
-      begin
-        html = generate_printable_html
-        return html
-      rescue => e
-        puts "ERROR generating preview HTML: #{e.message}"
-        raise "Failed to generate preview: #{e.message}"
-      end
-    end
-    
     # Export to PDF file directly
     def export_to_pdf(output_path = nil, preview_mode = false)
       begin
         output_path ||= generate_default_pdf_path
         
         puts "\n" + "="*80
-        puts "DEBUG: PDF EXPORT STARTING"
+        puts "DEBUG: PDF EXPORT STARTING (REDESIGNED)"
         puts "="*80
-        puts "DEBUG: Output path: #{output_path}"
-        puts "DEBUG: Preview mode: #{preview_mode}"
-        
-        # Debug: Check what data we have
-        puts "\nDEBUG: DATA AVAILABILITY CHECK:"
-        puts "  @report_data present: #{!@report_data.nil?}"
-        puts "  @report_data keys: #{@report_data.keys.inspect if @report_data}"
-        puts "  @diagrams_data present: #{!@diagrams_data.nil?}"
-        puts "  @diagrams_data count: #{@diagrams_data.length if @diagrams_data}"
-        puts "  @assembly_data present: #{!@assembly_data.nil?}"
-        puts "  @assembly_data keys: #{@assembly_data.keys.inspect if @assembly_data}"
-        puts "  @diagram_images count: #{@diagram_images.length}"
-        
-        if @report_data
-          puts "\nDEBUG: REPORT DATA DETAILS:"
-          puts "  summary: #{!@report_data[:summary].nil?}"
-          puts "  unique_board_types: #{@report_data[:unique_board_types]&.length || 0}"
-          puts "  unique_part_types: #{@report_data[:unique_part_types]&.length || 0}"
-          puts "  parts_placed: #{@report_data[:parts_placed]&.length || 0}"
-          puts "  cut_sequences: #{@report_data[:cut_sequences]&.length || 0}"
-          puts "  usable_offcuts: #{@report_data[:usable_offcuts]&.length || 0}"
-        end
         
         # Force UTF-8 encoding on output path
         output_path = output_path.encode('UTF-8', invalid: :replace, undef: :replace, replace: '?')
         
-        # Generate PDF using Prawn with UTF-8 support and GitBook-style margins
+        # Generate PDF using Prawn
         Prawn::Document.generate(output_path, 
           page_size: 'A4',
-          page_layout: :portrait,  # Start portrait, switch to landscape for diagrams
-          margin: [60, 50, 60, 50],  # Increased top margin to 60pt (21mm) - prevents header crowding
+          page_layout: :portrait,
+          margin: [50, 50, 50, 50],  # Consistent margins
           info: {
             Title: 'AutoNestCut Manufacturing Report',
             Author: 'Int. Arch. M.Shkeir',
@@ -104,16 +87,14 @@ module AutoNestCut
             CreationDate: Time.now
           }
         ) do |pdf|
-          # Set default external encoding to UTF-8 for this block
           old_encoding = Encoding.default_external
           Encoding.default_external = Encoding::UTF_8
           
           begin
-            # Set up Unicode font support
             setup_pdf_fonts(pdf)
             render_pdf_content(pdf)
+            add_page_numbers(pdf)
           ensure
-            # Restore original encoding
             Encoding.default_external = old_encoding
           end
         end
@@ -122,15 +103,12 @@ module AutoNestCut
         puts "DEBUG: PDF EXPORT COMPLETED SUCCESSFULLY"
         puts "="*80
         
-        # If preview mode, show preview dialog
         if preview_mode
           show_preview_dialog(output_path)
         end
         
         return output_path
         
-      rescue LoadError
-        raise "Prawn gem required for PDF export. Install with: gem install prawn"
       rescue => e
         puts "\nERROR in PDF export: #{e.message}"
         puts "Backtrace: #{e.backtrace.join("\n")}"
@@ -157,16 +135,13 @@ module AutoNestCut
       end
     end
     
-    # Helper method to ensure strings are UTF-8 encoded for Prawn
+    # Helper method to ensure strings are UTF-8 encoded
     def ensure_utf8(value)
       case value
       when String
-        # Force UTF-8 encoding with aggressive replacement
         if value.encoding == Encoding::UTF_8
-          # Already UTF-8, but check if valid
           value.valid_encoding? ? value : value.encode('UTF-8', invalid: :replace, undef: :replace, replace: '?')
         else
-          # Convert from other encoding to UTF-8
           value.encode('UTF-8', invalid: :replace, undef: :replace, replace: '?')
         end
       when Symbol
@@ -178,19 +153,10 @@ module AutoNestCut
       end
     end
     
-    # Setup PDF fonts with UTF-8 support
+    # Setup PDF fonts
     def setup_pdf_fonts(pdf)
       begin
-        # Try to use system fonts for better Unicode support
-        if File.exist?('C:/Windows/Fonts/DejaVuSans.ttf')
-          pdf.font_families.update('DejaVu' => {
-            normal: 'C:/Windows/Fonts/DejaVuSans.ttf',
-            bold: 'C:/Windows/Fonts/DejaVuSans-Bold.ttf',
-            italic: 'C:/Windows/Fonts/DejaVuSans-Oblique.ttf',
-            bold_italic: 'C:/Windows/Fonts/DejaVuSans-BoldOblique.ttf'
-          })
-          pdf.font 'DejaVu'
-        elsif File.exist?('C:/Windows/Fonts/Arial.ttf')
+        if File.exist?('C:/Windows/Fonts/Arial.ttf')
           pdf.font_families.update('Arial' => {
             normal: 'C:/Windows/Fonts/Arial.ttf',
             bold: 'C:/Windows/Fonts/Arialbd.ttf',
@@ -199,1308 +165,976 @@ module AutoNestCut
           })
           pdf.font 'Arial'
         else
-          # Fallback: use Helvetica
           pdf.font 'Helvetica'
         end
       rescue => e
-        puts "WARNING: Could not load Unicode font: #{e.message}"
+        puts "WARNING: Could not load font: #{e.message}"
         pdf.font 'Helvetica'
       end
     end
     
+    # Get next section number
+    def next_section_number
+      @section_counter += 1
+      @section_counter
+    end
+    
+    # Add TOC entry
+    def add_toc_entry(title, page_number, level = 1)
+      @toc_entries << { title: title, page: page_number, level: level }
+    end
+    
     # Render all PDF content
     def render_pdf_content(pdf)
-      puts "\nDEBUG: RENDERING PDF CONTENT..."
+      puts "\nDEBUG: RENDERING PDF CONTENT (REDESIGNED)..."
       
-      # Title page
-      puts "  → Rendering title page..."
-      render_title_page(pdf)
+      # 1. Cover Page
+      render_cover_page(pdf)
       
-      # Overall Summary (Enhanced)
-      if @report_data[:summary]
-        puts "  → Rendering overall summary (NEW PAGE)..."
+      # 2. Table of Contents (placeholder - will be filled after)
+      pdf.start_new_page
+      toc_page = pdf.page_number
+      
+      # 3. Project Summary
+      pdf.start_new_page
+      add_toc_entry("#{next_section_number}. Project Summary", pdf.page_number)
+      render_project_summary(pdf)
+      
+      # 4. Materials & Inventory
+      if has_materials_data?
+        check_page_break(pdf, 200)
+        add_toc_entry("#{next_section_number}. Materials & Inventory", pdf.page_number)
+        render_materials_inventory(pdf)
+      end
+      
+      # 5. Part Types
+      if has_parts_data?
+        check_page_break(pdf, 200)
+        add_toc_entry("#{next_section_number}. Part Types", pdf.page_number)
+        render_part_types(pdf)
+      end
+      
+      # 6. Sheet Layout Plans
+      if has_diagrams_data?
         pdf.start_new_page
-        render_overall_summary_section(pdf)
-      else
-        puts "  ✗ Skipping overall summary (no data)"
+        add_toc_entry("#{next_section_number}. Sheet Layout Plans", pdf.page_number)
+        render_sheet_layouts(pdf)
       end
       
-      # Materials Used
-      if @report_data[:unique_board_types] && @report_data[:unique_board_types].length > 0
-        puts "  → Rendering materials section (#{@report_data[:unique_board_types].length} materials)..."
-        render_materials_section(pdf)
-      else
-        puts "  ✗ Skipping materials section (no data)"
-      end
-      
-      # Unique Part Types
-      if @report_data[:unique_part_types] && @report_data[:unique_part_types].length > 0
-        puts "  → Rendering unique parts section (#{@report_data[:unique_part_types].length} parts)..."
-        render_unique_parts_section(pdf)
-      else
-        puts "  ✗ Skipping unique parts section (no data)"
-      end
-      
-      # Sheet Inventory Summary
-      if @report_data[:unique_board_types] && @report_data[:unique_board_types].length > 0
-        puts "  → Rendering sheet inventory section..."
-        render_sheet_inventory_section(pdf)
-      else
-        puts "  ✗ Skipping sheet inventory section (no data)"
-      end
-      
-      # Boards Summary (NEW - Detailed per-board breakdown)
-      if @diagrams_data && @diagrams_data.length > 0
-        puts "  → Rendering boards summary section (NEW PAGE) (#{@diagrams_data.length} boards)..."
+      # 7. Cutting Instructions
+      if has_cut_sequences?
         pdf.start_new_page
-        render_boards_summary_section(pdf)
-      else
-        puts "  ✗ Skipping boards summary section (no diagrams data)"
+        add_toc_entry("#{next_section_number}. Cutting Instructions", pdf.page_number)
+        render_cutting_instructions(pdf)
       end
       
-      # Cutting Diagrams - SWITCH TO LANDSCAPE for better visualization
-      if @diagrams_data && @diagrams_data.length > 0
-        puts "  → Rendering cutting diagrams section (LANDSCAPE MODE) (#{@diagrams_data.length} diagrams)..."
-        render_diagrams_section_landscape(pdf)
-      else
-        puts "  ✗ Skipping cutting diagrams section (no data)"
-      end
-      
-      # Switch back to PORTRAIT for remaining sections
-      if @report_data[:cut_sequences] || @report_data[:parts_placed]
-        pdf.start_new_page(layout: :portrait)
-      end
-      
-      # Cut Sequences
-      if @report_data[:cut_sequences] && @report_data[:cut_sequences].length > 0
-        puts "  → Rendering cut sequences section (NEW PAGE) (#{@report_data[:cut_sequences].length} sequences)..."
+      # 8. Assembly Views
+      if has_assembly_data?
         pdf.start_new_page
-        render_cut_sequences_section(pdf)
-      else
-        puts "  ✗ Skipping cut sequences section (no data)"
+        add_toc_entry("#{next_section_number}. Assembly Views", pdf.page_number)
+        render_assembly_views(pdf)
       end
       
-      # Usable Offcuts
-      if @report_data[:usable_offcuts] && @report_data[:usable_offcuts].length > 0
-        puts "  → Rendering offcuts section (#{@report_data[:usable_offcuts].length} offcuts)..."
-        render_offcuts_section(pdf)
-      else
-        puts "  ✗ Skipping offcuts section (no data)"
-      end
-      
-      # Assembly Views
-      if @assembly_data && @assembly_data[:views]
-        puts "  → Rendering assembly section (NEW PAGE) (#{@assembly_data[:views].length} views)..."
+      # 9. Detailed Cut List
+      if has_parts_data?
         pdf.start_new_page
-        render_assembly_section(pdf)
-      else
-        puts "  ✗ Skipping assembly section (no data)"
+        add_toc_entry("#{next_section_number}. Detailed Cut List", pdf.page_number)
+        render_detailed_cut_list(pdf)
       end
       
-      # Cut List & Part Details
-      if @report_data[:parts_placed] && @report_data[:parts_placed].length > 0
-        puts "  → Rendering parts list section (NEW PAGE) (#{@report_data[:parts_placed].length} parts)..."
+      # 10. Part Labels (QR Codes)
+      if has_parts_data?
         pdf.start_new_page
-        render_parts_list_section(pdf)
-      else
-        puts "  ✗ Skipping parts list section (no data)"
+        add_toc_entry("#{next_section_number}. Part Labels", pdf.page_number)
+        render_part_labels(pdf)
       end
       
-      # Cost Breakdown (NEW)
-      if @report_data[:unique_board_types] && @report_data[:unique_board_types].length > 0
-        puts "  → Rendering cost breakdown section (#{@report_data[:unique_board_types].length} materials)..."
-        render_cost_breakdown_section(pdf)
-      else
-        puts "  ✗ Skipping cost breakdown section (no data)"
+      # 11. Cost Analysis
+      if has_materials_data?
+        pdf.start_new_page
+        add_toc_entry("#{next_section_number}. Cost Analysis", pdf.page_number)
+        render_cost_analysis(pdf)
       end
       
-      # Footer
-      puts "  → Rendering footer..."
-      render_footer(pdf)
+      # Now render TOC
+      pdf.go_to_page(toc_page)
+      render_table_of_contents(pdf)
       
       puts "DEBUG: PDF CONTENT RENDERING COMPLETE"
     end
     
-    def render_title_page(pdf)
+    # Check if page break is needed
+    def check_page_break(pdf, required_space)
+      if pdf.cursor < required_space
+        pdf.start_new_page
+      end
+    end
+    
+    # Data availability checks
+    def has_materials_data?
+      @report_data[:unique_board_types] && @report_data[:unique_board_types].length > 0
+    end
+    
+    def has_parts_data?
+      @report_data[:parts_placed] && @report_data[:parts_placed].length > 0
+    end
+    
+    def has_diagrams_data?
+      @diagrams_data && @diagrams_data.length > 0
+    end
+    
+    def has_cut_sequences?
+      @report_data[:cut_sequences] && @report_data[:cut_sequences].length > 0
+    end
+    
+    def has_assembly_data?
+      @assembly_data && @assembly_data[:views] && @assembly_data[:views].length > 0
+    end
+    
+    # ===== COVER PAGE =====
+    def render_cover_page(pdf)
+      pdf.move_down 120
+      
+      # Title
+      pdf.font_size(FONT_SIZE_H1) do
+        pdf.text "Manufacturing Report", align: :center, style: :bold, color: COLOR_TEXT_MAIN
+      end
+      
+      pdf.move_down 20
+      
+      # Subtitle
+      pdf.font_size(FONT_SIZE_H3) do
+        pdf.text "Cut List & Nesting Analysis", align: :center, color: COLOR_TEXT_SECONDARY
+      end
+      
+      pdf.move_down 80
+      
+      # Thin separator line
+      pdf.stroke_color COLOR_BORDER
+      pdf.stroke do
+        pdf.horizontal_line 150, pdf.bounds.width - 150, at: pdf.cursor
+      end
+      
+      pdf.move_down 60
+      
+      # Key metrics in clean grid
       summary = @report_data[:summary] || {}
       
-      # Minimalist Header (No colored boxes)
-      pdf.move_down 40
-      pdf.font("Helvetica", style: :bold) do
-        pdf.text "Manufacturing Report", size: 32, color: COLOR_TEXT_MAIN
-      end
-      
-      pdf.move_down 10
-      pdf.font("Helvetica", style: :italic) do
-        pdf.text "Generated on #{Time.now.strftime('%B %d, %Y')}", size: 12, color: COLOR_TEXT_LIGHT
-      end
-      
-      pdf.move_down 50
-      pdf.stroke_color COLOR_BORDER
-      pdf.stroke_horizontal_rule
-      pdf.move_down 30
-      
-      # Project Key Metrics (Clean list layout)
-      pdf.text "Project Summary", size: FONT_SIZE_H2, style: :bold, color: COLOR_TEXT_MAIN
-      pdf.move_down 15
-      
       metrics = [
-        ['Total Parts', summary[:total_parts_instances] || 0],
-        ['Unique Materials', (@report_data[:unique_board_types]&.length || 0)],
-        ['Sheets Required', summary[:total_boards] || 0],
-        ['Efficiency', "#{(summary[:overall_efficiency] || 0).round(1)}%"],
-        ['Total Cost', "#{summary[:currency] || '$'} #{(summary[:total_project_cost] || 0).round(2)}"]
+        ["Total Parts", summary[:total_parts_instances] || 0],
+        ["Sheets Required", summary[:total_boards] || 0],
+        ["Material Efficiency", "#{(summary[:overall_efficiency] || 0).round(1)}%"],
+        ["Total Cost", "#{summary[:currency] || 'USD'} #{(summary[:total_project_cost] || 0).round(2)}"]
       ]
       
-      metrics.each do |key, value|
-        pdf.indent(10) do
-          y_pos = pdf.cursor
-          pdf.text key, size: 11, color: COLOR_TEXT_LIGHT
-          pdf.draw_text value.to_s, at: [200, y_pos], size: 11, style: :bold, color: COLOR_TEXT_MAIN
-          pdf.move_down 20
+      metrics.each_slice(2) do |row|
+        pdf.indent(80) do
+          row.each_with_index do |(label, value), idx|
+            x_offset = idx * 200
+            pdf.bounding_box([x_offset, pdf.cursor], width: 180, height: 60) do
+              pdf.font_size(FONT_SIZE_SMALL) do
+                pdf.text label, color: COLOR_TEXT_SECONDARY
+              end
+              pdf.move_down 8
+              pdf.font_size(FONT_SIZE_H2) do
+                pdf.text value.to_s, style: :bold, color: COLOR_TEXT_MAIN
+              end
+            end
+          end
+        end
+        pdf.move_down 70
+      end
+      
+      # Footer
+      pdf.move_down 100
+      pdf.font_size(FONT_SIZE_SMALL) do
+        pdf.text "Generated on #{Time.now.strftime('%B %d, %Y at %H:%M')}", 
+          align: :center, color: COLOR_TEXT_SECONDARY
+        pdf.move_down 5
+        pdf.text "AutoNestCut Professional", 
+          align: :center, color: COLOR_TEXT_SECONDARY, style: :italic
+      end
+    end
+    
+    # ===== TABLE OF CONTENTS =====
+    def render_table_of_contents(pdf)
+      pdf.move_down 40
+      
+      pdf.font_size(FONT_SIZE_H2) do
+        pdf.text "Table of Contents", style: :bold, color: COLOR_TEXT_MAIN
+      end
+      
+      pdf.move_down 30
+      
+      @toc_entries.each do |entry|
+        indent_amount = (entry[:level] - 1) * 20
+        
+        pdf.indent(indent_amount) do
+          y_position = pdf.cursor
+          
+          # Title on left
+          pdf.text entry[:title], size: FONT_SIZE_BODY, color: COLOR_TEXT_MAIN, inline_format: true
+          
+          # Page number on right
+          page_text = entry[:page].to_s
+          page_width = pdf.width_of(page_text, size: FONT_SIZE_BODY)
+          pdf.draw_text page_text, at: [pdf.bounds.width - page_width - indent_amount, y_position], 
+            size: FONT_SIZE_BODY, style: :bold, color: COLOR_TEXT_SECONDARY
+          
+          pdf.move_down 18
         end
       end
-      
+    end
+    
+    # ===== SECTION HEADER =====
+    def render_section_header(pdf, section_number, title)
       pdf.move_down 30
       
-      # Info block (GitBook style)
-      draw_info_block(pdf, "Production Note", 
-        "This project requires #{summary[:total_boards]} sheets of material. " +
-        "Estimated waste is #{summary[:total_waste_area_absolute] || 'N/A'}.")
+      # Section number in gray
+      pdf.font_size(FONT_SIZE_SMALL) do
+        pdf.text "SECTION #{section_number}", color: COLOR_SECTION_NUMBER, style: :bold
+      end
+      
+      pdf.move_down 8
+      
+      # Section title
+      pdf.font_size(FONT_SIZE_H2) do
+        pdf.text title, style: :bold, color: COLOR_TEXT_MAIN
+      end
+      
+      pdf.move_down 5
+      
+      # Underline
+      pdf.stroke_color COLOR_BORDER
+      pdf.stroke do
+        pdf.horizontal_line 0, 100, at: pdf.cursor
+      end
+      
+      pdf.move_down 25
     end
     
-    def render_overall_summary_section(pdf)
-      draw_minimal_header(pdf, 'Overall Summary')
+    # ===== PROJECT SUMMARY =====
+    def render_project_summary(pdf)
+      render_section_header(pdf, @section_counter, "Project Summary")
       
-      summary = @report_data[:summary]
+      summary = @report_data[:summary] || {}
       
-      table_data = [
-        ['Metric', 'Value'],
-        ['Total Parts Instances', summary[:total_parts_instances] || 0],
-        ['Total Unique Part Types', summary[:total_unique_part_types] || 0],
-        ['Total Boards', summary[:total_boards] || 0],
-        ['Overall Efficiency', "#{(summary[:overall_efficiency] || 0).round(1)}%"],
-        ['Total Project Weight', "#{(summary[:total_project_weight_kg] || 0).round(2)} kg"],
-        ['Total Project Cost', "#{summary[:currency] || 'USD'} #{(summary[:total_project_cost] || 0).round(2)}"]
+      data = [
+        ["Total Part Instances", (summary[:total_parts_instances] || 0).to_s],
+        ["Unique Part Types", (summary[:total_unique_part_types] || 0).to_s],
+        ["Sheets Required", (summary[:total_boards] || 0).to_s],
+        ["Material Efficiency", "#{(summary[:overall_efficiency] || 0).round(1)}%"],
+        ["Total Waste", summary[:total_waste_area_absolute] || 'N/A'],
+        ["Total Weight", "#{(summary[:total_project_weight_kg] || 0).round(2)} kg"],
+        ["Total Cost", "#{summary[:currency] || 'USD'} #{(summary[:total_project_cost] || 0).round(2)}"]
       ]
       
-      render_minimal_table(pdf, table_data)
-      pdf.move_down 10
+      render_clean_table(pdf, [["Metric", "Value"]] + data)
     end
     
-    def render_summary_section(pdf)
-      pdf.font_size(16) { pdf.text 'Project Summary', style: :bold, color: '0066cc' }
-      pdf.move_down 12
+    # ===== MATERIALS & INVENTORY =====
+    def render_materials_inventory(pdf)
+      render_section_header(pdf, @section_counter, "Materials & Inventory")
       
-      summary = @report_data[:summary]
+      table_data = [["Material", "Dimensions", "Qty", "Area (m²)", "Unit Price", "Total Cost"]]
       
-      table_data = [
-        ['Project Metric', 'Value'],
-        ['Total Parts', summary[:total_parts_instances] || 0],
-        ['Unique Components', summary[:total_unique_part_types] || 0],
-        ['Material Sheets', summary[:total_boards] || 0],
-        ['Kerf Width', summary[:kerf_width] || '3.0mm'],
-        ['Material Efficiency', "#{(summary[:overall_efficiency] || 0).round(1)}%"],
-        ['Total Waste Area', summary[:total_waste_area_absolute] || '0 m²'],
-        ['Total Cost', "#{summary[:currency] || 'USD'} #{(summary[:total_project_cost] || 0).round(2)}"],
-        ['Total Weight', "#{(summary[:total_project_weight_kg] || 0).round(2)} kg"]
-      ]
-      
-      render_text_table(pdf, table_data)
-    end
-    
-    def render_materials_section(pdf)
-      draw_minimal_header(pdf, 'Materials Used')
-      
-      table_data = [['Material', 'Price per Sheet']]
-      
-      @report_data[:unique_board_types].each do |board_type|
+      @report_data[:unique_board_types].each do |board|
+        width = board[:stock_width] || 2440
+        height = board[:stock_height] || 1220
+        
         table_data << [
-          board_type[:material] || board_type['material'],
-          "#{board_type[:currency] || board_type['currency'] || 'USD'} #{(board_type[:price_per_sheet] || board_type['price_per_sheet'] || 0).round(2)}"
+          board[:material] || '',
+          "#{width.round(0)} × #{height.round(0)} mm",
+          board[:count].to_s,
+          ((board[:total_area] || 0) / 1000000).round(2).to_s,
+          "#{board[:currency] || 'USD'} #{(board[:price_per_sheet] || 0).round(2)}",
+          "#{board[:currency] || 'USD'} #{(board[:total_cost] || 0).round(2)}"
         ]
       end
       
-      render_minimal_table(pdf, table_data)
-      pdf.move_down 10
+      render_clean_table(pdf, table_data)
     end
     
-    def render_unique_parts_section(pdf)
-      draw_minimal_header(pdf, 'Unique Part Types')
+    # ===== PART TYPES =====
+    def render_part_types(pdf)
+      render_section_header(pdf, @section_counter, "Part Types")
       
-      table_data = [['Name', 'Width (mm)', 'Height (mm)', 'Thickness (mm)', 'Material', 'Grain', 'Edge Banding', 'Qty', 'Total Area (m²)', 'Weight (kg)']]
+      table_data = [["Name", "Dimensions (mm)", "Material", "Qty", "Area (m²)"]]
       
       @report_data[:unique_part_types].each do |part|
-        edge_banding_value = part[:edge_banding] || part['edge_banding']
-        if edge_banding_value.is_a?(Hash)
-          edge_banding_text = edge_banding_value[:type] || edge_banding_value['type'] || 'None'
-        else
-          edge_banding_text = edge_banding_value || 'None'
-        end
+        w = (part[:width] || 0).round(1)
+        h = (part[:height] || 0).round(1)
+        t = (part[:thickness] || 0).round(1)
         
         table_data << [
-          part[:name] || part['name'] || '',
-          (part[:width] || part['width'] || 0).round(1).to_s,
-          (part[:height] || part['height'] || 0).round(1).to_s,
-          (part[:thickness] || part['thickness'] || 0).round(1).to_s,
-          part[:material] || part['material'] || '',
-          part[:grain_direction] || part['grain_direction'] || 'Any',
-          edge_banding_text,
-          (part[:total_quantity] || part['total_quantity']).to_s,
-          ((part[:total_area] || part['total_area'] || 0) / 1000000).round(2).to_s,
-          (part[:total_weight_kg] || part['total_weight_kg'] || 0).round(2).to_s
+          part[:name] || '',
+          "#{w} × #{h} × #{t}",
+          part[:material] || '',
+          (part[:total_quantity] || 0).to_s,
+          ((part[:total_area] || 0) / 1000000).round(3).to_s
         ]
       end
       
-      render_minimal_table(pdf, table_data)
-      pdf.move_down 10
+      render_clean_table(pdf, table_data)
     end
     
-    def render_sheet_inventory_section(pdf)
-      draw_minimal_header(pdf, 'Sheet Inventory Summary')
-      
-      table_data = [['Material', 'Dimensions (mm)', 'Count', 'Total Area (m²)', 'Price/Sheet', 'Total Cost']]
-      
-      @report_data[:unique_board_types].each do |board_type|
-        width = board_type[:stock_width] || 2440
-        height = board_type[:stock_height] || 1220
-        table_data << [
-          board_type[:material],
-          "#{width.round(1)} x #{height.round(1)}",
-          board_type[:count].to_s,
-          ((board_type[:total_area] || 0) / 1000000).round(2).to_s,
-          "#{board_type[:currency] || 'USD'} #{(board_type[:price_per_sheet] || 0).round(2)}",
-          "#{board_type[:currency] || 'USD'} #{(board_type[:total_cost] || 0).round(2)}"
-        ]
-      end
-      
-      render_minimal_table(pdf, table_data)
-    end
-    
-    def render_boards_summary_section(pdf)
-      draw_minimal_header(pdf, 'Boards Summary')
+    # ===== SHEET LAYOUTS =====
+    def render_sheet_layouts(pdf)
+      render_section_header(pdf, @section_counter, "Sheet Layout Plans")
       
       @diagrams_data.each_with_index do |board, idx|
-        # EACH BOARD GETS ITS OWN PAGE (except the first one)
         if idx > 0
           pdf.start_new_page
         end
         
-        material = board[:material] || board['material'] || 'Unknown'
-        width = board[:stock_width] || board['stock_width'] || 2440
-        height = board[:stock_height] || board['stock_height'] || 1220
-        parts_count = board[:parts_count] || board['parts_count'] || 0
-        efficiency = (board[:efficiency_percentage] || board['efficiency_percentage'] || 0).round(1)
-        
-        # Board Title - Large and prominent
-        pdf.move_down 20
-        pdf.text "Board #{idx + 1}: #{material}", size: 18, style: :bold, color: COLOR_TEXT_MAIN
-        pdf.move_down 5
-        pdf.stroke_color COLOR_BORDER
-        pdf.stroke_horizontal_rule
-        pdf.move_down 15
-        
-        # Board Info Table - Clean and compact
-        board_info = [
-          ['Property', 'Value'],
-          ['Size', "#{width.round(1)} × #{height.round(1)} mm"],
-          ['Parts Count', parts_count.to_s],
-          ['Efficiency', "#{efficiency}%"]
-        ]
-        
-        render_minimal_table(pdf, board_info)
-        
-        # Parts on this board - Only if there are parts
-        if @report_data[:parts_placed]
-          parts_on_board = @report_data[:parts_placed].select { |p| (p[:board_number] || p['board_number']) == (idx + 1) }
-          
-          if parts_on_board.length > 0
-            pdf.move_down 20
-            pdf.text 'Parts on this board:', size: 12, style: :bold, color: COLOR_TEXT_MAIN
-            pdf.move_down 10
-            
-            parts_table = [['Part ID', 'Name', 'Dimensions (mm)', 'Material']]
-            
-            parts_on_board.each_with_index do |part, part_idx|
-              part_id = part[:part_unique_id] || part['part_unique_id'] || "P#{part_idx + 1}"
-              name = part[:name] || part['name'] || ''
-              width_p = (part[:width] || part['width'] || 0).round(1)
-              height_p = (part[:height] || part['height'] || 0).round(1)
-              material_p = part[:material] || part['material'] || ''
-              
-              parts_table << [part_id, name, "#{width_p} × #{height_p}", material_p]
-            end
-            
-            render_minimal_table(pdf, parts_table)
-          end
-        end
-      end
-    end
-    
-    def render_diagrams_section(pdf)
-      pdf.font_size(18) { pdf.text 'Cutting Diagrams', style: :bold, color: COLOR_ACCENT }
-      pdf.move_down 15
-      
-      @diagrams_data.each_with_index do |board, idx|
-        # Each diagram gets its own page (except first)
-        if idx > 0
-          pdf.start_new_page
-        end
-        
-        # Board header with background
-        pdf.fill_color 'F0F8FF'
-        pdf.fill_rectangle [0, pdf.cursor], pdf.bounds.width, 30
-        pdf.fill_color '000000'
-        
-        pdf.move_down 8
-        pdf.font_size(13) { pdf.text "Sheet #{idx + 1}: #{board[:material] || board['material']}", style: :bold, indent_paragraphs: 10 }
-        pdf.move_down 8
-        
-        efficiency = (board[:efficiency_percentage] || board['efficiency_percentage'] || 0).round(1)
-        waste = (board[:waste_percentage] || board['waste_percentage'] || 0).round(1)
-        
-        # Efficiency badge
-        efficiency_color = efficiency >= 80 ? '28A745' : (efficiency >= 60 ? 'FFC107' : 'DC3545')
-        pdf.font_size(10) { 
-          pdf.formatted_text [
-            { text: "Efficiency: ", color: '666666' },
-            { text: "#{efficiency}%", color: efficiency_color, styles: [:bold] },
-            { text: " | Waste: #{waste}%", color: '666666' }
-          ], indent_paragraphs: 10
-        }
-        pdf.move_down 20
-        
-        # Try to embed diagram image - MAXIMIZED TO FULL PAGE
-        diagram_img = @diagram_images.find { |img| img[:index] == idx || img['index'] == idx }
-        if diagram_img && (diagram_img[:image] || diagram_img['image'])
-          image_data = diagram_img[:image] || diagram_img['image']
-          
-          begin
-            if image_data.is_a?(String) && image_data.start_with?('data:image')
-              base64_data = image_data.sub(/^data:image\/[^;]+;base64,/, '')
-              decoded_image = Base64.decode64(base64_data)
-              
-              temp_file = File.join(Dir.tmpdir, "diagram_#{idx}_#{Time.now.to_i}.png")
-              File.binwrite(temp_file, decoded_image)
-              
-              # MAXIMIZED: Use full page width and maximum available height
-              available_height = pdf.cursor - 60  # Leave space for footer
-              pdf.image temp_file, fit: [pdf.bounds.width, available_height], position: :center
-              
-              File.delete(temp_file) if File.exist?(temp_file)
-            elsif File.exist?(image_data)
-              available_height = pdf.cursor - 60
-              pdf.image image_data, fit: [pdf.bounds.width, available_height], position: :center
-            end
-          rescue => e
-            puts "WARNING: Could not embed diagram image: #{e.message}"
-            pdf.fill_color 'FFE6E6'
-            pdf.fill_rectangle [pdf.bounds.left, pdf.cursor], pdf.bounds.width, 40
-            pdf.fill_color '000000'
-            pdf.move_down 15
-            pdf.text "⚠ Diagram image unavailable", color: 'DC3545', align: :center
-            pdf.move_down 15
-          end
-        end
-      end
-    end
-    
-    # NEW: Landscape-optimized diagram rendering for better visualization
-    def render_diagrams_section_landscape(pdf)
-      @diagrams_data.each_with_index do |board, idx|
-        # Force LANDSCAPE orientation for each diagram
-        pdf.start_new_page(layout: :landscape)
-        
-        # Minimalist header
-        pdf.font_size(FONT_SIZE_H2) { 
-          pdf.text "Sheet #{idx + 1}: #{board[:material] || board['material']}", 
-            style: :bold, 
-            color: COLOR_TEXT_MAIN 
-        }
-        
-        efficiency = (board[:efficiency_percentage] || board['efficiency_percentage'] || 0).round(1)
-        waste = (board[:waste_percentage] || board['waste_percentage'] || 0).round(1)
-        
-        pdf.move_down 5
-        pdf.font_size(10) { 
-          pdf.text "Efficiency: #{efficiency}%  |  Waste: #{waste}%", 
-            color: COLOR_TEXT_LIGHT 
-        }
-        
-        pdf.move_down 15
-        
-        # Render diagram image - MAXIMIZED for landscape
-        diagram_img = @diagram_images.find { |img| img[:index] == idx || img['index'] == idx }
-        if diagram_img && (diagram_img[:image] || diagram_img['image'])
-          image_data = diagram_img[:image] || diagram_img['image']
-          
-          begin
-            if image_data.is_a?(String) && image_data.start_with?('data:image')
-              base64_data = image_data.sub(/^data:image\/[^;]+;base64,/, '')
-              decoded_image = Base64.decode64(base64_data)
-              
-              temp_file = File.join(Dir.tmpdir, "diagram_#{idx}_#{Time.now.to_i}.png")
-              File.binwrite(temp_file, decoded_image)
-              
-              # LANDSCAPE: Maximum width and height for diagram
-              max_width = pdf.bounds.width
-              max_height = pdf.cursor - 40
-              pdf.image temp_file, fit: [max_width, max_height], position: :center
-              
-              File.delete(temp_file) if File.exist?(temp_file)
-            elsif File.exist?(image_data)
-              max_width = pdf.bounds.width
-              max_height = pdf.cursor - 40
-              pdf.image image_data, fit: [max_width, max_height], position: :center
-            end
-          rescue => e
-            puts "WARNING: Could not embed diagram image: #{e.message}"
-            # Minimalist error message
-            pdf.fill_color 'F6F8FA'
-            pdf.fill_rectangle [0, pdf.cursor], pdf.bounds.width, 50
-            pdf.fill_color COLOR_ACCENT
-            pdf.fill_rectangle [0, pdf.cursor], 4, 50
-            pdf.fill_color COLOR_TEXT_MAIN
-            pdf.move_down 20
-            pdf.text "⚠ Diagram image unavailable", align: :center, color: COLOR_TEXT_LIGHT
-          end
-        end
-      end
-    end
-    
-    def render_cut_sequences_section(pdf)
-      draw_minimal_header(pdf, 'Cut Sequences')
-      
-      @report_data[:cut_sequences].each_with_index do |sequence, seq_idx|
-        if pdf.cursor < 200
-          pdf.start_new_page
+        # Board title
+        pdf.font_size(FONT_SIZE_H3) do
+          pdf.text "Sheet #{idx + 1}: #{board[:material] || 'Unknown'}", 
+            style: :bold, color: COLOR_TEXT_MAIN
         end
         
         pdf.move_down 10
-        pdf.text sequence[:title], size: 12, style: :bold, color: COLOR_TEXT_MAIN
-        pdf.move_down 5
         
-        if sequence[:stock_size]
-          pdf.text "Stock Size: #{sequence[:stock_size]}", size: 9, color: COLOR_TEXT_LIGHT
-          pdf.move_down 8
+        # Board specs
+        width = board[:stock_width] || 2440
+        height = board[:stock_height] || 1220
+        efficiency = (board[:efficiency_percentage] || 0).round(1)
+        parts_count = board[:parts_count] || 0
+        
+        pdf.font_size(FONT_SIZE_SMALL) do
+          pdf.text "Size: #{width.round(0)} × #{height.round(0)} mm  |  " +
+                   "Parts: #{parts_count}  |  " +
+                   "Efficiency: #{efficiency}%", 
+            color: COLOR_TEXT_SECONDARY
         end
         
-        if sequence[:steps] && sequence[:steps].length > 0
-          table_data = [['Step', 'Operation', 'Description', 'Measurement']]
-          sequence[:steps].each do |step|
-            table_data << [
-              step[:step].to_s,
-              step[:operation].to_s,
-              step[:description].to_s,
-              step[:measurement].to_s
-            ]
-          end
-          
-          render_minimal_table(pdf, table_data)
+        pdf.move_down 20
+        
+        # Diagram image
+        diagram_img = @diagram_images.find { |img| (img[:index] || img['index']) == idx }
+        if diagram_img && (diagram_img[:image] || diagram_img['image'])
+          embed_diagram_image(pdf, diagram_img[:image] || diagram_img['image'], idx)
+        else
+          pdf.text "Diagram not available", color: COLOR_TEXT_SECONDARY, style: :italic
+        end
+      end
+    end
+    
+    # ===== CUTTING INSTRUCTIONS =====
+    def render_cutting_instructions(pdf)
+      render_section_header(pdf, @section_counter, "Cutting Instructions")
+      
+      @report_data[:cut_sequences].each_with_index do |sequence, idx|
+        check_page_break(pdf, 150)
+        
+        # Sheet title
+        pdf.font_size(FONT_SIZE_H3) do
+          pdf.text "Sheet #{sequence[:board_number] || idx + 1}: #{sequence[:material] || 'Unknown'}", 
+            style: :bold, color: COLOR_TEXT_MAIN
+        end
+        
+        pdf.move_down 5
+        pdf.font_size(FONT_SIZE_SMALL) do
+          pdf.text "Stock Size: #{sequence[:stock_size] || sequence[:stock_dimensions] || 'N/A'}", 
+            color: COLOR_TEXT_SECONDARY
         end
         
         pdf.move_down 15
+        
+        # Steps table
+        steps = sequence[:steps] || sequence[:cut_sequence] || []
+        if steps.length > 0
+          table_data = [["Step", "Operation", "Description", "Measurement"]]
+          
+          steps.each do |step|
+            table_data << [
+              step[:step].to_s,
+              step[:operation] || step[:type] || '',
+              step[:description] || '',
+              step[:measurement] || ''
+            ]
+          end
+          
+          render_clean_table(pdf, table_data)
+        else
+          pdf.text "No cutting steps available", color: COLOR_TEXT_SECONDARY, style: :italic
+        end
+        
+        pdf.move_down 20
       end
     end
     
-    def render_offcuts_section(pdf)
-      draw_minimal_header(pdf, 'Usable Offcuts')
-      
-      table_data = [['Sheet #', 'Material', 'Estimated Size', 'Area (m²)']]
-      
-      @report_data[:usable_offcuts].each do |offcut|
-        table_data << [
-          offcut[:board_number].to_s,
-          offcut[:material],
-          offcut[:estimated_dimensions],
-          offcut[:area_m2].to_s
-        ]
-      end
-      
-      render_minimal_table(pdf, table_data)
-    end
-    
-    def render_assembly_section(pdf)
-      draw_minimal_header(pdf, 'Assembly Views')
+    # ===== ASSEMBLY VIEWS =====
+    def render_assembly_views(pdf)
+      render_section_header(pdf, @section_counter, "Assembly Views")
       
       views = @assembly_data[:views] || {}
+      entity_name = @assembly_data[:entity_name] || "Assembly"
       
       views.each_with_index do |(view_name, view_image), idx|
         if idx > 0
           pdf.start_new_page
         end
         
-        view_name_utf8 = ensure_utf8(view_name.to_s)
+        # Professional view title
+        view_title = format_view_title(view_name, entity_name)
         
-        pdf.move_down 10
-        pdf.text view_name_utf8, size: 12, style: :bold, color: COLOR_TEXT_MAIN
-        pdf.move_down 15
-        
-        begin
-          if view_image.is_a?(String) && view_image.start_with?('data:image')
-            base64_data = view_image.sub(/^data:image\/[^;]+;base64,/, '')
-            decoded_image = Base64.decode64(base64_data)
-            
-            safe_view_name = view_name_utf8.gsub(/[^a-zA-Z0-9_-]/, '_')
-            temp_file = File.join(Dir.tmpdir, "assembly_#{safe_view_name}_#{Time.now.to_i}.png")
-            File.binwrite(temp_file, decoded_image)
-            
-            available_height = pdf.cursor - 60
-            pdf.image temp_file, fit: [pdf.bounds.width, available_height], position: :center
-            
-            File.delete(temp_file) if File.exist?(temp_file)
-          elsif File.exist?(view_image)
-            available_height = pdf.cursor - 60
-            pdf.image view_image, fit: [pdf.bounds.width, available_height], position: :center
-          end
-        rescue => e
-          puts "WARNING: Could not embed assembly view: #{e.message}"
-          draw_info_block(pdf, "Image Error", "Assembly view unavailable")
+        pdf.font_size(FONT_SIZE_H3) do
+          pdf.text view_title, style: :bold, color: COLOR_TEXT_MAIN
         end
+        
+        pdf.move_down 5
+        pdf.font_size(FONT_SIZE_SMALL) do
+          pdf.text "Orthographic Projection", color: COLOR_TEXT_SECONDARY
+        end
+        
+        pdf.move_down 20
+        
+        # Image with border
+        embed_assembly_image(pdf, view_image)
       end
     end
     
-    def render_parts_list_section(pdf)
-      draw_minimal_header(pdf, 'Cut List & Part Details')
+    # Format view title professionally
+    def format_view_title(view_name, entity_name)
+      view_name_str = view_name.to_s
       
-      table_data = [['Part ID', 'Name', 'Dimensions (mm)', 'Material', 'Sheet #', 'Grain', 'Edge Banding']]
+      # Map basic view names to professional titles
+      view_mapping = {
+        'front' => 'Front Elevation',
+        'back' => 'Rear Elevation',
+        'left' => 'Left Side Elevation',
+        'right' => 'Right Side Elevation',
+        'top' => 'Top View (Plan)',
+        'bottom' => 'Bottom View',
+        'iso' => 'Isometric View',
+        'perspective' => 'Perspective View'
+      }
+      
+      formatted = view_mapping[view_name_str.downcase] || view_name_str.capitalize
+      
+      "#{entity_name} - #{formatted}"
+    end
+    
+    # ===== DETAILED CUT LIST =====
+    def render_detailed_cut_list(pdf)
+      render_section_header(pdf, @section_counter, "Detailed Cut List")
+      
+      table_data = [["ID", "Name", "Dimensions (mm)", "Material", "Sheet", "Grain", "Edge Band"]]
       
       @report_data[:parts_placed].each_with_index do |part, idx|
-        part_id = part[:part_unique_id] || part[:instance_id] || "P#{idx + 1}"
-        width = (part[:width] || 0).round(1)
-        height = (part[:height] || 0).round(1)
+        part_id = part[:part_unique_id] || "P#{idx + 1}"
+        w = (part[:width] || 0).round(1)
+        h = (part[:height] || 0).round(1)
         
-        edge_banding_value = part[:edge_banding]
-        if edge_banding_value.is_a?(Hash)
-          edge_banding = edge_banding_value[:type] || edge_banding_value['type'] || 'None'
+        edge_band = part[:edge_banding]
+        if edge_band.is_a?(Hash)
+          edge_band = edge_band[:type] || edge_band['type'] || 'None'
         else
-          edge_banding = edge_banding_value.to_s == '' ? 'None' : (edge_banding_value || 'None')
+          edge_band = edge_band || 'None'
         end
         
         table_data << [
           part_id,
-          part[:name],
-          "#{width} x #{height}",
-          part[:material],
+          part[:name] || '',
+          "#{w} × #{h}",
+          part[:material] || '',
           part[:board_number].to_s,
           part[:grain_direction] || 'Any',
-          edge_banding
+          edge_band
         ]
       end
       
-      render_minimal_table(pdf, table_data)
+      render_clean_table(pdf, table_data)
     end
     
-    def render_cost_breakdown_section(pdf)
-      pdf.move_down 20
-      draw_minimal_header(pdf, 'Cost Breakdown')
+    # ===== PART LABELS =====
+    def render_part_labels(pdf)
+      render_section_header(pdf, @section_counter, "Part Labels")
       
-      table_data = [['Material', 'Sheets Required', 'Unit Cost', 'Total Cost']]
+      pdf.font_size(FONT_SIZE_BODY) do
+        pdf.text "QR code labels for each part. Scan with any QR code reader to view part details.", 
+          color: COLOR_TEXT_SECONDARY
+      end
       
-      @report_data[:unique_board_types].each do |board_type|
+      pdf.move_down 30
+      
+      # Label format configuration - 3 columns x 4 rows for balanced layout
+      label_width_mm = 65
+      label_height_mm = 35
+      cols = 3
+      rows = 4  # Reduced to 4 for better balance and padding
+      spacing_h_mm = 5
+      spacing_v_mm = 8  # Increased vertical spacing for better balance
+      
+      # Calculate total width needed for labels
+      total_width_needed_mm = (cols * label_width_mm) + ((cols - 1) * spacing_h_mm)
+      
+      # Get available width from PDF bounds (in points) and convert to mm
+      available_width_pt = pdf.bounds.width
+      available_width_mm = available_width_pt / 2.83465
+      
+      # Calculate left margin to center labels
+      margin_left_mm = (available_width_mm - total_width_needed_mm) / 2
+      
+      labels_per_page = cols * rows  # 12 labels per page
+      
+      # Starting Y position from current cursor
+      start_y_pt = pdf.cursor
+      
+      # Generate labels from unique part types
+      part_counter = 1
+      label_index = 0
+      
+      (@report_data[:unique_part_types] || []).each do |part_type|
+        quantity = part_type[:total_quantity] || 1
+        
+        quantity.times do |i|
+          # Start new page if needed
+          if label_index > 0 && label_index % labels_per_page == 0
+            pdf.start_new_page
+            render_section_header(pdf, @section_counter, "Part Labels (continued)")
+            pdf.move_down 20
+            start_y_pt = pdf.cursor
+          end
+          
+          # Calculate position on current page
+          label_on_page = label_index % labels_per_page
+          row = label_on_page / cols
+          col = label_on_page % cols
+          
+          # Calculate position in mm
+          x_mm = margin_left_mm + (col * (label_width_mm + spacing_h_mm))
+          y_offset_mm = row * (label_height_mm + spacing_v_mm)
+          
+          # Convert to points
+          x_pos = mm_to_pt(x_mm)
+          y_pos = start_y_pt - mm_to_pt(y_offset_mm)
+          
+          # Render label at calculated position
+          render_label(pdf, {
+            part_id: "P#{part_counter}",
+            name: part_type[:name] || "Part",
+            width: part_type[:width] || 0,
+            height: part_type[:height] || 0,
+            thickness: part_type[:thickness] || 0,
+            material: part_type[:material] || "Unknown"
+          }, x_pos, y_pos, label_width_mm, label_height_mm)
+          
+          part_counter += 1
+          label_index += 1
+        end
+      end
+      
+      # Move cursor to bottom to prevent overlap
+      last_row = ((label_index - 1) % labels_per_page) / cols
+      pdf.move_cursor_to(start_y_pt - mm_to_pt((last_row + 1) * (label_height_mm + spacing_v_mm)) - 20)
+    end
+    
+    # Render a single label with QR code
+    def render_label(pdf, part_data, x, y, width_mm, height_mm)
+      width_pt = mm_to_pt(width_mm)
+      height_pt = mm_to_pt(height_mm)
+      
+      # Draw label border
+      pdf.stroke_color COLOR_BORDER
+      pdf.line_width 0.5
+      pdf.stroke_rectangle [x, y], width_pt, height_pt
+      
+      # Create QR code data
+      qr_data = format_qr_data(part_data)
+      
+      begin
+        require 'rqrcode'
+        qrcode = RQRCode::QRCode.new(qr_data, level: :m)
+        
+        # QR code size and position (left side)
+        qr_size_pt = mm_to_pt(25)
+        qr_x = x + mm_to_pt(3)
+        qr_y = y - mm_to_pt(3)
+        
+        # Draw QR code
+        render_qr_code(pdf, qrcode, qr_x, qr_y, qr_size_pt)
+        
+      rescue LoadError
+        # If rqrcode not available, show placeholder
+        pdf.font_size(8) do
+          pdf.draw_text "QR N/A", at: [x + mm_to_pt(10), y - mm_to_pt(15)], color: COLOR_TEXT_SECONDARY
+        end
+      rescue => e
+        puts "WARNING: Could not generate QR code for part #{part_data[:part_id]}: #{e.message}"
+        pdf.font_size(8) do
+          pdf.draw_text "QR Error", at: [x + mm_to_pt(10), y - mm_to_pt(15)], color: 'FF0000'
+        end
+      end
+      
+      # Text area (right side)
+      text_x = x + mm_to_pt(31)  # After QR code + spacing
+      text_y = y - mm_to_pt(6)
+      text_width = width_pt - mm_to_pt(34)
+      
+      # Part name (bold, larger)
+      pdf.font_size(10) do
+        name = truncate_text(pdf, part_data[:name], text_width, 10)
+        pdf.draw_text name, 
+          at: [text_x, text_y], 
+          style: :bold,
+          color: COLOR_TEXT_MAIN
+      end
+      
+      # Dimensions label
+      text_y -= mm_to_pt(6)
+      pdf.font_size(7) do
+        pdf.draw_text "Dimensions:", 
+          at: [text_x, text_y],
+          color: COLOR_TEXT_SECONDARY
+      end
+      
+      # Dimensions (W × H only, no thickness)
+      text_y -= mm_to_pt(5)
+      w = part_data[:width].round(1)
+      h = part_data[:height].round(1)
+      pdf.font_size(9) do
+        pdf.draw_text "#{w} × #{h} mm", 
+          at: [text_x, text_y],
+          style: :bold,
+          color: COLOR_TEXT_MAIN
+      end
+      
+      # Thickness (moved to placeholder location)
+      text_y -= mm_to_pt(5)
+      t = part_data[:thickness].round(1)
+      pdf.font_size(8) do
+        pdf.draw_text "Thickness: #{t} mm", 
+          at: [text_x, text_y],
+          color: COLOR_TEXT_SECONDARY
+      end
+      
+      # Bottom section - Part ID and Material
+      bottom_y = y - height_pt + mm_to_pt(6)
+      
+      # Part ID (left)
+      pdf.font_size(7) do
+        pdf.draw_text "ID: #{part_data[:part_id]}", 
+          at: [text_x, bottom_y],
+          color: COLOR_TEXT_SECONDARY
+      end
+      
+      # Material (right aligned)
+      pdf.font_size(7) do
+        material = truncate_text(pdf, part_data[:material], text_width * 0.5, 7)
+        material_width = pdf.width_of(material, size: 7)
+        pdf.draw_text material, 
+          at: [x + width_pt - mm_to_pt(3) - material_width, bottom_y],
+          color: COLOR_TEXT_SECONDARY
+      end
+    end
+    
+    # Render QR code as squares
+    def render_qr_code(pdf, qrcode, x, y, size_pt)
+      modules = qrcode.modules
+      module_count = modules.size
+      module_size = size_pt / module_count
+      
+      pdf.fill_color '000000'
+      
+      modules.each_with_index do |row, row_idx|
+        row.each_with_index do |cell, col_idx|
+          if cell
+            module_x = x + (col_idx * module_size)
+            module_y = y - (row_idx * module_size)
+            pdf.fill_rectangle [module_x, module_y], module_size, module_size
+          end
+        end
+      end
+      
+      pdf.fill_color '000000'  # Reset fill color
+    end
+    
+    # Format QR data
+    def format_qr_data(part_data)
+      qr_text = "PART: #{part_data[:part_id]}\n"
+      qr_text += "NAME: #{part_data[:name]}\n"
+      qr_text += "SIZE: #{part_data[:width].round(1)} x #{part_data[:height].round(1)} x #{part_data[:thickness].round(1)}mm\n"
+      qr_text += "MATERIAL: #{part_data[:material]}"
+      qr_text
+    end
+    
+    # Convert mm to points (1mm = 2.83465pt)
+    def mm_to_pt(mm)
+      mm * 2.83465
+    end
+    
+    # ===== COST ANALYSIS =====
+    def render_cost_analysis(pdf)
+      render_section_header(pdf, @section_counter, "Cost Analysis")
+      
+      table_data = [["Material", "Sheets", "Unit Cost", "Total Cost"]]
+      
+      @report_data[:unique_board_types].each do |board|
         table_data << [
-          board_type[:material] || board_type['material'],
-          (board_type[:count] || board_type['count']).to_s,
-          "#{board_type[:currency] || board_type['currency'] || 'USD'} #{(board_type[:price_per_sheet] || board_type['price_per_sheet'] || 0).round(2)}",
-          "#{board_type[:currency] || board_type['currency'] || 'USD'} #{(board_type[:total_cost] || board_type['total_cost'] || 0).round(2)}"
+          board[:material] || '',
+          board[:count].to_s,
+          "#{board[:currency] || 'USD'} #{(board[:price_per_sheet] || 0).round(2)}",
+          "#{board[:currency] || 'USD'} #{(board[:total_cost] || 0).round(2)}"
         ]
       end
       
-      render_minimal_table(pdf, table_data)
+      render_clean_table(pdf, table_data)
+      
+      # Total
+      summary = @report_data[:summary] || {}
+      pdf.move_down 20
+      pdf.font_size(FONT_SIZE_H3) do
+        pdf.text "Total Project Cost: #{summary[:currency] || 'USD'} #{(summary[:total_project_cost] || 0).round(2)}", 
+          style: :bold, color: COLOR_TEXT_MAIN, align: :right
+      end
+    end
+    
+    # ===== CLEAN TABLE RENDERER =====
+    def render_clean_table(pdf, data)
+      return if data.nil? || data.empty?
+      
+      # Calculate optimal column widths based on content
+      col_widths = calculate_column_widths(pdf, data)
+      
+      # Render header
+      render_table_header(pdf, data.first, col_widths)
+      
+      # Render data rows
+      data[1..-1].each_with_index do |row, row_idx|
+        # Check if we need a new page
+        if pdf.cursor < 50
+          pdf.start_new_page
+          render_table_header(pdf, data.first, col_widths)
+        end
+        
+        render_table_row(pdf, row, col_widths, row_idx)
+      end
+      
       pdf.move_down 15
     end
     
-    # ------------------------------------------------------------------
-    #  GITBOOK-STYLE HELPER METHODS
-    # ------------------------------------------------------------------
-    
-    # Draws a clean minimalist header with an underline (No massive color bars)
-    def draw_minimal_header(pdf, title)
-      pdf.move_down 10
-      pdf.text title, size: FONT_SIZE_H2, style: :bold, color: COLOR_TEXT_MAIN
-      pdf.move_down 5
-      pdf.stroke_color COLOR_BORDER
-      pdf.stroke_horizontal_rule
-      pdf.move_down 20
-    end
-    
-    # Renders a GitBook-style Info Block (Grey background, blue accent bar on left)
-    def draw_info_block(pdf, title, message)
-      pdf.move_down 10
-      box_height = 50
+    # Calculate optimal column widths based on content
+    def calculate_column_widths(pdf, data)
+      return [] if data.nil? || data.empty?
       
-      # Background
-      pdf.fill_color 'F6F8FA'
-      pdf.fill_rectangle [0, pdf.cursor], pdf.bounds.width, box_height
+      num_cols = data.first.length
+      max_widths = Array.new(num_cols, 0)
       
-      # Accent Line (Left)
-      pdf.fill_color COLOR_ACCENT
-      pdf.fill_rectangle [0, pdf.cursor], 4, box_height
-      
-      # Text
-      pdf.fill_color COLOR_TEXT_MAIN
-      pdf.indent(15) do
-        pdf.move_down 10
-        pdf.text title, style: :bold, size: 10
-        pdf.move_down 3
-        pdf.text message, size: 9, color: COLOR_TEXT_LIGHT
-      end
-      
-      pdf.move_down 20
-      pdf.fill_color '000000'
-    end
-    
-    # Minimal table renderer - horizontal borders only, no zebra stripes
-    def render_minimal_table(pdf, table_data)
-      return if table_data.empty?
-      
-      headers = table_data[0]
-      data_rows = table_data[1..-1]
-      
-      # Column Width Logic
-      col_width = pdf.bounds.width / headers.length
-      
-      # 1. Header Row - WITH PROPER HEIGHT FOR WRAPPING
-      pdf.font_size(9)
-      pdf.fill_color COLOR_TEXT_LIGHT
-      
-      # Calculate max header height needed (check if any header wraps)
-      max_header_height = 20
-      headers.each do |h|
-        text_length = ensure_utf8(h).to_s.upcase.length
-        # If text is long, it might wrap - give more height
-        if text_length > 15
-          max_header_height = 30
+      # Find maximum width needed for each column
+      data.each do |row|
+        row.each_with_index do |cell, col_idx|
+          text = cell.to_s
+          # Measure text width with padding (20pt padding + 10pt safety margin)
+          text_width = pdf.width_of(text, size: FONT_SIZE_SMALL) + 30
+          max_widths[col_idx] = [max_widths[col_idx], text_width].max
         end
       end
       
-      # Render headers with proper spacing
-      header_y = pdf.cursor
-      headers.each_with_index do |h, i|
-        pdf.text_box ensure_utf8(h).to_s.upcase, 
-          at: [i * col_width, header_y], 
-          width: col_width - 5, 
-          height: max_header_height, 
-          style: :bold,
-          overflow: :shrink_to_fit,
-          valign: :top
+      # Calculate total width needed
+      total_needed = max_widths.sum
+      available_width = pdf.bounds.width
+      
+      # If total needed is less than available, use actual widths
+      if total_needed <= available_width
+        return max_widths
       end
       
-      # Move down by the header height BEFORE drawing the line
-      pdf.move_down max_header_height
-      pdf.stroke_color COLOR_BORDER
-      pdf.stroke_horizontal_rule
-      pdf.move_down 10
+      # Otherwise, scale proportionally but keep minimum widths
+      min_width = 60  # Minimum column width
       
-      # 2. Data Rows
-      pdf.fill_color COLOR_TEXT_MAIN
+      # Identify which columns need minimum width (short content like IDs)
+      short_cols = []
+      long_cols = []
       
-      data_rows.each do |row|
-        # Check for Page Break
-        if pdf.cursor < 30
-          pdf.start_new_page
-          pdf.move_down 20
+      max_widths.each_with_index do |width, idx|
+        if width < 100
+          short_cols << idx
+        else
+          long_cols << idx
         end
-        
-        row_y = pdf.cursor
-        
-        row.each_with_index do |cell, i|
-          text = ensure_utf8(cell).to_s
-          pdf.text_box text,
-            at: [i * col_width, row_y],
-            width: col_width - 5,
-            height: 15,
-            overflow: :truncate,
-            valign: :top
-        end
-        
-        pdf.move_down 20
       end
       
-      pdf.move_down 20
-      pdf.fill_color '000000'
-    end
-    
-    def render_footer(pdf)
-      # Minimalist page numbers
-      pdf.number_pages "Page <page> of <total>", {
-        start_count_at: 1,
-        page_filter: :all,
-        at: [pdf.bounds.left, 0],
-        align: :center,
-        size: 8,
-        color: COLOR_TEXT_LIGHT
-      }
-    end
-    
-    
-    # Enhanced table rendering with better styling and page break handling
-    def render_enhanced_table(pdf, table_data, options = {})
-      return if table_data.empty?
+      # Allocate minimum width to short columns
+      reserved_width = short_cols.length * min_width
+      remaining_width = available_width - reserved_width
       
-      has_header = options.fetch(:header, true)
-      highlight_last = options.fetch(:highlight_last, false)
+      # Distribute remaining width proportionally to long columns
+      long_cols_total = long_cols.sum { |idx| max_widths[idx] }
       
-      pdf.font_size(9)
+      col_widths = Array.new(num_cols, 0)
       
-      # Calculate column widths
-      num_cols = table_data[0].length
-      col_width = (pdf.bounds.width - 20) / num_cols
-      
-      # Store current font
-      current_font = pdf.font.family
-      
-      # Render header row if present
-      if has_header
-        header = table_data[0]
-        
-        # Header background with gradient effect
-        pdf.fill_color '0066cc'
-        pdf.fill_rectangle [pdf.bounds.left, pdf.cursor], pdf.bounds.width, 24
-        pdf.fill_color 'FFFFFF'
-        
-        pdf.font current_font, style: :bold
-        header.each_with_index do |cell, idx|
-          x = pdf.bounds.left + (idx * col_width)
-          cell_text = ensure_utf8(cell).to_s
-          pdf.text_box cell_text, at: [x + 5, pdf.cursor - 6], width: col_width - 10, height: 20, overflow: :truncate, valign: :center
-        end
-        pdf.font current_font
-        pdf.fill_color '000000'
-        pdf.move_down 24
-        
-        data_rows = table_data[1..-1]
-      else
-        data_rows = table_data
-      end
-      
-      # Render data rows with alternating colors
-      data_rows.each_with_index do |row, row_idx|
-        # Check if we need a page break
-        if pdf.cursor < 50
-          pdf.start_new_page
-          
-          # Re-render header on new page if applicable
-          if has_header
-            header = table_data[0]
-            pdf.fill_color '0066cc'
-            pdf.fill_rectangle [pdf.bounds.left, pdf.cursor], pdf.bounds.width, 24
-            pdf.fill_color 'FFFFFF'
-            pdf.font current_font, style: :bold
-            header.each_with_index do |cell, idx|
-              x = pdf.bounds.left + (idx * col_width)
-              cell_text = ensure_utf8(cell).to_s
-              pdf.text_box cell_text, at: [x + 5, pdf.cursor - 6], width: col_width - 10, height: 20, overflow: :truncate, valign: :center
-            end
-            pdf.font current_font
-            pdf.fill_color '000000'
-            pdf.move_down 24
-          end
-        end
-        
-        # Alternating row colors
-        row_color = row_idx.even? ? 'FFFFFF' : 'F8F9FA'
-        
-        # Highlight last row if requested
-        if highlight_last && row_idx == data_rows.length - 1
-          row_color = 'FFFACD'
-          pdf.font current_font, style: :bold
-        end
-        
-        pdf.fill_color row_color
-        pdf.fill_rectangle [pdf.bounds.left, pdf.cursor], pdf.bounds.width, 20
-        pdf.fill_color '000000'
-        
-        row.each_with_index do |cell, idx|
-          x = pdf.bounds.left + (idx * col_width)
-          cell_text = ensure_utf8(cell).to_s
-          pdf.text_box cell_text, at: [x + 5, pdf.cursor - 5], width: col_width - 10, height: 18, overflow: :truncate
-        end
-        
-        pdf.font current_font if highlight_last && row_idx == data_rows.length - 1
-        pdf.move_down 20
-      end
-      
-      pdf.move_down 5
-    end
-    
-    # Helper method to render text-based tables without using pdf.table
-    # Fixes: Font consistency (Issue #2), Color format (Issue #3), Page breaks (Issue #4), Encoding (Issue #10)
-    def render_text_table(pdf, table_data)
-      return if table_data.empty?
-      
-      pdf.font_size(9)
-      
-      # Calculate column widths
-      num_cols = table_data[0].length
-      col_width = (pdf.bounds.width - 10) / num_cols
-      
-      # Store current font to maintain Unicode support (Fix #2)
-      current_font = pdf.font.family
-      
-      # Render header row
-      header = table_data[0]
-      pdf.fill_color 'F0F0F0'  # Fix #3: Proper hex format (uppercase, no #)
-      pdf.fill_rectangle [pdf.bounds.left, pdf.cursor], pdf.bounds.width, 20
-      pdf.fill_color '000000'
-      
-      pdf.font current_font, style: :bold  # Fix #2: Use current font instead of forcing Helvetica
-      header.each_with_index do |cell, idx|
-        x = pdf.bounds.left + (idx * col_width)
-        # Fix #10: Ensure UTF-8 encoding for all text
-        cell_text = ensure_utf8(cell).to_s
-        # FIX: Changed 'pdf.cursor + 15' to 'pdf.cursor - 5' to position text INSIDE the rectangle
-        pdf.text_box cell_text, at: [x + 2, pdf.cursor - 5], width: col_width - 4, height: 18, overflow: :truncate
-      end
-      pdf.font current_font  # Fix #2: Reset to current font
-      pdf.move_down 20
-      
-      # Render data rows with page break checks (Fix #4)
-      table_data[1..-1].each do |row|
-        # Check if we need a page break before rendering row (Fix #4)
-        if pdf.cursor < 40
-          pdf.start_new_page
-          # Re-render header on new page
-          pdf.fill_color 'F0F0F0'
-          pdf.fill_rectangle [pdf.bounds.left, pdf.cursor], pdf.bounds.width, 20
-          pdf.fill_color '000000'
-          pdf.font current_font, style: :bold
-          header.each_with_index do |cell, idx|
-            x = pdf.bounds.left + (idx * col_width)
-            cell_text = ensure_utf8(cell).to_s
-            # FIX: Corrected cursor position here as well
-            pdf.text_box cell_text, at: [x + 2, pdf.cursor - 5], width: col_width - 4, height: 18, overflow: :truncate
-          end
-          pdf.font current_font
-          pdf.move_down 20
-        end
-        
-        row.each_with_index do |cell, idx|
-          x = pdf.bounds.left + (idx * col_width)
-          # Fix #10: Ensure UTF-8 encoding for all text
-          cell_text = ensure_utf8(cell).to_s
-          # FIX: Adjusted row text position
-          pdf.text_box cell_text, at: [x + 2, pdf.cursor - 2], width: col_width - 4, height: 16, overflow: :truncate
-        end
-        pdf.move_down 16
-      end
-      
-      pdf.move_down 5
-    end
-    
-    def generate_printable_html
-      summary = @report_data[:summary] || {}
-      
-      html = <<~HTML
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>AutoNestCut Report Preview</title>
-            <style>
-                @page { size: A4 portrait; margin: 15mm; }
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { 
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                    background: #e0e0e0; 
-                    color: #333; 
-                    font-size: 10pt; 
-                    line-height: 1.4; 
-                    padding: 0; 
-                    margin: 0; 
-                }
-                .print-controls { 
-                    position: fixed; 
-                    top: 20px; 
-                    right: 20px; 
-                    z-index: 1000; 
-                    background: white; 
-                    padding: 20px; 
-                    border-radius: 8px; 
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.3); 
-                    display: flex; 
-                    flex-direction: column; 
-                    gap: 10px; 
-                }
-                .print-controls button { 
-                    background: #007cba; 
-                    color: white; 
-                    border: none; 
-                    padding: 12px 24px; 
-                    border-radius: 6px; 
-                    cursor: pointer; 
-                    font-size: 15px; 
-                    font-weight: 600; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    gap: 8px; 
-                    min-width: 180px; 
-                    transition: all 0.3s; 
-                }
-                .print-controls button:hover { 
-                    background: #005a87; 
-                    transform: translateY(-2px); 
-                    box-shadow: 0 6px 16px rgba(0,0,0,0.3); 
-                }
-                .print-controls button.close { 
-                    background: #6c757d; 
-                }
-                .print-controls button.close:hover { 
-                    background: #5a6268; 
-                }
-                .page { 
-                    width: 210mm; 
-                    min-height: 297mm; 
-                    padding: 15mm; 
-                    margin: 20px auto; 
-                    background: white; 
-                    box-shadow: 0 0 10px rgba(0,0,0,0.2); 
-                }
-                h1 { 
-                    color: #0066cc; 
-                    border-bottom: 3px solid #0066cc; 
-                    padding-bottom: 8px; 
-                    margin: 0 0 10px 0; 
-                    font-size: 20pt; 
-                    page-break-after: avoid; 
-                }
-                .subtitle { 
-                    color: #666; 
-                    font-size: 9pt; 
-                    margin-bottom: 15px; 
-                    page-break-after: avoid; 
-                }
-                h2 { 
-                    color: #0066cc; 
-                    margin: 20px 0 10px 0; 
-                    border-bottom: 2px solid #0066cc; 
-                    padding-bottom: 6px; 
-                    font-size: 13pt; 
-                    page-break-after: avoid; 
-                }
-                h3 { 
-                    color: #333; 
-                    margin: 12px 0 8px 0; 
-                    font-size: 11pt; 
-                    page-break-after: avoid; 
-                }
-                .section { 
-                    page-break-inside: avoid; 
-                    margin-bottom: 20px; 
-                }
-                .section.new-page { 
-                    page-break-before: always; 
-                }
-                table { 
-                    width: 100%; 
-                    border-collapse: collapse; 
-                    margin: 10px 0 15px 0; 
-                    font-size: 9pt; 
-                    page-break-inside: auto; 
-                }
-                thead { 
-                    display: table-header-group; 
-                }
-                tbody { 
-                    display: table-row-group; 
-                }
-                tr { 
-                    page-break-inside: avoid; 
-                    page-break-after: auto; 
-                }
-                th { 
-                    background: #f0f0f0; 
-                    padding: 6px 8px; 
-                    text-align: left; 
-                    font-weight: 600; 
-                    border-bottom: 2px solid #0066cc; 
-                    font-size: 9pt; 
-                }
-                td { 
-                    padding: 5px 8px; 
-                    border-bottom: 1px solid #ddd; 
-                }
-                tr:nth-child(even) { 
-                    background: #f9f9f9; 
-                }
-                .diagram-section { 
-                    margin: 15px 0; 
-                    text-align: center; 
-                    page-break-inside: avoid; 
-                }
-                .diagram-image { 
-                    max-width: 100%; 
-                    height: auto; 
-                    border: 1px solid #ddd; 
-                    margin: 8px 0; 
-                }
-                .assembly-section { 
-                    page-break-before: always; 
-                    page-break-inside: avoid; 
-                    margin: 15px 0; 
-                }
-                .assembly-grid { 
-                    display: grid; 
-                    grid-template-columns: repeat(3, 1fr); 
-                    gap: 10px; 
-                    margin: 10px 0; 
-                    page-break-inside: avoid; 
-                }
-                .assembly-view { 
-                    border: 1px solid #ddd; 
-                    padding: 6px; 
-                    text-align: center; 
-                    background: #f9f9f9; 
-                    page-break-inside: avoid; 
-                }
-                .assembly-view img { 
-                    max-width: 100%; 
-                    height: auto; 
-                    margin: 4px 0; 
-                }
-                .assembly-view-label { 
-                    font-weight: 600; 
-                    margin-top: 4px; 
-                    color: #0066cc; 
-                    font-size: 8pt; 
-                }
-                .total-highlight { 
-                    font-weight: 600; 
-                    background: #ffffcc; 
-                }
-                .cut-sequence { 
-                    margin: 12px 0; 
-                    page-break-inside: avoid; 
-                }
-                .cut-sequence-title { 
-                    font-weight: 600; 
-                    margin: 8px 0 4px 0; 
-                }
-                @media print {
-                    body { background: white; }
-                    .print-controls { display: none !important; }
-                    .page { margin: 0; box-shadow: none; page-break-after: auto; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="print-controls no-print">
-                <button onclick="window.print()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="6,9 6,2 18,2 18,9"/>
-                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                        <polyline points="6,14 6,22 18,22 18,14"/>
-                    </svg>
-                    Print to PDF
-                </button>
-                <button class="close" onclick="window.close()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                    Close
-                </button>
-            </div>
-            <div class="page">
-                <h1>Cut List & Nesting Report</h1>
-                <p class="subtitle"><strong>Professional Manufacturing Analysis</strong><br><strong>Generated:</strong> #{Time.now.strftime('%m/%d/%Y, %I:%M:%S %p')}</p>
-      HTML
-      
-      # PROJECT SUMMARY
-      if summary
-        html += <<~HTML
-          <div class="section">
-          <h2>Project Summary</h2>
-          <table>
-            <thead><tr><th>Project Metric</th><th>Value</th></tr></thead>
-            <tbody>
-              <tr><td>Total Parts</td><td>#{summary[:total_parts_instances] || 0}</td></tr>
-              <tr><td>Unique Components</td><td>#{summary[:total_unique_part_types] || 0}</td></tr>
-              <tr><td>Material Sheets</td><td>#{summary[:total_boards] || 0}</td></tr>
-              <tr><td>Kerf Width</td><td>#{summary[:kerf_width] || '3.0mm'}</td></tr>
-              <tr><td>Material Efficiency</td><td>#{(summary[:overall_efficiency] || 0).round(1)}%</td></tr>
-              <tr><td>Total Waste Area</td><td>#{summary[:total_waste_area_absolute] || '0 m²'}</td></tr>
-              <tr><td class="total-highlight">Total Cost</td><td class="total-highlight">#{summary[:currency] || 'USD'} #{(summary[:total_project_cost] || 0).round(2)}</td></tr>
-            </tbody>
-          </table>
-          </div>
-        HTML
-      end
-      
-      # MATERIALS USED
-      if @report_data[:unique_board_types]
-        html += <<~HTML
-          <div class="section">
-          <h2>Materials Used</h2>
-          <table>
-            <thead><tr><th>Material Type</th><th>Sheets Required</th><th>Unit Cost</th><th>Total Cost</th></tr></thead>
-            <tbody>
-        HTML
-        @report_data[:unique_board_types].each do |board_type|
-          html += "<tr><td>#{board_type[:material]}</td><td>#{board_type[:count]}</td><td>#{board_type[:currency] || 'USD'} #{(board_type[:price_per_sheet] || 0).round(2)}</td><td class=\"total-highlight\">#{board_type[:currency] || 'USD'} #{(board_type[:total_cost] || 0).round(2)}</td></tr>\n"
-        end
-        html += "</tbody></table></div>\n"
-      end
-      
-      # UNIQUE PART TYPES
-      if @report_data[:unique_part_types]
-        html += <<~HTML
-          <div class="section">
-          <h2>Unique Part Types</h2>
-          <table>
-            <thead><tr><th>Part Name</th><th>Width (mm)</th><th>Height (mm)</th><th>Thickness (mm)</th><th>Material</th><th>Grain</th><th>Qty</th><th>Area (m²)</th></tr></thead>
-            <tbody>
-        HTML
-        @report_data[:unique_part_types].each do |part|
-          html += "<tr><td>#{part[:name]}</td><td>#{(part[:width] || 0).round(1)}</td><td>#{(part[:height] || 0).round(1)}</td><td>#{(part[:thickness] || 0).round(1)}</td><td>#{part[:material]}</td><td>#{part[:grain_direction] || 'Any'}</td><td class=\"total-highlight\">#{part[:total_quantity]}</td><td>#{(part[:total_area] / 1000000).round(2)}</td></tr>\n"
-        end
-        html += "</tbody></table></div>\n"
-      end
-      
-      # SHEET INVENTORY SUMMARY
-      if @report_data[:unique_board_types]
-        html += <<~HTML
-          <div class="section">
-          <h2>Sheet Inventory Summary</h2>
-          <table>
-            <thead><tr><th>Material</th><th>Dimensions (mm)</th><th>Count</th><th>Total Area (m²)</th><th>Price/Sheet</th><th>Total Cost</th></tr></thead>
-            <tbody>
-        HTML
-        @report_data[:unique_board_types].each do |board_type|
-          width = board_type[:stock_width] || 2440
-          height = board_type[:stock_height] || 1220
-          html += "<tr><td>#{board_type[:material]}</td><td>#{width.round(1)} x #{height.round(1)}</td><td class=\"total-highlight\">#{board_type[:count]}</td><td>#{(board_type[:total_area] / 1000000).round(2)}</td><td>#{board_type[:currency] || 'USD'} #{(board_type[:price_per_sheet] || 0).round(2)}</td><td class=\"total-highlight\">#{board_type[:currency] || 'USD'} #{(board_type[:total_cost] || 0).round(2)}</td></tr>\n"
-        end
-        html += "</tbody></table></div>\n"
-      end
-      
-      # CUTTING DIAGRAMS WITH IMAGES
-      if @diagrams_data && @diagrams_data.length > 0
-        html += "<div class='section new-page'><h2>Cutting Diagrams</h2>\n"
-        @diagrams_data.each_with_index do |board, idx|
-          html += "<div class=\"diagram-section\">\n"
-          html += "<h3>Sheet #{idx + 1}: #{board[:material] || board['material']}</h3>\n"
-          html += "<p><strong>Efficiency:</strong> #{(board[:efficiency_percentage] || board['efficiency_percentage'] || 0).round(1)}% | <strong>Waste:</strong> #{(board[:waste_percentage] || board['waste_percentage'] || 0).round(1)}%</p>\n"
-          
-          # Embed captured diagram image if available
-          diagram_img = @diagram_images.find { |img| img[:index] == idx || img['index'] == idx }
-          if diagram_img && (diagram_img[:image] || diagram_img['image'])
-            image_data = diagram_img[:image] || diagram_img['image']
-            html += "<img src=\"#{image_data}\" class=\"diagram-image\" alt=\"Cutting diagram for sheet #{idx + 1}\">\n"
-          end
-          
-          html += "</div>\n"
-        end
-        html += "</div>\n"
-      end
-      
-      # CUT SEQUENCES
-      if @report_data[:cut_sequences]
-        html += "<div class='section new-page'><h2>Cut Sequences</h2>\n"
-        @report_data[:cut_sequences].each do |sequence|
-          html += "<div class=\"cut-sequence\">\n"
-          html += "<div class=\"cut-sequence-title\">#{sequence[:title]}</div>\n"
-          if sequence[:stock_size]
-            html += "<p style=\"margin: 5px 0; font-size: 9pt;\"><strong>Stock Size:</strong> #{sequence[:stock_size]}</p>\n"
-          end
-          if sequence[:steps] && sequence[:steps].length > 0
-            html += "<table style=\"font-size: 9pt;\">\n"
-            html += "<thead><tr><th>Step</th><th>Operation</th><th>Description</th><th>Measurement</th></tr></thead>\n"
-            html += "<tbody>\n"
-            sequence[:steps].each do |step|
-              html += "<tr><td>#{step[:step]}</td><td>#{step[:operation]}</td><td>#{step[:description]}</td><td>#{step[:measurement]}</td></tr>\n"
-            end
-            html += "</tbody></table>\n"
-          end
-          html += "</div>\n"
-        end
-        html += "</div>\n"
-      end
-      
-      # USABLE OFFCUTS
-      if @report_data[:usable_offcuts]
-        html += <<~HTML
-          <div class="section">
-          <h2>Usable Offcuts</h2>
-          <table>
-            <thead><tr><th>Sheet #</th><th>Material</th><th>Estimated Size</th><th>Area (m²)</th></tr></thead>
-            <tbody>
-        HTML
-        @report_data[:usable_offcuts].each do |offcut|
-          html += "<tr><td>#{offcut[:board_number]}</td><td>#{offcut[:material]}</td><td>#{offcut[:estimated_dimensions]}</td><td>#{offcut[:area_m2]}</td></tr>\n"
-        end
-        html += "</tbody></table></div>\n"
-      end
-      
-      # ASSEMBLY VIEWS
-      if @assembly_data && @assembly_data[:views]
-        html += "<div class='section assembly-section new-page'>\n"
-        html += "<h2>Assembly Views</h2>\n"
-        html += "<div class=\"assembly-grid\">\n"
-        
-        @assembly_data[:views].each do |view_name, view_image|
-          html += "<div class=\"assembly-view\">\n"
-          if view_image.is_a?(String) && view_image.start_with?('data:image')
-            html += "<img src=\"#{view_image}\" alt=\"#{view_name} view\">\n"
-          end
-          html += "<div class=\"assembly-view-label\">#{view_name}</div>\n"
-          html += "</div>\n"
-        end
-        
-        html += "</div>\n"
-        html += "</div>\n"
-      end
-      
-      # CUT LIST & PART DETAILS
-      if @report_data[:parts_placed]
-        html += <<~HTML
-          <div class="section new-page">
-          <h2>Cut List & Part Details</h2>
-          <table style="font-size: 9pt;">
-            <thead><tr><th>Part ID</th><th>Name</th><th>Dimensions (mm)</th><th>Material</th><th>Sheet #</th><th>Grain</th><th>Edge Banding</th></tr></thead>
-            <tbody>
-        HTML
-        @report_data[:parts_placed].each_with_index do |part, idx|
-          part_id = part[:part_unique_id] || part[:instance_id] || "P#{idx + 1}"
-          width = (part[:width] || 0).round(1)
-          height = (part[:height] || 0).round(1)
-          
-          # Properly format edge banding
-          edge_banding_value = part[:edge_banding]
-          if edge_banding_value.is_a?(Hash)
-            edge_banding = edge_banding_value[:type] || edge_banding_value['type'] || 'None'
+      max_widths.each_with_index do |width, idx|
+        if short_cols.include?(idx)
+          col_widths[idx] = [width, min_width].max
+        else
+          if long_cols_total > 0
+            proportion = width.to_f / long_cols_total
+            col_widths[idx] = remaining_width * proportion
           else
-            edge_banding = edge_banding_value.to_s == '' ? 'None' : (edge_banding_value || 'None')
+            col_widths[idx] = remaining_width / long_cols.length
           end
-          
-          html += "<tr><td>#{part_id}</td><td>#{part[:name]}</td><td>#{width} x #{height}</td><td>#{part[:material]}</td><td>#{part[:board_number]}</td><td>#{part[:grain_direction] || 'Any'}</td><td>#{edge_banding}</td></tr>\n"
         end
-        html += "</tbody></table></div>\n"
       end
       
-      # FOOTER
-      html += <<~HTML
-        <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; text-align: center; font-size: 9pt; color: #666;">
-          <p>AutoNestCut Professional</p>
-          <p>Developed by Int. Arch. M.Shkeir</p>
-        </div>
-            </div>
-        </body>
-        </html>
-      HTML
+      col_widths
+    end
+    
+    def render_table_header(pdf, header, col_widths)
+      y_position = pdf.cursor
       
-      html
+      # Header background
+      pdf.fill_color 'F3F4F6'
+      pdf.fill_rectangle [0, y_position], pdf.bounds.width, 28
+      pdf.fill_color '000000'
+      
+      # Header text
+      x_offset = 0
+      header.each_with_index do |cell, i|
+        text = truncate_text(pdf, cell.to_s, col_widths[i] - 20, FONT_SIZE_SMALL)
+        pdf.draw_text text, 
+          at: [x_offset + 10, y_position - 17], 
+          size: FONT_SIZE_SMALL, 
+          style: :bold,
+          color: COLOR_TEXT_SECONDARY
+        x_offset += col_widths[i]
+      end
+      
+      pdf.move_down 28
+      
+      # Header border
+      pdf.stroke_color COLOR_BORDER
+      pdf.line_width 1
+      pdf.stroke_horizontal_rule
+      pdf.move_down 2
     end
     
+    def render_table_row(pdf, row, col_widths, row_idx)
+      y_pos = pdf.cursor
+      
+      # Alternating background
+      if row_idx.even?
+        pdf.fill_color 'F9FAFB'
+        pdf.fill_rectangle [0, y_pos], pdf.bounds.width, 22
+        pdf.fill_color '000000'
+      end
+      
+      # Row text
+      x_offset = 0
+      row.each_with_index do |cell, col_idx|
+        text = truncate_text(pdf, cell.to_s, col_widths[col_idx] - 20, FONT_SIZE_SMALL)
+        pdf.draw_text text, 
+          at: [x_offset + 10, y_pos - 14], 
+          size: FONT_SIZE_SMALL,
+          color: COLOR_TEXT_MAIN
+        x_offset += col_widths[col_idx]
+      end
+      
+      pdf.move_down 22
+      
+      # Row border
+      pdf.stroke_color COLOR_BORDER
+      pdf.line_width 0.5
+      pdf.stroke_horizontal_rule
+      pdf.move_down 2
+    end
+    
+    def truncate_text(pdf, text, max_width, font_size)
+      return text if pdf.width_of(text, size: font_size) <= max_width
+      
+      truncated = text
+      while pdf.width_of(truncated + '...', size: font_size) > max_width && truncated.length > 3
+        truncated = truncated[0..-2]
+      end
+      truncated + '...'
+    end
+    
+    # ===== EMBED DIAGRAM IMAGE =====
+    def embed_diagram_image(pdf, image_data, index)
+      begin
+        if image_data.is_a?(String) && image_data.start_with?('data:image')
+          base64_data = image_data.sub(/^data:image\/[^;]+;base64,/, '')
+          decoded_image = Base64.decode64(base64_data)
+          
+          temp_file = File.join(Dir.tmpdir, "diagram_#{index}_#{Time.now.to_i}.png")
+          File.binwrite(temp_file, decoded_image)
+          
+          available_height = pdf.cursor - 60
+          
+          # Image with border
+          pdf.bounding_box([0, pdf.cursor], width: pdf.bounds.width, height: available_height) do
+            pdf.image temp_file, 
+              fit: [pdf.bounds.width - 4, available_height - 4], 
+              position: :center, 
+              vposition: :center
+            pdf.stroke_bounds
+          end
+          
+          File.delete(temp_file) if File.exist?(temp_file)
+        end
+      rescue => e
+        puts "WARNING: Could not embed diagram: #{e.message}"
+        pdf.text "Diagram unavailable", color: COLOR_TEXT_SECONDARY, style: :italic
+      end
+    end
+    
+    # ===== EMBED ASSEMBLY IMAGE =====
+    def embed_assembly_image(pdf, view_image)
+      begin
+        if view_image.is_a?(String) && view_image.start_with?('data:image')
+          base64_data = view_image.sub(/^data:image\/[^;]+;base64,/, '')
+          decoded_image = Base64.decode64(base64_data)
+          
+          temp_file = File.join(Dir.tmpdir, "assembly_#{Time.now.to_i}.png")
+          File.binwrite(temp_file, decoded_image)
+          
+          available_height = pdf.cursor - 60
+          
+          # Image with border
+          pdf.bounding_box([0, pdf.cursor], width: pdf.bounds.width, height: available_height) do
+            pdf.image temp_file, 
+              fit: [pdf.bounds.width - 4, available_height - 4], 
+              position: :center, 
+              vposition: :center
+            pdf.stroke_bounds
+          end
+          
+          File.delete(temp_file) if File.exist?(temp_file)
+        elsif File.exist?(view_image)
+          available_height = pdf.cursor - 60
+          
+          pdf.bounding_box([0, pdf.cursor], width: pdf.bounds.width, height: available_height) do
+            pdf.image view_image, 
+              fit: [pdf.bounds.width - 4, available_height - 4], 
+              position: :center, 
+              vposition: :center
+            pdf.stroke_bounds
+          end
+        end
+      rescue => e
+        puts "WARNING: Could not embed assembly view: #{e.message}"
+        pdf.text "Image unavailable", color: COLOR_TEXT_SECONDARY, style: :italic
+      end
+    end
+    
+    # ===== PAGE NUMBERS =====
+    def add_page_numbers(pdf)
+      pdf.number_pages "Page <page> of <total>", 
+        at: [pdf.bounds.right - 100, 0],
+        align: :right,
+        size: FONT_SIZE_SMALL,
+        color: COLOR_TEXT_SECONDARY,
+        start_count_at: 2  # Skip cover page
+    end
+    
+    # ===== HELPER METHODS =====
     def generate_default_pdf_path
-      timestamp = Time.now.strftime("%Y%m%d_%H%M%S")
-      downloads_path = File.join(ENV['USERPROFILE'] || ENV['HOME'], 'Downloads')
-      File.join(downloads_path, "AutoNestCut_Report_#{timestamp}.pdf")
+      timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
+      filename = "AutoNestCut_Report_#{timestamp}.pdf"
+      File.join(Dir.tmpdir, filename)
     end
     
-    # Show preview dialog with export confirmation
     def show_preview_dialog(pdf_path)
       dialog = UI::HtmlDialog.new(
         {
@@ -1558,11 +1192,15 @@ module AutoNestCut
     def estimate_page_count
       # Estimate pages based on content
       pages = 1 # Cover page
+      pages += 1 # TOC
       pages += 1 if @report_data && @report_data[:summary] # Summary page
-      pages += (@report_data[:unique_board_types]&.length || 0) > 0 ? 1 : 0 # Boards page
+      pages += (@report_data[:unique_board_types]&.length || 0) > 0 ? 1 : 0 # Materials page
       pages += (@report_data[:unique_part_types]&.length || 0) > 0 ? 1 : 0 # Parts page
-      pages += (@diagrams_data&.length || 0) # Diagram pages
-      pages += (@assembly_data && @assembly_data[:views]&.length || 0) > 0 ? 1 : 0 # Assembly page
+      pages += (@diagrams_data&.length || 0) # Diagram pages (one per sheet)
+      pages += (@report_data[:cut_sequences]&.length || 0) > 0 ? 1 : 0 # Cut sequences
+      pages += (@assembly_data && @assembly_data[:views]&.length || 0) # Assembly pages (one per view)
+      pages += (@report_data[:parts_placed]&.length || 0) > 0 ? 1 : 0 # Detailed cut list
+      pages += (@report_data[:unique_board_types]&.length || 0) > 0 ? 1 : 0 # Cost analysis
       pages
     end
     
@@ -1585,6 +1223,7 @@ module AutoNestCut
               overflow: hidden;
               width: 100vw;
               height: 100vh;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             }
             
             .pdf-viewer {
@@ -1608,48 +1247,101 @@ module AutoNestCut
             }
             
             .btn {
-              padding: 12px 24px;
+              padding: 14px 28px;
               font-size: 14px;
               font-weight: 600;
               border: none;
-              border-radius: 6px;
+              border-radius: 8px;
               cursor: pointer;
               transition: all 0.2s ease;
               box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+              font-family: inherit;
+              display: flex;
+              align-items: center;
+              gap: 8px;
             }
             
             .btn-export {
-              background: #4CAF50;
+              background: #10B981;
               color: white;
             }
             
             .btn-export:hover {
-              background: #45a049;
+              background: #059669;
               transform: translateY(-2px);
-              box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+              box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
             }
             
             .btn-cancel {
-              background: #f44336;
+              background: #6B7280;
               color: white;
             }
             
             .btn-cancel:hover {
-              background: #da190b;
+              background: #4B5563;
               transform: translateY(-2px);
-              box-shadow: 0 6px 16px rgba(244, 67, 54, 0.4);
+              box-shadow: 0 6px 16px rgba(107, 114, 128, 0.4);
+            }
+            
+            .info-bar {
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              background: rgba(31, 41, 55, 0.95);
+              backdrop-filter: blur(10px);
+              padding: 12px 24px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              z-index: 999;
+              border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .info-bar-left {
+              display: flex;
+              align-items: center;
+              gap: 16px;
+            }
+            
+            .info-bar-title {
+              color: white;
+              font-size: 14px;
+              font-weight: 600;
+            }
+            
+            .info-bar-meta {
+              color: #9CA3AF;
+              font-size: 12px;
+            }
+            
+            .pdf-viewer {
+              padding-top: 48px;
+              height: calc(100vh - 48px);
             }
           </style>
         </head>
         <body>
+          <div class="info-bar">
+            <div class="info-bar-left">
+              <span class="info-bar-title">Manufacturing Report Preview</span>
+              <span class="info-bar-meta">~#{page_count} pages</span>
+            </div>
+          </div>
+          
           <div class="pdf-viewer">
             <embed src="#{pdf_url}" type="application/pdf">
           </div>
           
           <div class="floating-actions">
-            <button class="btn btn-cancel" onclick="cancelExport()">Cancel</button>
-            <button class="btn btn-export" onclick="exportReport()">Export</button>
+            <button class="btn btn-cancel" onclick="cancelExport()">
+              <span>✕</span>
+              <span>Close</span>
+            </button>
+            <button class="btn btn-export" onclick="exportReport()">
+              <span>💾</span>
+              <span>Export PDF</span>
+            </button>
           </div>
           
           <script>
@@ -1667,4 +1359,3 @@ module AutoNestCut
     end
   end
 end
-

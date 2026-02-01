@@ -405,9 +405,11 @@ module AutoNestCut
           pdf_exporter.set_diagrams_data(diagrams_data)
           pdf_exporter.set_assembly_data(assembly_data) if assembly_data
           
-          # Add diagram images
+          # Add diagram images - extract just the image data string
           diagram_images.each_with_index do |img_data, idx|
-            pdf_exporter.add_diagram_image(idx, img_data[:image] || img_data['image'])
+            # Extract the actual image string from the hash
+            image_string = img_data[:image] || img_data['image']
+            pdf_exporter.add_diagram_image(idx, image_string) if image_string
           end
           
           # Generate PDF file with PREVIEW MODE enabled

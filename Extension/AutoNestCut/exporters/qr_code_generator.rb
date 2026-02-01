@@ -1,8 +1,15 @@
 # frozen_string_literal: true
 
 # QR Code Generator for AutoNestCut
-# Pure Ruby implementation - no external dependencies
+# Pure Ruby implementation using RQRCode gem
 # Generates QR codes as SVG for embedding in diagrams and PDFs
+
+# Ensure RQRCode gem is loaded (loaded by label_sheet_generator.rb in main.rb)
+begin
+  require 'rqrcode' unless defined?(RQRCode)
+rescue LoadError
+  puts "WARNING: RQRCode gem not available. QR codes will use placeholders."
+end
 
 module AutoNestCut
   class QRCodeGenerator
@@ -49,24 +56,25 @@ module AutoNestCut
       svg_data
     end
     
-    # Encode part data as compact JSON string
+    # Encode part data as COMPACT readable text (optimized for QR scanning)
     def encode_part_data(part_data)
-      # Create compact data structure
-      data = {
-        v: '1.0', # version
-        id: part_data[:part_id] || part_data['part_id'],
-        n: part_data[:name] || part_data['name'],
-        m: part_data[:material] || part_data['material'],
-        d: {
-          w: (part_data[:width] || part_data['width']).to_f.round(1),
-          h: (part_data[:height] || part_data['height']).to_f.round(1),
-          t: (part_data[:thickness] || part_data['thickness']).to_f.round(1)
-        },
-        b: part_data[:board_number] || part_data['board_number'],
-        ts: Time.now.to_i
-      }
+      # Extract data with fallbacks
+      id = (part_data[:part_id] || part_data['part_id'] || "N/A").to_s
+      name = (part_data[:name] || part_data['name'] || "Unknown").to_s
+      w_dim = (part_data[:width] || part_data['width'] || 0).to_f.round(0) # No decimals
+      h_dim = (part_data[:height] || part_data['height'] || 0).to_f.round(0)
+      thick = (part_data[:thickness] || part_data['thickness'] || 0).to_f.round(0)
+      material = (part_data[:material] || part_data['material'] || "").to_s
+      board = part_data[:board_number] || part_data['board_number']
       
-      JSON.generate(data)
+      # COMPACT format - shorter text = smaller QR = easier to scan
+      qr_text = "ID:#{id}\n"
+      qr_text += "#{name}\n"
+      qr_text += "#{w_dim}x#{h_dim}x#{thick}mm\n"
+      qr_text += "#{material}\n" unless material.empty?
+      qr_text += "B#{board}" if board
+      
+      qr_text
     end
     
     # Generate cache key from part data
@@ -77,29 +85,54 @@ module AutoNestCut
       Digest::MD5.hexdigest("#{part_id}_#{name}")
     end
     
-    # Generate QR code SVG using JavaScript library
-    # This method uses an HTML dialog with qrcode.js to generate real scannable QR codes
+    # Generate QR code SVG using RQRCode gem (same as label_sheet_generator)
     def generate_qr_svg_via_js(data, size_mm)
-      # Convert mm to pixels (assuming 96 DPI)
-      size_px = (size_mm * 3.7795).to_i
-      
-      # Try to use HTML dialog for real QR generation
-      begin
-        svg = generate_real_qr_code(data, size_px)
-        return svg if svg && svg.include?('<svg')
-      rescue => e
-        puts "WARNING: Real QR generation failed: #{e.message}"
-      end
-      
-      # Fallback to placeholder if HTML dialog fails
-      generate_placeholder_qr_svg(data, size_mm)
+      # Use real QR generation with RQRCode gem
+      generate_real_qr_svg(data, size_mm)
     end
     
-    # Generate real QR code using HTML dialog
-    def generate_real_qr_code(data, size_px)
-      # This will be implemented when we integrate with the HTML dialog
-      # For now, return nil to use placeholder
-      nil
+    # Generate real scannable QR code as SVG using RQRCode gem
+    def generate_real_qr_svg(data, size_mm)
+      begin
+        # Load RQRCode gem (already vendored and loaded by label_sheet_generator)
+        require 'rqrcode' unless defined?(RQRCode)
+        
+        # Generate QR code with LOW error correction for maximum data capacity
+        qr = RQRCode::QRCode.new(data.to_s, level: :l)
+        
+        # QR codes REQUIRE a quiet zone (white border) of at least 4 modules
+        quiet_zone_modules = 4
+        total_modules = qr.modules.size + (quiet_zone_modules * 2)
+        
+        # Build SVG with quiet zone
+        svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"#{size_mm}mm\" height=\"#{size_mm}mm\" viewBox=\"0 0 #{total_modules} #{total_modules}\">\n"
+        svg += "  <!-- White background (CRITICAL for scanning) -->\n"
+        svg += "  <rect width=\"#{total_modules}\" height=\"#{total_modules}\" fill=\"white\"/>\n"
+        
+        # Draw black modules (offset by quiet zone)
+        qr.modules.each_with_index do |row, row_index|
+          row.each_with_index do |col, col_index|
+            if col # Black module
+              # Add quiet zone offset
+              x = col_index + quiet_zone_modules
+              y = row_index + quiet_zone_modules
+              svg += "  <rect x=\"#{x}\" y=\"#{y}\" width=\"1\" height=\"1\" fill=\"black\"/>\n"
+            end
+          end
+        end
+        
+        svg += "</svg>"
+        
+        return svg
+        
+      rescue LoadError => e
+        puts "ERROR: RQRCode gem not available: #{e.message}"
+        puts "Falling back to placeholder QR code"
+        return generate_placeholder_qr_svg(data, size_mm)
+      rescue => e
+        puts "ERROR: QR generation failed: #{e.message}"
+        return generate_placeholder_qr_svg(data, size_mm)
+      end
     end
     
     # Generate placeholder QR code (simple grid pattern)
