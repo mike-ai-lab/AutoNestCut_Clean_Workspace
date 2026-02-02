@@ -204,11 +204,6 @@ module AutoNestCut
     end
 
     def to_h
-      # DEBUG: Log edge_banding structure
-      if @edge_banding && @edge_banding[:type] != 'None'
-        puts "DEBUG [Part#to_h] #{@name}: edge_banding = #{@edge_banding.inspect}"
-      end
-      
       {
         name: @name,
         width: @width.round(2),
@@ -231,8 +226,6 @@ module AutoNestCut
     private
 
     def parse_edge_banding(raw_value, edges_raw = nil)
-      puts "DEBUG parse_edge_banding called with: #{raw_value.inspect} (class: #{raw_value.class}), edges: #{edges_raw.inspect}"
-      
       return { type: 'None', edges: [] } if raw_value.nil? || raw_value == 'None'
       
       # Ensure raw_value is a string
@@ -242,11 +235,9 @@ module AutoNestCut
       if edges_raw && !edges_raw.to_s.empty?
         type = raw_value_str
         edge_spec = edges_raw.to_s.strip.downcase
-        puts "DEBUG using separate edges specification: #{edge_spec}"
       else
         # Old format: "PVC_White:top,bottom,left,right"
         parts = raw_value_str.split(':')
-        puts "DEBUG parts after split: #{parts.inspect}"
         
         type = parts[0] || 'None'
         edge_spec = parts.length > 1 ? parts[1].strip.downcase : 'all'

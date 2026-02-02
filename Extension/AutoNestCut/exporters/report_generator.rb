@@ -1,4 +1,4 @@
-# filename: report_generator.rb
+﻿# filename: report_generator.rb
 require 'csv'
 require_relative '../util' # Ensure Util module is loaded
 require_relative '../materials_database' # Load materials database
@@ -29,44 +29,15 @@ module AutoNestCut
     def generate_report_data(boards, settings = {})
       current_settings = Config.get_cached_settings
       
-      puts "\n" + "="*80
-      puts "🔍 PRICING DEBUG - REPORT GENERATION START"
-      puts "="*80
-      
-      # CRITICAL FIX: Load materials from database instead of config
-      # This ensures we always use the latest material prices from the Material Database Manager
+      # Load materials from database
       stock_materials = MaterialsDatabase.load_database
-      
-      puts "📊 RAW DATABASE LOAD:"
-      puts "  - Total materials loaded: #{stock_materials.length}"
-      puts "  - Database file: #{MaterialsDatabase.database_file}"
-      puts "  - Sample materials (first 5):"
-      stock_materials.keys.take(5).each do |name|
-        data = stock_materials[name]
-        puts "    • #{name}: #{data.class} - #{data.inspect[0..100]}"
-      end
       
       # Flatten array format to single objects (take first thickness)
       stock_materials.each do |name, data|
         if data.is_a?(Array) && data.length > 0
-          puts "  - Converting array to object for: #{name}"
-          puts "    BEFORE: #{data.inspect[0..200]}"
           stock_materials[name] = data[0]
-          puts "    AFTER: #{stock_materials[name].inspect[0..200]}"
-          puts "    PRICE AFTER FLATTEN: #{stock_materials[name]['price']}"
         end
       end
-      
-      puts "\n📋 FLATTENED MATERIALS FOR PRICING:"
-      puts "  - Total materials: #{stock_materials.length}"
-      puts "  - All material names: #{stock_materials.keys.sort.inspect}"
-      puts "\n💰 MATERIAL PRICES:"
-      stock_materials.each do |name, data|
-        price = data['price'] || 0
-        currency = data['currency'] || 'USD'
-        puts "  - #{name}: #{currency} #{price}"
-      end
-      puts "="*80 + "\n"
       
       currency = current_settings['default_currency'] || 'USD'
       units = current_settings['units'] || 'mm'
@@ -89,24 +60,15 @@ module AutoNestCut
         board_number = board_idx + 1
         board_material = board.material
         
-        # DEBUG: Log board material
-        puts "\n=== BOARD MATERIAL DEBUG ==="
-        puts "Board ##{board_number}"
-        puts "board.material: #{board_material.inspect}"
-        puts "============================\n"
+
         
         # ✅ CRITICAL FIX: Don't reload stock_materials here - use the flattened version from above!
         # The old code was resetting stock_materials to the config version (with Arrays) on every iteration
         
-        # DEBUG: Check what we're working with
-        puts "DEBUG: stock_materials class: #{stock_materials.class}"
-        puts "DEBUG: stock_materials keys: #{stock_materials.keys.first(5).inspect if stock_materials.is_a?(Hash)}"
-        puts "DEBUG: board_material: #{board_material.inspect}"
-        
         material_data = stock_materials[board_material]
-        puts "DEBUG: material_data class: #{material_data.class if material_data}"
-        puts "DEBUG: material_data: #{material_data.inspect if material_data}"
-        
+
+
+
         # Ensure material_data is a Hash
         material_data = {} unless material_data.is_a?(Hash)
         
@@ -156,66 +118,20 @@ module AutoNestCut
           # Try fuzzy match: find any material that starts with the board material name
           matching_key = stock_materials.keys.find { |k| k.start_with?(board_material) }
           material_info = stock_materials[matching_key] if matching_key
-          puts "  🔍 Fuzzy match: '#{board_material}' → '#{matching_key}'" if matching_key
-        end
-        
-        # ✅ EXTENSIVE DEBUG: Pricing lookup
-        puts "\n" + "🔍"*40
-        puts "💰 PRICING LOOKUP FOR BOARD"
-        puts "🔍"*40
-        puts "  📦 Board Material Name: '#{board_material}'"
-        puts "  📏 Board Dimensions: #{board.stock_width}x#{board.stock_height}mm"
-        puts "  🔎 Exact match lookup: stock_materials['#{board_material}']"
-        puts "  ✅ Material found: #{material_info ? 'YES' : 'NO'}"
-        
-        if material_info
-          puts "  📊 Material data type: #{material_info.class}"
-          puts "  📊 Material data: #{material_info.inspect}"
-          
-          if material_info.is_a?(Hash)
-            price = material_info['price']
-            puts "  💵 Price value: #{price.inspect} (#{price.class})"
-            puts "  💱 Currency: #{material_info['currency'].inspect}"
-            puts "  📐 Width: #{material_info['width']}"
-            puts "  📐 Height: #{material_info['height']}"
-            puts "  📐 Thickness: #{material_info['thickness']}"
-          end
-        else
-          puts "  ❌ MATERIAL NOT FOUND IN DATABASE!"
-          puts "  📋 Available materials in database:"
-          stock_materials.keys.sort.each do |name|
-            puts "     - '#{name}'"
-          end
-          puts "  🔍 Checking for similar names:"
-          similar = stock_materials.keys.select { |k| k.downcase.include?(board_material.downcase) || board_material.downcase.include?(k.downcase) }
-          if similar.any?
-            puts "     Similar: #{similar.inspect}"
-          else
-            puts "     No similar names found"
-          end
         end
         
         if material_info && material_info.is_a?(Hash)
           price = material_info['price'] || 0
           material_currency = material_info['currency'] || currency
-          puts "  ✅ FINAL PRICE: #{material_currency} #{price}"
-          puts "  🔍 DEBUG: material_info['price'] = #{material_info['price'].inspect}"
-          puts "  🔍 DEBUG: price variable = #{price.inspect}"
-          puts "  🔍 DEBUG: Is price 0? #{price == 0}"
-          puts "  🔍 DEBUG: Is price nil? #{price.nil?}"
           unique_board_types[board_key][:price_per_sheet] = price
           unique_board_types[board_key][:currency] = material_currency
           unique_board_types[board_key][:total_cost] = unique_board_types[board_key][:count] * price
-          puts "  ✅ TOTAL COST: #{material_currency} #{unique_board_types[board_key][:total_cost]} (#{unique_board_types[board_key][:count]} sheets × #{price})"
         else
-          puts "  ⚠️ USING FALLBACK: Price = 0"
-          puts "  🔍 DEBUG: material_info is Hash? #{material_info.is_a?(Hash) if material_info}"
-          puts "  🔍 DEBUG: material_info class: #{material_info.class if material_info}"
           unique_board_types[board_key][:price_per_sheet] = 0
           unique_board_types[board_key][:currency] = currency
           unique_board_types[board_key][:total_cost] = 0
         end
-        puts "🔍"*40 + "\n"
+
 
         total_waste_area += board.waste_area
         overall_total_stock_area += board.total_area
@@ -226,18 +142,10 @@ module AutoNestCut
 
           # Generate unique name if part has no name or generic name
           part_name = part_instance.name
-          puts "🔍 DEBUG NAME GENERATION: Original part_name = '#{part_name.inspect}'"
-          puts "🔍 DEBUG NAME GENERATION: part_name.nil? = #{part_name.nil?}"
-          puts "🔍 DEBUG NAME GENERATION: part_name.empty? = #{part_name.empty? rescue 'N/A'}"
-          puts "🔍 DEBUG NAME GENERATION: part_name == 'Part' = #{part_name == 'Part'}"
-          puts "🔍 DEBUG NAME GENERATION: part_name.start_with?('Unnamed') = #{part_name.start_with?('Unnamed') rescue false}"
           
           if part_name.nil? || part_name.empty? || part_name == "Part" || part_name.start_with?("Unnamed")
             part_name = "Part_#{global_part_name_counter}"
             global_part_name_counter += 1
-            puts "✅ DEBUG: Generated unique name '#{part_name}' for unnamed component"
-          else
-            puts "⚠️ DEBUG: Keeping original name '#{part_name}'"
           end
 
           part_material = part_instance.material
@@ -446,16 +354,12 @@ module AutoNestCut
           'Front' => true, 'Back' => true, 'Left' => true,
           'Right' => true, 'Top' => true, 'Bottom' => true
         }
-        
-        puts "DEBUG: Capturing assembly views for: #{entity_name}"
+
         views = AssemblyExporter.capture_assembly_views(entity, "1", selected_views)
-        puts "DEBUG: Views captured: #{views.keys.inspect if views}"
         
         # Get component-grouped geometry with explode vectors
         geometry_data = extract_component_geometry(entity)
-        geometry_data = { parts: [] } unless geometry_data && geometry_data[:parts]
-        puts "DEBUG: Geometry parts count: #{geometry_data[:parts].length if geometry_data}"
-        
+        geometry_data = { parts: [] } unless geometry_data && geometry_data[:parts]        
         # CRITICAL FIX: Create ID mapping between 3D viewer parts and diagram parts
         # This mapping will be used by the frontend to match parts correctly
         # The mapping is based on: name + material + dimensions (sorted)
@@ -470,7 +374,6 @@ module AutoNestCut
                 image_data = File.binread(image_path)
                 base64_data = Base64.strict_encode64(image_data)
                 encoded_views[view_name] = "data:image/jpeg;base64,#{base64_data}"
-                puts "DEBUG: Encoded #{view_name} view to base64 data URI"
               rescue => e
                 puts "WARNING: Failed to encode #{view_name}: #{e.message}"
               end
@@ -525,19 +428,12 @@ module AutoNestCut
         else
           "Part"
         end
-        
-        puts "🔍 DEBUG ASSEMBLY NAME: Original part_name = '#{part_name.inspect}'"
-        puts "🔍 DEBUG ASSEMBLY NAME: part_name.nil? = #{part_name.nil?}"
-        puts "🔍 DEBUG ASSEMBLY NAME: part_name.empty? = #{part_name.empty? rescue 'N/A'}"
-        puts "🔍 DEBUG ASSEMBLY NAME: part_name == 'Part' = #{part_name == 'Part'}"
-        puts "🔍 DEBUG ASSEMBLY NAME: part_name.start_with?('Unnamed') = #{part_name.start_with?('Unnamed') rescue false}"
-        
+
+
+
         # Generate unique name if empty, "Part", or starts with "Unnamed"
         if part_name.nil? || part_name.empty? || part_name == "Part" || part_name.start_with?("Unnamed")
           part_name = "Part_#{part_counter}"
-          puts "✅ DEBUG ASSEMBLY: Generated unique assembly name '#{part_name}' for unnamed component"
-        else
-          puts "⚠️ DEBUG ASSEMBLY: Keeping original name '#{part_name}'"
         end
         
         # CRITICAL FIX: Generate a stable unique ID for this 3D viewer part
@@ -552,7 +448,6 @@ module AutoNestCut
         # First, try to get material from the part itself
         if part.respond_to?(:material) && part.material
           material_name = part.material.name
-          puts "DEBUG: Part '#{part_name}' has component material: #{material_name}"
         end
         
         # If no component material, use the most common face material
@@ -560,17 +455,12 @@ module AutoNestCut
           # Count material occurrences
           material_counts = part_materials.compact.each_with_object(Hash.new(0)) { |mat, counts| counts[mat] += 1 }
           material_name = material_counts.max_by { |_, count| count }&.first if material_counts.any?
-          puts "DEBUG: Part '#{part_name}' using most common face material: #{material_name} (from #{material_counts.inspect})"
         end
         
         # Only use "Default Material" as last resort
         if material_name.nil? || material_name.empty?
           material_name = "Default Material"
-          puts "DEBUG: Part '#{part_name}' has no materials, using Default Material"
-        end
-        
-        puts "DEBUG: Part '#{part_name}' final material: #{material_name} (from #{part_materials.compact.uniq.length} unique face materials)"
-        
+        end        
         # Calculate dimensions from bounds
         bounds = part.bounds
         width_mm = bounds.width.to_mm
@@ -739,16 +629,11 @@ module AutoNestCut
       # Convert assembly_data from symbol keys to string keys for JSON serialization
       assembly_data_for_export = nil
       if assembly_data && assembly_data.is_a?(Hash)
-        puts "DEBUG: Converting assembly_data to export format"
-        puts "DEBUG: assembly_data[:views] count: #{assembly_data[:views].length if assembly_data[:views].is_a?(Hash)}"
-        
         assembly_data_for_export = {
           'entity_name' => assembly_data[:entity_name],
           'views' => assembly_data[:views],
           'geometry' => assembly_data[:geometry]
         }
-        
-        puts "DEBUG: assembly_data_for_export created with keys: #{assembly_data_for_export.keys.inspect}"
       end
       
       # Prepare the data as JSON with proper escaping
@@ -1226,8 +1111,6 @@ module AutoNestCut
     
     private
     
-
-    
     def calculate_usable_offcuts(boards)
       offcuts = []
       
@@ -1369,8 +1252,6 @@ module AutoNestCut
           material: material,
           dimensions: dims
         }
-        
-        puts "🔗 ID Mapping: #{viewer_id} => #{name} | #{material} | #{dims.join('×')}mm"
       end
       
       mapping

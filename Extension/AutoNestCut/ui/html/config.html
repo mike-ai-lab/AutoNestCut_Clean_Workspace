@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AutoNestCut Configuration</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>AutoNestCut Configuration</h1>
+        
+        <div class="buttons-top">
+            <button type="button" onclick="processNesting()" class="primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27,6.96 12,12.01 20.73,6.96"/>
+                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+                Generate Cut List
+            </button>
+            <button type="button" onclick="window.close()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                Cancel
+            </button>
+        </div>
+        
+        <div class="section">
+            <h2>General Settings</h2>
+            <div class="form-group">
+                <label for="kerf_width">Kerf Width (mm):</label>
+                <input type="number" id="kerf_width" step="0.1" min="0" max="10">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="allow_rotation"> Allow part rotation
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="defaultCurrency">Default Currency:</label>
+                <select id="defaultCurrency">
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                    <option value="SAR">SAR (ر.س)</option>
+                    <option value="AED">AED (د.إ)</option>
+                    <option value="KWD">KWD (د.ك)</option>
+                    <option value="QAR">QAR (ر.ق)</option>
+                    <option value="BHD">BHD (د.ب)</option>
+                    <option value="OMR">OMR (ر.ع)</option>
+                    <option value="JOD">JOD (د.ا)</option>
+                    <option value="CAD">CAD (C$)</option>
+                    <option value="AUD">AUD (A$)</option>
+                    <option value="JPY">JPY (¥)</option>
+                    <option value="CNY">CNY (¥)</option>
+                    <option value="INR">INR (₹)</option>
+                    <option value="BRL">BRL (R$)</option>
+                    <option value="MXN">MXN ($)</option>
+                    <option value="CHF">CHF (CHF)</option>
+                    <option value="SEK">SEK (kr)</option>
+                    <option value="NOK">NOK (kr)</option>
+                    <option value="DKK">DKK (kr)</option>
+                    <option value="PLN">PLN (zł)</option>
+                    <option value="TRY">TRY (₺)</option>
+                </select>
+                <button type="button" onclick="updateDefaultCurrency()" style="margin-left: 8px;">Update Currency</button>
+            </div>
+            <div class="form-group">
+                <label for="settingsUnits">Units:</label>
+                <select id="settingsUnits">
+                    <option value="mm">Millimeters (mm)</option>
+                    <option value="cm">Centimeters (cm)</option>
+                    <option value="in">Inches (in)</option>
+                    <option value="ft">Feet (ft)</option>
+                </select>
+                <button type="button" onclick="updateUnits()" style="margin-left: 8px;">Update Units</button>
+            </div>
+            <div class="form-group">
+                <label for="settingsPrecision">Precision:</label>
+                <select id="settingsPrecision">
+                    <option value="0">0 decimal places</option>
+                    <option value="1">1 decimal place</option>
+                    <option value="2">2 decimal places</option>
+                    <option value="3">3 decimal places</option>
+                </select>
+                <button type="button" onclick="updatePrecision()" style="margin-left: 8px;">Update Precision</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Stock Materials & Pricing</h2>
+            <div id="materials_list"></div>
+            <button type="button" onclick="addMaterial()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Material
+            </button>
+        </div>
+        
+        <div class="section">
+            <h2>Parts Preview</h2>
+            <div id="parts_preview"></div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+    <script>
+        // Initialize settings controls when page loads
+        window.addEventListener('load', function() {
+            // Wait for data to be received before setting values
+            setTimeout(function() {
+                if (document.getElementById('defaultCurrency') && typeof defaultCurrency !== 'undefined') {
+                    document.getElementById('defaultCurrency').value = defaultCurrency;
+                }
+                if (document.getElementById('settingsUnits') && typeof currentUnits !== 'undefined') {
+                    document.getElementById('settingsUnits').value = currentUnits;
+                }
+                if (document.getElementById('settingsPrecision') && typeof currentPrecision !== 'undefined') {
+                    document.getElementById('settingsPrecision').value = currentPrecision;
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>

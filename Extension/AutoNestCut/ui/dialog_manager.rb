@@ -1,4 +1,4 @@
-require 'json'
+﻿require 'json'
 require 'thread' # Required for using Ruby's Thread and Queue classes
 require 'digest' # Required for generating cache keys (e.g., MD5)
 require_relative '../config' # Ensure the Config module is loaded
@@ -53,8 +53,6 @@ module AutoNestCut
     
     # Cleanup method to be called when dialog is closed
     def cleanup
-      puts "DEBUG: UIDialogManager cleanup started"
-      
       # Stop any running timers
       if @nesting_watcher_timer && (defined?(UI.valid_timer?) ? UI.valid_timer?(@nesting_watcher_timer) : true)
         UI.stop_timer(@nesting_watcher_timer)
@@ -86,12 +84,10 @@ module AutoNestCut
         begin
           @dialog.close if @dialog.respond_to?(:close)
         rescue => e
-          puts "DEBUG: Error closing dialog: #{e.message}"
+          # Silently handle dialog close errors
         end
         @dialog = nil
       end
-      
-      puts "DEBUG: UIDialogManager cleanup completed"
     end
     
     # Destructor to ensure cleanup on garbage collection
@@ -100,17 +96,6 @@ module AutoNestCut
     end
 
     def show_config_dialog(parts_by_material, original_components = [], hierarchy_tree = [], assembly_entity = nil, skip_validation = false)
-      puts "=" * 80
-      puts "🦟 CONFIG DIALOG: show_config_dialog called"
-      puts "=" * 80
-      puts "Materials received: #{parts_by_material.keys.inspect}"
-      puts "Total parts: #{parts_by_material.values.flatten.length}"
-      puts "Skip validation: #{skip_validation}"
-      parts_by_material.each do |mat_name, parts|
-        puts "  #{mat_name}: #{parts.length} parts"
-      end
-      puts "=" * 80
-      
       @parts_by_material = parts_by_material
       @original_components = original_components
       @hierarchy_tree = hierarchy_tree
@@ -121,7 +106,6 @@ module AutoNestCut
       # Capture assembly data if entity is provided
       if @assembly_entity
         @assembly_data = capture_assembly_data(@assembly_entity)
-        puts "DEBUG: Assembly data captured: #{@assembly_data.keys.inspect}"
       end
       
       # Use HtmlDialog for SU2017+ or WebDialog for older versions
@@ -152,7 +136,6 @@ module AutoNestCut
 
       # Send initial data to dialog when it's ready
       @dialog.add_action_callback("ready") do |action_context|
-        puts "DEBUG: Frontend is ready. Sending initial data."
         send_initial_data
       end
 
@@ -164,9 +147,7 @@ module AutoNestCut
           value = setting_data['value']
           
           # Use Config module for persistence
-          Config.save_global_settings({key => value})
-          puts "DEBUG: Global setting updated: #{key} = #{value}"
-          
+          Config.save_global_settings({key => value})          
           # After updating a global setting, re-send initial data to ensure UI consistency
           # The JS `receiveInitialData` will then trigger `displayMaterials` and `renderReport` as needed.
           send_initial_data
@@ -181,7 +162,6 @@ module AutoNestCut
         begin
           materials = JSON.parse(materials_json)
           MaterialsDatabase.save_database(materials)
-          puts "DEBUG: Materials database saved successfully."
         rescue => e
           puts "ERROR saving materials: #{e.message}"
           @dialog.execute_script("showError('Error saving materials: #{e.message.gsub("'", "\\'")}')")
@@ -191,7 +171,6 @@ module AutoNestCut
       # Handle processing (nesting and report generation)
       @dialog.add_action_callback("process") do |action_context, settings_json|
         begin
-          puts "DEBUG: Process callback started"
           new_settings_from_ui = JSON.parse(settings_json)
           
           # Save global settings from the UI's full settings object
@@ -206,9 +185,7 @@ module AutoNestCut
           })
           
           # Save material data (including updates to prices/dimensions if any)
-          MaterialsDatabase.save_database(new_settings_from_ui['stock_materials'])
-
-          # Always use async processing for nesting (with caching)
+          MaterialsDatabase.save_database(new_settings_from_ui['stock_materials'])          # Always use async processing for nesting (with caching)
           # Fetch the *latest* settings from Config for processing to ensure consistency
           latest_settings = Config.get_cached_settings
           
@@ -256,9 +233,7 @@ module AutoNestCut
             @dialog.execute_script("showWarnings(#{validation_result[:warnings].to_json})")
           end
 
-          puts "DEBUG: Validation passed, starting nesting"
           process_with_async_nesting(latest_settings)
-
         rescue => e
           puts "ERROR in process callback: #{e.message}"
           puts e.backtrace
@@ -309,11 +284,11 @@ module AutoNestCut
 
     @dialog.add_action_callback("export_to_pdf") do |action_context, html_content|
       begin
-        puts "DEBUG: Exporting to PDF using Prawn..."
+
         pdf_path = PrawnPDFExporter.generate_pdf_from_html(html_content, @settings)
         
         if pdf_path && File.exist?(pdf_path)
-          puts "DEBUG: PDF generated successfully at: #{pdf_path}"
+
           UI.messagebox("PDF report exported successfully!\n\nLocation: #{pdf_path}")
           @dialog.execute_script("hideProgressOverlay();")
         else
@@ -328,9 +303,9 @@ module AutoNestCut
 
       @dialog.add_action_callback("export_interactive_html") do |action_context, report_data_json|
         begin
-          puts "DEBUG: Interactive HTML export requested"
-          puts "DEBUG: @assembly_data available: #{!@assembly_data.nil?}"
-          puts "DEBUG: @assembly_data keys: #{@assembly_data.keys.inspect if @assembly_data}"
+
+
+
           report_generator = ReportGenerator.new
           report_generator.export_interactive_html(report_data_json, @assembly_data)
         rescue => e
@@ -367,7 +342,7 @@ module AutoNestCut
       @dialog.add_action_callback("print_pdf") do |action_context, html_or_data|
         begin
           puts "\n" + "="*80
-          puts "DEBUG: print_pdf callback STARTED - Using Ruby PDF Exporter"
+
           puts "="*80
           
           report_data = nil
@@ -379,21 +354,18 @@ module AutoNestCut
             # Force UTF-8 encoding on incoming data
             utf8_data = html_or_data.force_encoding('UTF-8')
             parsed_data = JSON.parse(utf8_data, symbolize_names: true)
-            puts "DEBUG: ✓ JSON parsed successfully!"
+
             
             # Recursively convert all strings to UTF-8
             report_data = deep_encode_utf8(parsed_data[:report])
             diagrams_data = deep_encode_utf8(parsed_data[:diagrams] || [])
             assembly_data = deep_encode_utf8(parsed_data[:assembly_data])
             diagram_images = deep_encode_utf8(parsed_data[:diagram_images] || [])
-            
-            puts "DEBUG: Report data keys: #{report_data.keys.inspect if report_data}"
-            puts "DEBUG: Diagrams count: #{diagrams_data.length}"
-            puts "DEBUG: Diagram images count: #{diagram_images.length}"
-            puts "DEBUG: Assembly data present: #{!assembly_data.nil?}"
-            
+
+
+
           rescue JSON::ParserError => je
-            puts "DEBUG: ✗ JSON parsing failed: #{je.message}"
+
             raise "Invalid data format for PDF export: #{je.message}"
           end
           
@@ -416,9 +388,9 @@ module AutoNestCut
           pdf_path = pdf_exporter.export_to_pdf(nil, true)  # true = preview mode
           
           if pdf_path && File.exist?(pdf_path)
-            puts "DEBUG: ✓ PDF generated successfully at: #{pdf_path}"
+
             puts "="*80
-            puts "DEBUG: print_pdf callback COMPLETED"
+
             puts "="*80
             # Preview dialog will handle the rest
           else
@@ -667,7 +639,7 @@ module AutoNestCut
       end
 
       @dialog.add_action_callback("load_default_materials") do |action_context|
-        puts "DEBUG: Loading default materials."
+
         begin
           defaults = MaterialsDatabase.get_default_materials
           existing = MaterialsDatabase.load_database
@@ -677,7 +649,7 @@ module AutoNestCut
           merged = existing.merge(defaults)
           
           MaterialsDatabase.save_database(merged)
-          puts "✅ Default materials loaded: #{defaults.length} defaults merged with #{existing.length} existing materials"
+
           
           send_initial_data # Refresh UI with merged materials
         rescue => e
@@ -687,14 +659,14 @@ module AutoNestCut
       end
 
       @dialog.add_action_callback("refresh_materials_safe") do |action_context|
-        puts "DEBUG: Safe refresh of materials requested."
+
         begin
           # Load current database state WITHOUT any modifications or auto-creation
           loaded_materials = MaterialsDatabase.load_database
           
           # Send to UI without any auto-creation or modification
           @dialog.execute_script("receiveMaterialsData(#{loaded_materials.to_json})")
-          puts "✅ Materials refreshed from database (#{loaded_materials.length} materials)"
+
         rescue => e
           puts "ERROR refreshing materials: #{e.message}"
           @dialog.execute_script("showError('Error refreshing: #{e.message.gsub("'", "\\'")}')")
@@ -702,7 +674,7 @@ module AutoNestCut
       end
 
       @dialog.add_action_callback("import_materials_csv") do |action_context|
-        puts "DEBUG: Importing materials CSV."
+
         file_path = UI.openpanel("Select Materials CSV File", "", "CSV Files|*.csv||")
         if file_path
           imported = MaterialsDatabase.import_csv(file_path)
@@ -744,7 +716,7 @@ module AutoNestCut
       end
 
       @dialog.add_action_callback("refresh_config") do |action_context|
-        puts "DEBUG: Frontend requested config refresh."
+
         # Invalidate cache when input components are refreshed, as parts_by_material will change
         @nesting_cache = {}
         @last_processed_cache_key = nil # Clear the last key too
@@ -752,7 +724,7 @@ module AutoNestCut
       end
 
       @dialog.add_action_callback("refresh_report") do |action_context|
-        puts "DEBUG: Frontend requested report refresh."
+
         # This means recalculate report data with current settings, not re-nest the parts
         # Pass current settings to ensure the report reflects them (e.g., unit/currency changes)
         refresh_report_display_with_current_settings
@@ -771,11 +743,11 @@ module AutoNestCut
       
       @dialog.add_action_callback("get_material_texture") do |action_context, material_name|
         begin
-          puts "DEBUG: Texture requested for material: #{material_name}"
+
           
           # Handle "Default Material" case - skip texture loading
           if material_name == "Default Material" || material_name.nil? || material_name.empty?
-            puts "DEBUG: Skipping texture for Default Material (no material assigned)"
+
             @dialog.execute_script("console.log('No material assigned to component - skipping texture');")
             next
           end
@@ -784,11 +756,9 @@ module AutoNestCut
           material = model.materials[material_name]
           
           if material
-            puts "DEBUG: Material found: #{material.name}"
-            puts "DEBUG: Material has texture: #{material.texture ? 'YES' : 'NO'}"
-            puts "DEBUG: Material color: #{material.color}"
-            puts "DEBUG: Material alpha: #{material.alpha}"
-            
+
+
+
             # Prepare material properties
             material_props = {
               name: material.name,
@@ -798,17 +768,16 @@ module AutoNestCut
             }
             
             if material.texture
-              puts "DEBUG: Texture width: #{material.texture.width}"
-              puts "DEBUG: Texture height: #{material.texture.height}"
-              puts "DEBUG: Texture filename: #{material.texture.filename}"
-              
+
+
+
               # Try to write texture to temp file
               temp_dir = File.join(ENV['TEMP'] || ENV['TMP'] || '/tmp', 'autonestcut_textures')
               Dir.mkdir(temp_dir) unless Dir.exist?(temp_dir)
               temp_file = File.join(temp_dir, "#{material.name.gsub(/[^\w]/, '_')}.png")
               
               success = material.texture.write(temp_file)
-              puts "DEBUG: Texture write success: #{success}"
+
               
               if success && File.exist?(temp_file)
                 require 'base64'
@@ -816,7 +785,7 @@ module AutoNestCut
                 base64_data = Base64.strict_encode64(image_data)
                 
                 data_uri = "data:image/png;base64,#{base64_data}"
-                puts "DEBUG: Texture data URI length: #{data_uri.length}"
+
                 
                 material_props[:texture] = data_uri
                 
@@ -825,19 +794,19 @@ module AutoNestCut
                 
                 File.delete(temp_file) if File.exist?(temp_file)
               else
-                puts "DEBUG: Failed to write texture to temp file"
+
                 # Still send material properties without texture
                 json_data = material_props.to_json
                 @dialog.execute_script("if(window.applyMaterialToMesh){applyMaterialToMesh(#{json_data});}else{console.error('applyMaterialToMesh not defined');}")
               end
             else
-              puts "DEBUG: Material has no texture, sending color/opacity only"
+
               # Send material properties without texture
               json_data = material_props.to_json
               @dialog.execute_script("if(window.applyMaterialToMesh){applyMaterialToMesh(#{json_data});}else{console.error('applyMaterialToMesh not defined');}")
             end
           else
-            puts "DEBUG: Material not found: #{material_name}"
+
             @dialog.execute_script("console.log('Material not found: #{material_name}');")
           end
         rescue => e
@@ -878,7 +847,7 @@ module AutoNestCut
       # Export technical drawings (views)
       @dialog.add_action_callback("export_technical_drawings") do |action_context|
         begin
-          puts "DEBUG: Export technical drawings requested"
+
           
           # Show export UI with assembly data
           export_ui = ViewExportUI.new(@assembly_data)
@@ -894,7 +863,7 @@ module AutoNestCut
       @dialog.add_action_callback("export_views") do |action_context, params_json|
         begin
           params = JSON.parse(params_json)
-          puts "DEBUG: Processing export with params: #{params.inspect}"
+
           
           # This callback is handled by ViewExportUI
           # Just log for debugging
@@ -905,7 +874,7 @@ module AutoNestCut
 
       # Add callback for when dialog closes to trigger cleanup
       @dialog.add_action_callback("dialog_closing") do |action_context|
-        puts "DEBUG: Dialog closing callback triggered"
+
         cleanup
       end
       
@@ -1019,7 +988,7 @@ module AutoNestCut
         assembly_data = report_generator.capture_assembly_data(assembly_entity)
         return assembly_data
       rescue => e
-        puts "DEBUG: Error capturing assembly data: #{e.message}"
+
         puts e.backtrace.join("\n")
         return nil
       end
@@ -1122,11 +1091,11 @@ module AutoNestCut
       # STAGE 2: LOAD MATERIALS AND PREPARE UI
       # CRITICAL: Reload materials from database to get the newly created ones
       # This ensures the UI and nesting engine use the correct material dimensions
-      puts "DEBUG: Reloading materials database to include auto-created materials..."
+
       loaded_materials = MaterialsDatabase.load_database
-      puts "DEBUG: Loaded #{loaded_materials.length} materials from database"
-      puts "DEBUG: Auto-created materials in database: #{loaded_materials.select { |k, _| k.start_with?('Auto_user_') }.keys.inspect}"
-      
+
+
+
       # CRITICAL: BIND COMPONENTS TO AUTO-MATERIALS IMMEDIATELY
       # This ensures parts_by_material references the correct auto-materials before serialization
       @parts_by_material = bind_components_to_auto_materials(@parts_by_material, loaded_materials)
@@ -1220,7 +1189,7 @@ module AutoNestCut
           
           if matching_auto_variant
             # Auto-created material exists for THIS specific material+thickness - don't override it
-            puts "DEBUG: Skipping default material creation for '#{display_name}' - matching auto-variant exists: #{matching_auto_variant[0]}"
+
             next
           end
           
@@ -1273,13 +1242,13 @@ module AutoNestCut
     # Gets cached boards with thread safety and validation
     def get_cached_boards(cache_key)
       cache_start = Time.now
-      puts "DEBUG: [get_cached_boards] Checking cache for key: #{cache_key[0..8]}..."
+
       
       result = @cache_mutex.synchronize do
         cache_entry = @nesting_cache[cache_key]
         
         if cache_entry.nil?
-          puts "DEBUG: [get_cached_boards] Cache miss, took #{((Time.now - cache_start) * 1000).round(1)}ms"
+
           return nil
         end
         
@@ -1290,11 +1259,11 @@ module AutoNestCut
         unless validate_cached_boards(boards)
           puts "WARNING: Invalid cached data for key #{cache_key}, removing from cache"
           @nesting_cache.delete(cache_key)
-          puts "DEBUG: [get_cached_boards] Validation failed, took #{((Time.now - cache_start) * 1000).round(1)}ms"
+
           return nil
         end
         validate_time = ((Time.now - validate_start) * 1000).round(1)
-        puts "DEBUG: [get_cached_boards] Validation took #{validate_time}ms"
+
         
         # Update access time for LRU
         cache_entry[:access_time] = Time.now
@@ -1330,10 +1299,9 @@ module AutoNestCut
           # Find least recently accessed entry
           lru_key = @nesting_cache.min_by { |k, v| v[:access_time] }[0]
           @nesting_cache.delete(lru_key)
-          puts "⚠ Cache size limit reached, evicted LRU entry: #{lru_key[0..8]}..."
+
         end
-        
-        puts "📊 Cache stats: #{@nesting_cache.size}/#{MAX_CACHE_SIZE} entries"
+
       end
     end
     
@@ -1343,7 +1311,7 @@ module AutoNestCut
         cache_size = @nesting_cache.size
         @nesting_cache.clear
         @last_processed_cache_key = nil
-        puts "🗑 Nesting cache cleared (#{cache_size} entries removed)"
+
       end
     end
 
@@ -1364,12 +1332,12 @@ module AutoNestCut
     # Generates a unique, stable hash key for the given parts and settings
     def generate_cache_key(parts_by_material_hash, settings)
       key_start = Time.now
-      puts "DEBUG: [generate_cache_key] Starting cache key generation..."
+
       
       # Return a distinct key for empty parts to avoid accidental cache hits
       if parts_by_material_hash.nil? || parts_by_material_hash.empty?
         result = Digest::MD5.hexdigest("EMPTY_PARTS_#{Time.now.to_i}")
-        puts "DEBUG: [generate_cache_key] Empty parts, took #{((Time.now - key_start) * 1000).round(1)}ms"
+
         return result
       end
 
@@ -1388,7 +1356,7 @@ module AutoNestCut
         end.sort_by { |p| [p[:name], p[:width], p[:height], p[:thickness], p[:total_quantity]] }]
       end.sort_by(&:first).to_json
       serialize_time = ((Time.now - serialize_start) * 1000).round(1)
-      puts "DEBUG: [generate_cache_key] Serialization took #{serialize_time}ms"
+
 
       # Extract only nesting-relevant settings that affect the *nesting pattern* or *outcome*
       settings_start = Time.now
@@ -1407,7 +1375,7 @@ module AutoNestCut
         # Add any other settings from Config that directly influence the nesting result
       }.to_json
       settings_time = ((Time.now - settings_start) * 1000).round(1)
-      puts "DEBUG: [generate_cache_key] Settings processing took #{settings_time}ms"
+
 
       # Combine and hash
       hash_start = Time.now
@@ -1415,9 +1383,9 @@ module AutoNestCut
       hash_time = ((Time.now - hash_start) * 1000).round(1)
       
       total_time = ((Time.now - key_start) * 1000).round(1)
-      puts "DEBUG: [generate_cache_key] Hash generation took #{hash_time}ms"
-      puts "DEBUG: [generate_cache_key] TOTAL TIME: #{total_time}ms"
-      
+
+
+
       result
     end
 
@@ -1457,7 +1425,7 @@ module AutoNestCut
         # --- CACHE MISS ---
         puts "✗ Cache miss for key: #{current_cache_key[0..8]}..."
         puts "="*80
-        puts "DEBUG: RUNNING NESTING ON MAIN THREAD (NO THREADING)"
+
         puts "="*80
         
         # Run nesting synchronously on main thread for debugging
@@ -1468,7 +1436,7 @@ module AutoNestCut
     # Run nesting synchronously on main thread (for debugging)
     def run_nesting_synchronously(cache_key)
       begin
-        puts "DEBUG: Starting synchronous nesting..."
+
         
         # FORCE USE RUBY NESTER - C++ integration has bugs with part duplication
         puts "="*80
@@ -1483,8 +1451,7 @@ module AutoNestCut
         @dialog.execute_script("updateProgressOverlay('Starting optimization...', 5)")
         
         boards_result = nester.optimize_boards(@parts_by_material, @settings, progress_callback)
-        
-        puts "DEBUG: Nesting complete, #{boards_result.length} boards"
+
         
         # Store in cache
         store_cached_boards(cache_key, boards_result)
@@ -1504,12 +1471,12 @@ module AutoNestCut
 
     # Starts the heavy nesting computation in a separate background thread
     def start_nesting_background_thread(cache_key)
-      puts "DEBUG: [start_nesting_background_thread] Preparing thread data..."
+
       thread_prep_start = Time.now
       
       # CRITICAL: Serialize ALL data BEFORE creating the thread
       # SketchUp objects cannot be accessed from background threads!
-      puts "DEBUG: Serializing parts_by_material for thread safety..."
+
       serialize_start = Time.now
       
       parts_by_material_for_thread = {}
@@ -1524,58 +1491,57 @@ module AutoNestCut
       end
       
       serialize_time = ((Time.now - serialize_start) * 1000).round(1)
-      puts "DEBUG: Serialization took #{serialize_time}ms"
+
       
       settings_for_thread = @settings.dup
       
       thread_prep_time = ((Time.now - thread_prep_start) * 1000).round(1)
-      puts "DEBUG: [start_nesting_background_thread] Thread data prep took #{thread_prep_time}ms"
-      puts "DEBUG: [start_nesting_background_thread] Creating thread NOW..."
+
+
 
       @nesting_thread = Thread.new do
         begin
           thread_start = Time.now
           puts "\n" + "="*80
-          puts "DEBUG: NESTING THREAD STARTED AT #{Time.now}"
+
           puts "="*80
           
           # Try to use C++ nester if available, fallback to Ruby
-          puts "DEBUG: Attempting to load cpp_nester..."
+
           load_start = Time.now
           begin
             require_relative '../processors/cpp_nester'
             load_time = ((Time.now - load_start) * 1000).round(1)
-            puts "DEBUG: cpp_nester loaded in #{load_time}ms"
+
             
             check_start = Time.now
             use_cpp = CppNester.available?
             check_time = ((Time.now - check_start) * 1000).round(1)
-            puts "DEBUG: C++ availability check took #{check_time}ms"
+
           rescue LoadError => e
-            puts "DEBUG: Failed to load cpp_nester: #{e.message}"
+
             use_cpp = false
           rescue => e
-            puts "DEBUG: Error checking C++ availability: #{e.message}"
-            puts "DEBUG: Backtrace: #{e.backtrace.first(3).join("\n")}"
+
+
             use_cpp = false
           end
-          
-          puts "DEBUG: C++ solver available? #{use_cpp}"
+
           
           nester_create_start = Time.now
           if use_cpp
             puts "="*80
-            puts "DEBUG: ✓✓✓ USING C++ NESTER (HIGH-PERFORMANCE MODE) ✓✓✓"
+
             puts "="*80
             nester = CppNester.new
           else
             puts "="*80
-            puts "DEBUG: ✗✗✗ USING RUBY NESTER (SLOW MODE) ✗✗✗"
+
             puts "="*80
             nester = Nester.new
           end
           nester_create_time = ((Time.now - nester_create_start) * 1000).round(1)
-          puts "DEBUG: Nester object created in #{nester_create_time}ms"
+
           
           boards_result = []
           
@@ -1586,12 +1552,11 @@ module AutoNestCut
           end
 
           @nesting_queue.push({ type: :progress, message: "Starting optimization...", percentage: 5 })
-          
-          puts "DEBUG: Calling nester.optimize_boards NOW..."
+
           optimize_start = Time.now
           boards_result = nester.optimize_boards(parts_by_material_for_thread, settings_for_thread, nester_progress_callback)
           optimize_time = ((Time.now - optimize_start) * 1000).round(1)
-          puts "DEBUG: optimize_boards completed in #{optimize_time}ms"
+
           
           if @processing_cancelled
             @nesting_queue.push({ type: :cancelled })
@@ -1600,15 +1565,14 @@ module AutoNestCut
           end
           
           total_thread_time = ((Time.now - thread_start) * 1000).round(1)
-          puts "DEBUG: Total thread execution time: #{total_thread_time}ms"
+
 
         rescue StandardError => e
           puts "Background nesting thread error: #{e.message}\n#{e.backtrace.join("\n")}"
           @nesting_queue.push({ type: :error, message: "Nesting calculation failed: #{e.message}" })
         end
       end
-      
-      puts "DEBUG: [start_nesting_background_thread] Thread created and started"
+
     end
 
     # Starts a UI timer to periodically check the queue for messages from the background thread
@@ -1616,8 +1580,7 @@ module AutoNestCut
       @nesting_start_time = Time.now
       @nesting_timeout = 600 # 10 minutes timeout
       @last_progress_update = Time.now
-      
-      puts "DEBUG: Starting nesting progress watcher at #{@nesting_start_time}"
+
       
       @nesting_watcher_timer = UI.start_timer(0.25, true) do
         # Check for timeout
@@ -1641,14 +1604,13 @@ module AutoNestCut
 
       begin
         message = @nesting_queue.pop(true)
-        
-        puts "DEBUG: Queue message received - Type: #{message[:type]}, Time: #{Time.now.strftime('%H:%M:%S.%3N')}"
+
 
         case message[:type]
         when :progress
           pct = message[:percentage].clamp(0, 100)
           elapsed = Time.now - @nesting_start_time
-          puts "DEBUG: Progress update - #{pct}% (#{message[:message]}) - Elapsed: #{elapsed.round(1)}s"
+
           @dialog.execute_script("updateProgressOverlay('#{message[:message].gsub("'", "\\'")}', #{pct})")
           @last_progress_update = Time.now
           
@@ -1661,14 +1623,14 @@ module AutoNestCut
           
         when :cancelled
           elapsed = Time.now - @nesting_start_time
-          puts "DEBUG: Nesting cancelled after #{elapsed.round(1)}s"
+
           finalize_nesting_process
           @dialog.execute_script("hideProgressOverlay()")
           @dialog.execute_script("showError('Nesting process cancelled by user.')") # Changed to showError for explicit feedback
           
         when :complete
           elapsed = Time.now - @nesting_start_time
-          puts "DEBUG: Nesting complete after #{elapsed.round(1)}s"
+
           @dialog.execute_script("updateProgressOverlay('All nesting calculations complete. Preparing reports...', 90)")
           
           finalize_nesting_process 
@@ -1687,7 +1649,7 @@ module AutoNestCut
         end
       rescue ThreadError => e
         # Ignore, just means no message was available this tick.
-        puts "DEBUG: ThreadError (expected if queue empty): #{e.message}"
+
       rescue => e
         puts "ERROR in process_queue_message: #{e.message}"
         puts e.backtrace.join("\n")
@@ -1728,7 +1690,7 @@ module AutoNestCut
       @settings = Config.get_cached_settings if @settings.nil?
       
       puts "═══════════════════════════════════════════════════════════"
-      puts "🔧 REPORT GENERATION SETTINGS DEBUG"
+
       puts "═══════════════════════════════════════════════════════════"
       puts "Units: #{@settings['units'] || 'NOT SET (defaulting to mm)'}"
       puts "Precision: #{@settings['precision'] || 'NOT SET (defaulting to 1)'}"
@@ -1744,7 +1706,7 @@ module AutoNestCut
       if @assembly_entity
         begin
           assembly_data = report_generator.capture_assembly_data(@assembly_entity)
-          puts "DEBUG: Assembly data captured for display: #{assembly_data.keys.inspect if assembly_data}"
+
         rescue => e
           puts "WARNING: Failed to capture assembly data for display: #{e.message}"
         end
@@ -1843,7 +1805,7 @@ module AutoNestCut
         view = model.active_view
         view.zoom(matching_entities)
       else
-        puts "DEBUG: No components found with material: #{material_name}"
+
         UI.messagebox("No components found with material: #{material_name}")
       end
     end
@@ -1895,17 +1857,17 @@ module AutoNestCut
     end
 
     def purge_old_auto_materials
-      puts "🧹 [Ruby] purge_old_auto_materials callback triggered"
+
       
       # Load current materials database
       materials = MaterialsDatabase.load_database
-      puts "📊 [Ruby] Loaded #{materials.length} materials from database"
-      puts "📊 [Ruby] Database file: #{MaterialsDatabase.database_file}"
-      
+
+
+
       # Get currently active materials (those used by components)
       active_materials = @parts_by_material.keys if @parts_by_material
       active_materials ||= []
-      puts "📊 [Ruby] Active materials: #{active_materials.length}"
+
       
       # Identify materials to purge
       materials_to_purge = []
@@ -1927,22 +1889,21 @@ module AutoNestCut
       
       # Remove purged materials
       materials_to_purge.each { |name| materials.delete(name) }
-      puts "🗑️ [Ruby] Deleted #{materials_to_purge.length} materials from hash"
-      puts "📊 [Ruby] Materials remaining in hash: #{materials.length}"
-      
+
+
+
       # Save updated database
-      puts "💾 [Ruby] Saving updated database..."
+
       MaterialsDatabase.save_database(materials)
       puts "✓ [Ruby] Database saved successfully"
       
       # Verify the database was saved correctly
       reloaded_materials = MaterialsDatabase.load_database
       puts "✓ [Ruby] Verification: Database now contains #{reloaded_materials.length} materials"
-      
-      puts "🦟 Purge: Removed #{materials_to_purge.length} old auto-materials"
+
       
       # Refresh the UI - also update JavaScript side with purged materials list
-      puts "🔄 [Ruby] Refreshing UI..."
+
       purged_list_json = materials_to_purge.to_json
       # Properly escape the JSON for JavaScript by using single quotes for the outer string
       # and escaping single quotes inside the message
@@ -2029,8 +1990,7 @@ module AutoNestCut
         # Extract parts from report data - SAME AS CSV EXPORT
         parts = []
         unique_part_types = report_data[:unique_part_types] || []
-        
-        puts "DEBUG: Found #{unique_part_types.length} unique part types"
+
         
         # Generate one label per part instance (not per type)
         part_counter = 1
@@ -2053,8 +2013,7 @@ module AutoNestCut
             part_counter += 1
           end
         end
-        
-        puts "DEBUG: Generated #{parts.length} labels total"
+
         
         if parts.empty?
           UI.messagebox("No parts found in report data. Please generate a cut list first.")

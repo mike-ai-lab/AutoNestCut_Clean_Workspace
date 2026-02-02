@@ -172,39 +172,29 @@ module AutoNestCut
       
       # Add views from assembly data - COLLECT ALL VIEWS FIRST, THEN ADD ONCE
       if @assembly_data.is_a?(Hash) && @assembly_data[:views]
-        puts "DEBUG: handle_export - assembly_data[:views] keys: #{@assembly_data[:views].keys.inspect}"
-        
         # Convert base64 data to temporary files
         views_hash = {}
         @assembly_data[:views].each do |view_name, image_data|
-          puts "DEBUG: Processing view: #{view_name}"
           
           # If it's base64 data, save to temp file
           if image_data.is_a?(String) && image_data.start_with?('data:image')
-            puts "DEBUG: Converting base64 data to file for #{view_name}"
             # Extract base64 from data URI
             base64_str = image_data.split(',')[1]
             if base64_str
               temp_file = File.join(ENV['TEMP'] || '/tmp', "view_#{view_name}_#{Time.now.to_i}.png")
               File.binwrite(temp_file, Base64.decode64(base64_str))
               views_hash[view_name] = temp_file
-              puts "DEBUG: Saved #{view_name} to #{temp_file}"
             end
           elsif image_data.is_a?(String) && File.exist?(image_data)
             # Already a file path
             views_hash[view_name] = image_data
-            puts "DEBUG: Using existing file path for #{view_name}: #{image_data}"
-          else
-            puts "DEBUG: WARNING - Unknown data type for #{view_name}: #{image_data.class}"
           end
         end
         
         # Add all views at once
         if views_hash.length > 0
-          puts "DEBUG: Adding #{views_hash.length} views to exporter"
           exporter.add_views("Assembly", views_hash)
         else
-          puts "ERROR: No valid views found to export"
           @dialog.close if @dialog
           UI.messagebox("Error: No valid views found to export")
           return

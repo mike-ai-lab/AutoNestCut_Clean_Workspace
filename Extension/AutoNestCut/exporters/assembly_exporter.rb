@@ -1,4 +1,4 @@
-require 'base64'
+﻿require 'base64'
 require 'json'
 require_relative '../config'
 require_relative '../util'

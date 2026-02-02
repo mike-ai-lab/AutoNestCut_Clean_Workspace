@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>AutoNestCut Diagrams & Report</title>
+    <link rel="stylesheet" href="diagrams_style.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <button id="backButton" class="back-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                    <path d="m12 19-7-7 7-7"/>
+                    <path d="M19 12H5"/>
+                </svg>
+                Back
+            </button>
+        </div>
+        <div class="header-center">
+            <h1>AutoNestCut Report</h1>
+        </div>
+        <div class="header-right">
+            <button id="printButton" class="export-btn" title="Print / Save as PDF">
+                <svg class="export-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6,9 6,2 18,2 18,9"/>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                    <polyline points="6,14 6,22 18,22 18,14"/>
+                </svg>
+                <span class="export-label">PDF</span>
+            </button>
+            <button id="exportCsvButton" class="export-btn" title="Export CSV Report">
+                <svg class="export-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14,2 14,8 20,8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <line x1="10" y1="9" x2="8" y2="9"/>
+                </svg>
+                <span class="export-label">CSV</span>
+            </button>
+            <button id="exportHtmlButton" class="export-btn" title="Export Interactive HTML">
+                <svg class="export-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="16 18 22 12 16 6"/>
+                    <polyline points="8 6 2 12 8 18"/>
+                </svg>
+                <span class="export-label">HTML</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="diagramsContainer" class="diagrams-container">
+            <p>Loading diagrams...</p>
+        </div>
+        <div class="resizer" id="resizer"></div>
+        <div id="reportContainer" class="report-container">
+            <h2>Overall Summary</h2>
+            <div id="summaryTable"></div>
+
+            <h2>Materials Used</h2>
+            <div id="materialsContainer"></div>
+
+            <h2>Unique Part Types</h2>
+            <div id="uniquePartTypesTable"></div>
+
+            <h2>Sheet Inventory Summary</h2>
+            <div id="uniqueBoardTypesTable"></div>
+
+            <h2>Boards Summary</h2>
+            <div id="boardsTable"></div>
+
+            <h2>Cost Breakdown</h2>
+            <div id="costBreakdownTable"></div>
+
+            <h2>Parts Placed (Detailed)</h2>
+            <div class="tree-controls">
+                <button type="button" id="treeToggle" onclick="toggleTreeView()">Show Tree Structure</button>
+                <div class="tree-search" id="treeSearchContainer" style="display: none;">
+                    <input type="text" id="treeSearch" placeholder="Search components..." oninput="filterTree()">
+                    <button type="button" onclick="clearTreeSearch()">Clear</button>
+                    <button type="button" onclick="expandAll()">Expand All</button>
+                    <button type="button" onclick="collapseAll()">Collapse All</button>
+                </div>
+            </div>
+            <div id="treeStructure" class="tree-structure" style="display: none;"></div>
+            <div id="partsTable"></div>
+        </div>
+    </div>
+
+    <div id="partModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-controls">
+                <button id="projectionToggle">Orthographic</button>
+            </div>
+            <canvas id="modalCanvas" width="500" height="400"></canvas>
+            <div id="modalInfo"></div>
+        </div>
+    </div>
+
+    <div id="previewModal" class="modal">
+        <div class="modal-content preview-modal-content">
+            <div class="preview-header">
+                <h2>Export Preview</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div id="previewContent" class="preview-content"></div>
+            <div class="preview-footer">
+                <button id="confirmExportBtn" class="btn-primary">Confirm Export</button>
+                <button id="cancelExportBtn" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="diagrams_report.js"></script>
+</body>
+</html>

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AutoNestCut - Purchase License</title>
+    <script id="paypal-sdk"></script>
+    <style>
+        :root {
+            --gitbook-primary: #3b82f6;
+            --gitbook-primary-dark: #2563eb;
+            --gitbook-success: #10b981;
+            --gitbook-success-dark: #059669;
+            --gitbook-bg: #ffffff;
+            --gitbook-sidebar: #f8fafc;
+            --gitbook-border: #e2e8f0;
+            --gitbook-text: #1e293b;
+            --gitbook-text-muted: #64748b;
+            --gitbook-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: var(--gitbook-bg);
+            color: var(--gitbook-text);
+            line-height: 1.7;
+            font-size: 15px;
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 280px;
+            background: var(--gitbook-sidebar);
+            border-right: 1px solid var(--gitbook-border);
+            padding: 24px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        
+        .sidebar-header {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid var(--gitbook-border);
+            margin-bottom: 24px;
+        }
+        
+        .sidebar-header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gitbook-text);
+            letter-spacing: -0.025em;
+        }
+        
+        .sidebar-header .developer-credit {
+            margin: 8px 0 0 0;
+            font-size: 13px;
+            color: var(--gitbook-text-muted);
+            font-weight: 500;
+        }
+        
+        .nav-menu {
+            padding: 0 16px;
+        }
+        
+        .nav-item {
+            margin-bottom: 4px;
+        }
+        
+        .nav-link {
+            display: block;
+            padding: 8px 16px;
+            color: var(--gitbook-text-muted);
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            background: var(--gitbook-primary);
+            color: white;
+        }
+        
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 0;
+        }
+        
+        .content-header {
+            background: var(--gitbook-bg);
+            border-bottom: 1px solid var(--gitbook-border);
+            padding: 20px 40px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(8px);
+        }
+        
+        .content-header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--gitbook-text);
+            letter-spacing: -0.025em;
+        }
+        
+        .doc-container {
+            max-width: 800px;
+            margin: 0;
+            padding: 40px;
+            background: var(--gitbook-bg);
+            min-height: calc(100vh - 80px);
+        }
+        .doc-section {
+            margin-bottom: 30px;
+        }
+        .doc-section h2 {
+            color: var(--gitbook-text);
+            border-bottom: 1px solid var(--gitbook-border);
+            padding-bottom: 16px;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin: 48px 0 24px 0;
+            scroll-margin-top: 100px;
+        }
+        
+        .doc-section h3 {
+            color: var(--gitbook-text);
+            font-size: 20px;
+            font-weight: 600;
+            margin: 32px 0 16px 0;
+        }
+        
+        .doc-section p {
+            margin: 16px 0;
+            color: var(--gitbook-text);
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .pricing-card {
+            background: var(--gitbook-sidebar);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--gitbook-border);
+            text-align: center;
+            transition: all 0.15s ease;
+            box-shadow: var(--gitbook-shadow);
+        }
+        .pricing-card:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transform: translateY(-1px);
+        }
+        .pricing-card.recommended {
+            border-color: var(--gitbook-success);
+            background: #f0fdf4;
+            position: relative;
+        }
+        .pricing-card.recommended::before {
+            content: 'RECOMMENDED';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gitbook-success);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .plan-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #111827;
+        }
+        .plan-price {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--gitbook-primary);
+            margin-bottom: 4px;
+        }
+        .recommended .plan-price {
+            color: var(--gitbook-success);
+        }
+        .plan-period {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .plan-features {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .plan-features li {
+            padding: 6px 0;
+            font-size: 14px;
+            color: #374151;
+            position: relative;
+            padding-left: 20px;
+        }
+        .plan-features li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: 600;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background: var(--gitbook-primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: var(--gitbook-primary-dark);
+        }
+        .recommended .btn-primary {
+            background: var(--gitbook-success);
+        }
+        .recommended .btn-primary:hover {
+            background: var(--gitbook-success-dark);
+        }
+        .btn-secondary {
+            background: #ffffff;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        .btn-secondary:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+        .purchase-form {
+            margin: 32px 0;
+            padding: 24px;
+            background: var(--gitbook-sidebar);
+            border-radius: 12px;
+            display: none;
+            border: 1px solid var(--gitbook-border);
+            box-shadow: var(--gitbook-shadow);
+        }
+        .form-header h3 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+        }
+        .selected-plan {
+            display: inline-block;
+            background: var(--gitbook-primary);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        label {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+        input {
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            color: #374151;
+            transition: border-color 0.15s ease;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--gitbook-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        #paypal-button-container {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 50px;
+        }
+        .result-message {
+            padding: 16px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .result-success {
+            background: #f0fdf4;
+            color: #059669;
+            border: 1px solid #bbf7d0;
+        }
+        .result-error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        @media (max-width: 768px) {
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>AutoNestCut</h1>
+            <p class="developer-credit">Professional License</p>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-item"><a href="#pricing" class="nav-link active">Choose License</a></div>
+            <div class="nav-item"><a href="#features" class="nav-link">What's Included</a></div>
+            <div class="nav-item"><a href="#purchase" class="nav-link">Purchase Form</a></div>
+        </nav>
+    </div>
+    
+    <div class="main-content">
+        <div class="content-header">
+            <h1>License Options</h1>
+        </div>
+        
+        <div class="doc-container">
+        <div class="doc-section">
+            <h2 id="pricing">Choose Your License</h2>
+            <p>Professional tools for professional results. Start with a free 7-day trial.</p>
+            
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="plan-name">Annual License</div>
+                    <div class="plan-price" id="annual-price">$39</div>
+                    <div class="plan-period">per year</div>
+                    <ul class="plan-features">
+                        <li>Full feature access</li>
+                        <li>One year of updates</li>
+                        <li>Email support</li>
+                        <li>Single device license</li>
+                        <li>Commercial use included</li>
+                        <li>All export formats</li>
+                    </ul>
+                    <button class="btn btn-secondary" onclick="selectPlan('annual', 39)">
+                        Choose Annual
+                    </button>
+                </div>
+                
+                <div class="pricing-card recommended">
+                    <div class="plan-name">Lifetime License</div>
+                    <div class="plan-price" id="lifetime-price">$69</div>
+                    <div class="plan-period">one-time payment</div>
+                    <ul class="plan-features">
+                        <li>Full feature access</li>
+                        <li>Lifetime updates</li>
+                        <li>Priority support</li>
+                        <li>Single device license</li>
+                        <li>Commercial use included</li>
+                        <li>All export formats</li>
+                        <li>Future feature access</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="selectPlan('lifetime', 69)">
+                        Choose Lifetime
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="doc-section">
+            <h2 id="features">What's Included</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--gitbook-primary); margin-right: 8px;">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            <polyline points="3.27,6.96 12,12.01 20.73,6.96"/>
+                            <line x1="12" y1="22.08" x2="12" y2="12"/>
+                        </svg>
+                        Advanced Nesting
+                    </h4>
+                    <p>Optimized algorithms that minimize waste and maximize efficiency for your sheet goods.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--gitbook-primary); margin-right: 8px;">
+                            <path d="M3 3v5h5M6 17l4-4 4 4 4-4M21 21v-5h-5"/>
+                        </svg>
+                        Detailed Reports
+                    </h4>
+                    <p>Comprehensive cut lists, material summaries, and cost calculations with multiple export formats.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--gitbook-primary); margin-right: 8px;">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m21-7h-6M7 5H1m21 7h-6M7 19H1"/>
+                        </svg>
+                        Professional Tools
+                    </h4>
+                    <p>Material database management, custom board sizes, and grain direction control.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--gitbook-primary); margin-right: 8px;">
+                            <path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                            <rect width="20" height="14" x="2" y="6" rx="2"/>
+                        </svg>
+                        Commercial Use
+                    </h4>
+                    <p>Full commercial license included - use for client projects and business operations.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--gitbook-primary); margin-right: 8px;">
+                            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                            <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+                            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+                        </svg>
+                        Performance Optimized
+                    </h4>
+                    <p>Lightning-fast processing with intelligent caching and single-pass algorithms.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--gitbook-primary); margin-right: 8px;">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                        Priority Support
+                    </h4>
+                    <p>Direct email support from the developer with priority response times.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="purchase-form" id="purchaseForm">
+            <div class="form-header">
+                <h3 id="purchase">Complete Your Purchase</h3>
+                <div class="selected-plan" id="selectedPlan"></div>
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="customerName" placeholder="Enter your full name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="customerEmail" placeholder="your@email.com" required>
+                </div>
+                <div class="form-group full-width">
+                    <label>Company/Organization (Optional)</label>
+                    <input type="text" id="customerCompany" placeholder="Your company name">
+                </div>
+            </div>
+            
+            <div id="paypal-button-container"></div>
+            <div id="purchaseResult"></div>
+        </div>
+        </div>
+    </div>
+
+    <script>
+        // Navigation highlighting
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('.doc-section h2[id], .doc-section h3[id]');
+            
+            function updateActiveNav() {
+                let current = 'pricing';
+                sections.forEach(section => {
+                    const rect = section.getBoundingClientRect();
+                    if (rect.top <= 120) {
+                        current = section.getAttribute('id');
+                    }
+                });
+                
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === `#${current}`) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+            
+            window.addEventListener('scroll', updateActiveNav);
+            updateActiveNav();
+            
+            // Smooth scrolling for nav links
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
+        });
+        let selectedLicenseType = '';
+        let selectedPrice = 0;
+        let userCurrency = 'USD';
+        let exchangeRate = 1;
+        
+        // Detect user currency and get exchange rates
+        async function detectCurrency() {
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                const countryCode = data.country_code;
+                
+                const currencyMap = {
+                    'US': 'USD', 'CA': 'CAD', 'GB': 'GBP', 'EU': 'EUR', 'DE': 'EUR', 'FR': 'EUR',
+                    'AU': 'AUD', 'JP': 'JPY', 'SA': 'SAR', 'AE': 'AED', 'KW': 'KWD', 'QA': 'QAR'
+                };
+                
+                userCurrency = currencyMap[countryCode] || 'USD';
+                
+                if (userCurrency !== 'USD') {
+                    const rateResponse = await fetch(`https://api.exchangerate-api.com/v4/latest/USD`);
+                    const rateData = await rateResponse.json();
+                    exchangeRate = rateData.rates[userCurrency] || 1;
+                }
+                
+                updatePrices();
+            } catch (error) {
+                console.log('Currency detection failed, using USD');
+            }
+        }
+        
+        function updatePrices() {
+            const annualPrice = Math.round(39 * exchangeRate);
+            const lifetimePrice = Math.round(69 * exchangeRate);
+            
+            document.getElementById('annual-price').textContent = `${getCurrencySymbol()}${annualPrice}`;
+            document.getElementById('lifetime-price').textContent = `${getCurrencySymbol()}${lifetimePrice}`;
+        }
+        
+        function getCurrencySymbol() {
+            const symbols = {
+                'USD': '$', 'CAD': 'C$', 'GBP': '£', 'EUR': '€',
+                'AUD': 'A$', 'JPY': '¥', 'SAR': 'SR', 'AED': 'AED',
+                'KWD': 'KD', 'QAR': 'QR'
+            };
+            return symbols[userCurrency] || '$';
+        }
+        
+        // Load PayPal SDK
+        async function loadPayPalSDK() {
+            try {
+                const response = await fetch('https://autonestcutserver-3srrv5rok-moeshks-projects.vercel.app/paypal-client-id');
+                const data = await response.json();
+                
+                const script = document.createElement('script');
+                script.src = `https://www.paypal.com/sdk/js?client-id=${data.clientId}&currency=${userCurrency}`;
+                script.onload = () => console.log('PayPal SDK loaded');
+                document.head.appendChild(script);
+            } catch (error) {
+                console.error('Failed to load PayPal SDK:', error);
+            }
+        }
+        
+        function selectPlan(type, basePrice) {
+            selectedLicenseType = type;
+            selectedPrice = Math.round(basePrice * exchangeRate);
+            
+            document.getElementById('selectedPlan').textContent = 
+                `${type === 'lifetime' ? 'Lifetime' : 'Annual'} License — ${getCurrencySymbol()}${selectedPrice}`;
+            
+            document.getElementById('purchaseForm').style.display = 'block';
+            
+            // Update nav to show purchase section
+            const purchaseLink = document.querySelector('a[href="#purchase"]');
+            if (purchaseLink) {
+                purchaseLink.classList.add('active');
+            }
+            
+            document.getElementById('purchase').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+            
+            setTimeout(initPayPal, 100);
+        }
+        
+        function initPayPal() {
+            const name = document.getElementById('customerName').value.trim();
+            const email = document.getElementById('customerEmail').value.trim();
+            
+            if (!name || !email) {
+                document.getElementById('paypal-button-container').innerHTML = 
+                    '<p style="color: #666; text-align: center;">Please fill in your name and email first</p>';
+                return;
+            }
+            
+            if (typeof paypal === 'undefined') {
+                document.getElementById('paypal-button-container').innerHTML = 
+                    '<p style="color: #666; text-align: center;">Loading PayPal...</p>';
+                setTimeout(initPayPal, 1000);
+                return;
+            }
+            
+            document.getElementById('paypal-button-container').innerHTML = '';
+            
+            paypal.Buttons({
+                createOrder: function(data, actions) {
+                    return actions.order.create({
+                        purchase_units: [{
+                            amount: {
+                                value: selectedPrice.toFixed(2),
+                                currency_code: userCurrency
+                            },
+                            description: `AutoNestCut ${selectedLicenseType === 'lifetime' ? 'Lifetime' : 'Annual'} License`
+                        }]
+                    });
+                },
+                onApprove: function(data, actions) {
+                    return actions.order.capture().then(function(details) {
+                        completePurchase(data.orderID, details);
+                    });
+                },
+                onError: function(err) {
+                    showResult('Payment failed. Please try again.', 'error');
+                }
+            }).render('#paypal-button-container');
+        }
+        
+        document.getElementById('customerName').addEventListener('blur', initPayPal);
+        document.getElementById('customerEmail').addEventListener('blur', initPayPal);
+        
+        async function completePurchase(orderID, details) {
+            const name = document.getElementById('customerName').value.trim();
+            const email = document.getElementById('customerEmail').value.trim();
+            const company = document.getElementById('customerCompany').value.trim();
+            
+            try {
+                const response = await fetch('https://autonestcutserver-3srrv5rok-moeshks-projects.vercel.app/complete-purchase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        orderID,
+                        name: company ? `${name} (${company})` : name,
+                        email,
+                        type: selectedLicenseType,
+                        details
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult(`
+                        <h4>Purchase Complete!</h4>
+                        <p>Your AutoNestCut license has been generated and sent to your email address.</p>
+                        <p><strong>Next Steps:</strong></p>
+                        <ol style="text-align: left; margin: 12px 0;">
+                            <li>Check your email for the license key</li>
+                            <li>In SketchUp, go to Extensions → AutoNestCut → License Info</li>
+                            <li>Enter your license key when prompted</li>
+                        </ol>
+                        <p>Thank you for choosing AutoNestCut!</p>
+                    `, 'success');
+                } else {
+                    showResult(`Error: ${data.error || 'Failed to process purchase'}`, 'error');
+                }
+            } catch (error) {
+                showResult('Network error. Please contact support.', 'error');
+            }
+        }
+        
+        function showResult(message, type) {
+            document.getElementById('purchaseResult').innerHTML = 
+                `<div class="result-message result-${type}">${message}</div>`;
+        }
+        
+        // Initialize
+        detectCurrency().then(() => {
+            loadPayPalSDK();
+        });
+    </script>
+</body>
+</html>

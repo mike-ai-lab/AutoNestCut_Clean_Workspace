@@ -1,8 +1,4 @@
-// ============================================================================
-// DIAGRAMS_REPORT.JS LOADED - VERSION 20250201_RUBY_FIX
-// ============================================================================
-console.log('🚀🚀🚀 diagrams_report.js LOADED - VERSION 20250201_RUBY_FIX 🚀🚀🚀');
-console.log('🚀 File timestamp:', new Date().toISOString());
+// diagrams_report.js - Diagram rendering and report display
 
 // Global formatting utility - put this at the top of the script or in a global utility file.
 // This ensures consistency across all numeric displays affected by precision settings.
@@ -29,27 +25,7 @@ window.currentUnits = window.currentUnits || 'mm';
 window.currentPrecision = window.currentPrecision ?? 1; // Use nullish coalescing for precision
 window.currentAreaUnits = window.currentAreaUnits || 'm2'; // Ensure this is also global
 
-// ============================================================================
-// UNIT SYSTEM DEBUG LOGGER
-// ============================================================================
-function debugUnitSystem(section, data = {}) {
-    const debugInfo = {
-        section: section,
-        timestamp: new Date().toISOString(),
-        currentUnits: window.currentUnits,
-        currentPrecision: window.currentPrecision,
-        currentAreaUnits: window.currentAreaUnits,
-        defaultCurrency: window.defaultCurrency,
-        ...data
-    };
-    
-    console.log(`🔍 [UNIT DEBUG] ${section}:`, debugInfo);
-    
-    // Check for hardcoded units
-    if (data.detectedUnit && data.detectedUnit !== window.currentUnits) {
-        console.warn(`⚠️ [UNIT MISMATCH] ${section}: Using "${data.detectedUnit}" but settings say "${window.currentUnits}"`);
-    }
-}
+// Unit system utilities removed - no debug logging
 
 window.areaFactors = window.areaFactors || {
     'mm2': 1,
@@ -181,25 +157,6 @@ function receiveData(data) {
         window.currentPrecision = g_reportData.summary.precision ?? 1;
         window.defaultCurrency = g_reportData.summary.currency || 'USD';
         window.currentAreaUnits = g_reportData.summary.area_units || 'm2';
-        console.log('═══════════════════════════════════════════════════════════');
-        console.log('🔧 FRONTEND SETTINGS DEBUG');
-        console.log('═══════════════════════════════════════════════════════════');
-        console.log('✓ Report summary settings loaded:');
-        console.log('  - Units:', window.currentUnits);
-        console.log('  - Precision:', window.currentPrecision);
-        console.log('  - Currency:', window.defaultCurrency);
-        console.log('  - Area Units:', window.currentAreaUnits);
-        console.log('  - Unit Factors:', window.unitFactors);
-        console.log('');
-        console.log('🧪 CONVERSION TEST:');
-        console.log('  - 300mm in current units:', (300 / window.unitFactors[window.currentUnits]).toFixed(window.currentPrecision), window.currentUnits);
-        console.log('  - 2440mm in current units:', (2440 / window.unitFactors[window.currentUnits]).toFixed(window.currentPrecision), window.currentUnits);
-        console.log('═══════════════════════════════════════════════════════════');
-        
-        // Update the unit debug display
-        if (typeof updateUnitDebugDisplay === 'function') {
-            updateUnitDebugDisplay();
-        }
     } else {
         console.error('⚠️  No report summary found or g_reportData is null!');
         console.error('g_reportData:', g_reportData);
@@ -235,13 +192,7 @@ function receiveData(data) {
     
     setTimeout(() => {
         if (typeof validateExports === 'function') {
-            console.log('🔍 Calling validateExports()...');
-            try {
-                validateExports();
-                console.log('✓ validateExports() completed');
-            } catch (e) {
-                console.error('❌ validateExports() failed:', e);
-            }
+            validateExports();
         }
     }, 500);
     
@@ -269,13 +220,6 @@ function renderDiagrams() {
         return;
     }
     
-    console.log('\n=== DIAGRAMS RENDER DEBUG ===');
-    console.log('Number of boards:', g_boardsData.length);
-    g_boardsData.forEach((board, idx) => {
-        console.log(`Board ${idx + 1} material: "${board.material}"`);
-    });
-    console.log('=============================\n');
-
     // Use report-specific units and precision
     const reportUnits = window.currentUnits || 'mm';
     const reportPrecision = window.currentPrecision ?? 1; 
@@ -285,7 +229,6 @@ function renderDiagrams() {
         card.className = 'diagram-card';
 
         const boardMaterial = board.material || 'Unknown Material';
-        console.log(`\nDiagram ${boardIndex + 1} - Material: "${boardMaterial}"`);
 
         // Create header with title
         const header = document.createElement('div');
@@ -1405,9 +1348,8 @@ function selectPartInReportViewer(part) {
         return;
     }
     
-    // Get the unique ID for this part (P27, P28, P29, P30, etc.)
+    // Get the unique ID for this part
     const partUniqueId = part.part_unique_id || part.instance_id || part.part_number;
-    console.log(`🔍 Searching for EXACT match: ${partUniqueId} | ${part.name} | ${part.material}`);
     
     // Reset all parts to default appearance
     window.reportAssemblyGroups.forEach(group => {
@@ -1640,8 +1582,6 @@ function highlightDiagramFromViewer(partUserData) {
     const partName = partUserData.partName;
     const materialName = partUserData.materialName;
     
-    console.log(`🔍 Searching diagrams for unique ID: ${uniqueId} | ${partName} | ${materialName}`);
-    
     // Search through all boards to find the EXACT matching part by unique ID
     let foundPart = null;
     let foundBoardIndex = -1;
@@ -1684,11 +1624,8 @@ function highlightDiagramFromViewer(partUserData) {
 // Now using unified Assembly 3D Viewer with highlighting instead
 
 function renderAssemblyViews(assemblyData) {
-    console.log('DEBUG: renderAssemblyViews called with:', assemblyData);
     const container = document.getElementById('assemblyViewsContainer');
-    console.log('DEBUG: assemblyViewsContainer found:', !!container);
     if (!container || !assemblyData || !assemblyData.views) {
-        console.log('DEBUG: missing container or data');
         return;
     }
     
