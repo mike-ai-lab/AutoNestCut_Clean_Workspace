@@ -146,8 +146,8 @@ function initThreeJS() {
     
     // Scene setup
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1a1a1a);
-    scene.fog = new THREE.Fog(0x1a1a1a, 5000, 10000);
+    scene.background = new THREE.Color(0xf8fafc); // Soft gray background matching theme
+    scene.fog = new THREE.Fog(0xf8fafc, 5000, 10000);
     
     // Camera setup
     const width = canvas.clientWidth;
@@ -478,13 +478,28 @@ function toggleLighting() {
 }
 
 function onWindowResize() {
-    const canvas = renderer.domElement;
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
+    if (!renderer || !camera) return;
     
+    const canvas = renderer.domElement;
+    const container = canvas.parentElement;
+    
+    if (!container) return;
+    
+    // Get actual container dimensions
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    
+    // Update camera
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    renderer.setSize(width, height);
+    
+    // Update renderer size (false prevents setting canvas style)
+    renderer.setSize(width, height, false);
+    
+    // Force render to prevent black bars
+    if (scene) {
+        renderer.render(scene, camera);
+    }
 }
 
 function showErrorMessage(message) {

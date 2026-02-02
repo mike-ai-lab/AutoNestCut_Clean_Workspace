@@ -643,7 +643,7 @@ function renderReport() {
 
     const uniquePartTypesTable = document.getElementById('uniquePartTypesTable');
     if (uniquePartTypesTable) {
-        let html = `<thead><tr><th>Name</th><th>W (${reportUnits})</th><th>H (${reportUnits})</th><th>Thick (${reportUnits})</th><th>Material</th><th>Grain</th><th>Edge Banding</th><th>Total Qty</th><th style="text-align:right;">Total Area (${currentAreaUnitLabel})</th><th style="text-align:right;">Weight (kg)</th></tr></thead><tbody>`;
+        let html = `<thead><tr><th>Name</th><th>W (${reportUnits})</th><th>H (${reportUnits})</th><th>Thick (${reportUnits})</th><th>Material</th><th>Grain</th><th>Edge Banding</th><th>Total Qty</th><th>Total Area (${currentAreaUnitLabel})</th><th>Weight (kg)</th></tr></thead><tbody>`;
         if (g_reportData.unique_part_types && g_reportData.unique_part_types.length > 0) {
             g_reportData.unique_part_types.forEach(part_type => {
                 const width = part_type.width / window.unitFactors[reportUnits];
@@ -661,8 +661,8 @@ function renderReport() {
                         <td>${escapeHtml(part_type.grain_direction || 'Any')}</td>
                         <td>${escapeHtml(edgeBandingDisplay)}</td>
                         <td class="total-highlight">${part_type.total_quantity}</td>
-                        <td style="text-align:right;">${getAreaDisplay(part_type.total_area)}</td>
-                        <td style="text-align:right;">${formatNumber(part_type.total_weight_kg || 0, 2)}</td>
+                        <td>${getAreaDisplay(part_type.total_area)}</td>
+                        <td>${formatNumber(part_type.total_weight_kg || 0, 2)}</td>
                     </tr>
                 `;
             });
@@ -675,7 +675,7 @@ function renderReport() {
     const sheetInventoryTable = document.getElementById('sheetInventoryTable');
     if (sheetInventoryTable && g_reportData.unique_board_types) {
         // Updated Dimensions header to explicitly include units
-        let html = `<thead><tr><th>Material</th><th>Dimensions (${reportUnits})</th><th>Count</th><th style="text-align:right;">Total Area (${currentAreaUnitLabel})</th><th>Price/Sheet</th><th>Total Cost</th></tr></thead><tbody>`;
+        let html = `<thead><tr><th>Material</th><th>Dimensions (${reportUnits})</th><th>Count</th><th>Total Area (${currentAreaUnitLabel})</th><th>Price/Sheet</th><th>Total Cost</th></tr></thead><tbody>`;
         g_reportData.unique_board_types.forEach(board_type => {
             const boardCurrency = board_type.currency || currency;
             const boardSymbol = window.currencySymbols[boardCurrency] || boardCurrency;
@@ -692,7 +692,7 @@ function renderReport() {
                     <td title="${escapeHtml(board_type.material)}">${escapeHtml(board_type.material)}</td>
                     <td>${dimensionsStr}</td>
                     <td class="total-highlight">${board_type.count}</td>
-                    <td style="text-align:right;">${getAreaDisplay(board_type.total_area)}</td>
+                    <td>${getAreaDisplay(board_type.total_area)}</td>
                     <td>${boardSymbol}${formatNumber(board_type.price_per_sheet || 0, 2)}</td>
                     <td class="total-highlight">${boardSymbol}${formatNumber(board_type.total_cost || 0, 2)}</td>
                 </tr>
@@ -728,7 +728,7 @@ function renderReport() {
         const totalPartsCost = costs.reduce((a, b) => a + b, 0);
         const avgCost = costs.length > 0 ? totalPartsCost / costs.length : 0;
         
-        let partsHtml = `<thead><tr><th>ID</th><th>Name</th><th>Dimensions (${reportUnits})</th><th>Material</th><th>Grain</th><th>Edge Banding</th><th>Board#</th><th>Cost</th><th>Level</th></tr></thead><tbody>`;
+        let partsHtml = `<thead><tr><th>ID</th><th>Name</th><th>Dimensions (${reportUnits})</th><th>Material</th><th>Grain</th><th>Edge<br>Banding</th><th>Board#</th><th>Cost</th><th>Level</th></tr></thead><tbody>`;
         
         partsWithCosts.forEach(part => {
             const partId = part.part_unique_id || part.part_number;
@@ -760,7 +760,7 @@ function renderReport() {
         
         partsHtml += `
                 <tr style="border-top: 2px solid #22863a; background: #f6ffed;">
-                    <td colspan="7" style="text-align: right; font-weight: bold;">Total Parts Cost:</td>
+                    <td colspan="7" style="font-weight: bold;">Total Parts Cost:</td>
                     <td style="font-weight: bold; color: #22863a;">${currencySymbol}${formatNumber(totalPartsCost, 2)}</td>
                     <td></td>
                 </tr>
@@ -852,15 +852,15 @@ function renderBoardsSummary(reportData) {
             htmlOutput += `
                 <div style="padding: 16px 20px;">
                     <div style="font-weight: 600; color: #0f172a; margin-bottom: 12px; font-size: 13px;">Parts on this board:</div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <table>
                         <thead>
                             <tr>
-                                <th style="text-align: left; padding: 8px 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Part ID</th>
-                                <th style="text-align: left; padding: 8px 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Name</th>
-                                <th style="text-align: left; padding: 8px 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Dimensions (${reportUnits})</th>
-                                <th style="text-align: left; padding: 8px 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Material</th>
-                                <th style="text-align: left; padding: 8px 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Grain</th>
-                                <th style="text-align: left; padding: 8px 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Edge Banding</th>
+                                <th>Part ID</th>
+                                <th>Name</th>
+                                <th>Dimensions (${reportUnits})</th>
+                                <th>Material</th>
+                                <th>Grain</th>
+                                <th>Edge<br>Banding</th>
                             </tr>
                         </thead>
                         <tbody>`;
@@ -871,17 +871,15 @@ function renderBoardsSummary(reportData) {
                 const partHeight = (part.height || 0) / window.unitFactors[reportUnits];
                 const dimensionsStr = `${formatNumber(partWidth, reportPrecision)} × ${formatNumber(partHeight, reportPrecision)}`;
                 const edgeBandingDisplay = typeof part.edge_banding === 'object' && part.edge_banding.type ? part.edge_banding.type : (part.edge_banding || 'None');
-                const isLast = index === partsOnBoard.length - 1;
-                const borderStyle = isLast ? 'border-bottom: none;' : 'border-bottom: 1px solid #e2e8f0;';
                 
                 htmlOutput += `
-                            <tr style="transition: background 0.15s;">
-                                <td style="padding: 8px 12px; color: #0f172a; ${borderStyle}">${escapeHtml(partId)}</td>
-                                <td style="padding: 8px 12px; color: #0f172a; ${borderStyle}" title="${escapeHtml(part.name)}">${escapeHtml(part.name)}</td>
-                                <td style="padding: 8px 12px; color: #0f172a; ${borderStyle}">${dimensionsStr}</td>
-                                <td style="padding: 8px 12px; color: #0f172a; ${borderStyle}" title="${escapeHtml(part.material)}">${escapeHtml(part.material)}</td>
-                                <td style="padding: 8px 12px; color: #0f172a; ${borderStyle}">${escapeHtml(part.grain_direction || 'Any')}</td>
-                                <td style="padding: 8px 12px; color: #0f172a; ${borderStyle}">${escapeHtml(edgeBandingDisplay)}</td>
+                            <tr>
+                                <td>${escapeHtml(partId)}</td>
+                                <td title="${escapeHtml(part.name)}">${escapeHtml(part.name)}</td>
+                                <td>${dimensionsStr}</td>
+                                <td title="${escapeHtml(part.material)}">${escapeHtml(part.material)}</td>
+                                <td>${escapeHtml(part.grain_direction || 'Any')}</td>
+                                <td>${escapeHtml(edgeBandingDisplay)}</td>
                             </tr>`;
             });
             
@@ -941,19 +939,13 @@ function renderCutSequences(reportData) {
                 <div class="report-table-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>Sheet ${board.board_number}: ${escapeHtml(board.material)} - ${stockSize}</span>
                 </div>
-                <table id="${tableId}" style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                    <colgroup>
-                        <col style="width: 10%;">
-                        <col style="width: 20%;">
-                        <col style="width: auto;">
-                        <col style="width: 20%;">
-                    </colgroup>
+                <table id="${tableId}">
                     <thead>
                         <tr>
-                            <th style="text-align: left; padding: 12px 20px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">#</th>
-                            <th style="text-align: left; padding: 12px 20px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Operation</th>
-                            <th style="text-align: left; padding: 12px 20px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Description</th>
-                            <th style="text-align: right; padding: 12px 20px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; background: #ffffff;">Measurement</th>
+                            <th>#</th>
+                            <th>Operation</th>
+                            <th>Description</th>
+                            <th>Measurement</th>
                         </tr>
                     </thead>
                     <tbody>`;
@@ -961,18 +953,16 @@ function renderCutSequences(reportData) {
         // Add rows
         if (steps.length > 0) {
             steps.forEach((step, index) => {
-                const isLast = index === steps.length - 1;
-                const borderStyle = isLast ? 'border-bottom: none;' : 'border-bottom: 1px solid #e2e8f0;';
                 const operation = step.operation || step.type || 'N/A';
                 
                 htmlOutput += `
-                        <tr style="transition: background 0.15s;">
-                            <td style="padding: 12px 20px; color: #0f172a; ${borderStyle}">
+                        <tr>
+                            <td>
                                 <span style="background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 500; display: inline-block;">${step.step}</span>
                             </td>
-                            <td style="padding: 12px 20px; color: #0f172a; font-weight: 500; ${borderStyle}">${escapeHtml(operation)}</td>
-                            <td style="padding: 12px 20px; color: #0f172a; ${borderStyle}">${escapeHtml(step.description)}</td>
-                            <td style="padding: 12px 20px; color: #0f172a; text-align: right; ${borderStyle}">${escapeHtml(step.measurement)}</td>
+                            <td style="font-weight: 500;">${escapeHtml(operation)}</td>
+                            <td>${escapeHtml(step.description)}</td>
+                            <td>${escapeHtml(step.measurement)}</td>
                         </tr>`;
             });
         } else {

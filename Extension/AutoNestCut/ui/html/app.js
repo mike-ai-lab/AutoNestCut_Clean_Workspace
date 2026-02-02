@@ -228,25 +228,17 @@ function formatPrice(price, currency) {
 }
 
 function populateSettings() {
-    const kerfInput = document.getElementById('kerf_width');
-    const rotationInput = document.getElementById('allow_rotation');
+    // Project configuration fields (kerf_width and allow_rotation moved to Settings modal)
     const projectNameInput = document.getElementById('project_name');
     const clientNameInput = document.getElementById('client_name');
+    const preparedByInput = document.getElementById('prepared_by');
     
-    if (kerfInput) {
-        kerfInput.value = formatDimension(currentSettings.kerf_width || 3.0);
-    }
-    if (rotationInput) {
-        rotationInput.checked = currentSettings.allow_rotation !== false;
-    }
     if (projectNameInput) {
         projectNameInput.value = currentSettings.project_name || '';
     }
     if (clientNameInput) {
         clientNameInput.value = currentSettings.client_name || '';
     }
-    
-    const preparedByInput = document.getElementById('prepared_by');
     if (preparedByInput) {
         preparedByInput.value = currentSettings.prepared_by || '';
     }
@@ -266,9 +258,12 @@ function populateSettings() {
         const modalCurrencySelect = document.getElementById('settingsCurrency');
         if (modalCurrencySelect) modalCurrencySelect.value = defaultCurrency;
         
-        // This dropdown is now removed from main.html, so this block is technically obsolete
-        // const materialListDefaultCurrencySelect = document.getElementById('defaultCurrency');
-        // if (materialListDefaultCurrencySelect) materialListDefaultCurrencySelect.value = defaultCurrency;
+        // Populate kerf width and allow rotation in settings modal
+        const kerfWidthInput = document.getElementById('settingsKerfWidth');
+        if (kerfWidthInput) kerfWidthInput.value = currentSettings.kerf_width || 3.0;
+        
+        const allowRotationCheckbox = document.getElementById('settingsAllowRotation');
+        if (allowRotationCheckbox) allowRotationCheckbox.checked = currentSettings.allow_rotation !== false;
     }, 50);
     
     // Initialize stock_materials if it doesn't exist
@@ -305,6 +300,16 @@ function displayMaterials() {
         return;
     }
     container.innerHTML = '';
+    
+    // Get search query
+    const searchInput = document.getElementById('materialSearchInput');
+    const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    
+    // Show/hide clear button based on search input
+    const clearBtn = document.getElementById('clearSearchBtn');
+    if (clearBtn) {
+        clearBtn.style.display = searchQuery ? 'block' : 'none';
+    }
     
     // PERFORMANCE FIX: Only load used materials to prevent memory leaks
     // Full database management available in separate Material Database dialog
@@ -347,14 +352,40 @@ function displayMaterials() {
         }
     });
     
+    // Filter by search query
+    if (searchQuery) {
+        materialEntries = materialEntries.filter(entry => 
+            entry.name.toLowerCase().includes(searchQuery)
+        );
+    }
+    
     // Update material count indicator
     const countSpan = document.getElementById('materialCount');
     if (countSpan) {
         countSpan.textContent = materialEntries.length;
     }
     
-    // Sort materials
-    if (sortBy === 'alphabetical') {
+    // Sort materials - matching items first when searching
+    if (searchQuery) {
+        // When searching, put exact matches first, then starts-with, then contains
+        materialEntries.sort((a, b) => {
+            const aLower = a.name.toLowerCase();
+            const bLower = b.name.toLowerCase();
+            
+            // Exact match
+            if (aLower === searchQuery && bLower !== searchQuery) return -1;
+            if (bLower === searchQuery && aLower !== searchQuery) return 1;
+            
+            // Starts with
+            const aStarts = aLower.startsWith(searchQuery);
+            const bStarts = bLower.startsWith(searchQuery);
+            if (aStarts && !bStarts) return -1;
+            if (bStarts && !aStarts) return 1;
+            
+            // Alphabetical for same priority
+            return a.name.localeCompare(b.name);
+        });
+    } else if (sortBy === 'alphabetical') {
         materialEntries.sort((a, b) => a.name.localeCompare(b.name));
     } else if (sortBy === 'usage') {
         materialEntries.sort((a, b) => b.isUsed - a.isUsed || a.name.localeCompare(b.name));
@@ -697,13 +728,13 @@ function escapeHtml(str) {
 }
 
 function processNesting() {
-    // Update settings from form - convert kerf width to mm
-    const kerfInput = document.getElementById('kerf_width');
-    currentSettings.kerf_width = convertToMM(parseFloat(kerfInput.value));
-    currentSettings.allow_rotation = document.getElementById('allow_rotation').checked;
-    currentSettings.project_name = document.getElementById('project_name').value || 'Untitled Project';
-    currentSettings.client_name = document.getElementById('client_name').value || '';
-    currentSettings.prepared_by = document.getElementById('prepared_by').value || '';
+    // Get settings from currentSettings (kerf_width and allow_rotation are now in Settings modal)
+    // Use stored values or defaults
+    currentSettings.kerf_width = currentSettings.kerf_width || 3.0;
+    currentSettings.allow_rotation = currentSettings.allow_rotation !== false; // Default to true
+    currentSettings.project_name = document.getElementById('project_name')?.value || 'Untitled Project';
+    currentSettings.client_name = document.getElementById('client_name')?.value || '';
+    currentSettings.prepared_by = document.getElementById('prepared_by')?.value || '';
     
     // Convert stock_materials to proper format for Ruby
     const convertedSettings = {
@@ -1045,21 +1076,87 @@ function openSettings() {
     if (modal) {
         modal.style.display = 'block';
         
+        // Populate all settings fields
         const unitsSelect = document.getElementById('settingsUnits');
         const precisionSelect = document.getElementById('settingsPrecision');
         const currencySelect = document.getElementById('settingsCurrency');
         const areaUnitsSelect = document.getElementById('settingsAreaUnits');
+        const kerfWidthInput = document.getElementById('settingsKerfWidth');
+        const allowRotationCheckbox = document.getElementById('settingsAllowRotation');
         
         if (unitsSelect) unitsSelect.value = currentUnits;
         if (precisionSelect) precisionSelect.value = currentPrecision.toString();
         if (areaUnitsSelect) areaUnitsSelect.value = currentAreaUnits;
         if (currencySelect) currencySelect.value = defaultCurrency;
+        if (kerfWidthInput) kerfWidthInput.value = currentSettings.kerf_width || 3.0;
+        if (allowRotationCheckbox) allowRotationCheckbox.checked = currentSettings.allow_rotation !== false;
         
         // Allow clicking outside to close
         modal.onclick = (e) => {
             if (e.target === modal) closeSettings();
         };
     }
+}
+
+function saveAllSettings() {
+    // Get all settings values
+    const unitsSelect = document.getElementById('settingsUnits');
+    const precisionSelect = document.getElementById('settingsPrecision');
+    const currencySelect = document.getElementById('settingsCurrency');
+    const areaUnitsSelect = document.getElementById('settingsAreaUnits');
+    const kerfWidthInput = document.getElementById('settingsKerfWidth');
+    const allowRotationCheckbox = document.getElementById('settingsAllowRotation');
+    
+    // Update current settings
+    if (unitsSelect) {
+        currentUnits = unitsSelect.value;
+    }
+    if (precisionSelect) {
+        currentPrecision = parseInt(precisionSelect.value);
+    }
+    if (areaUnitsSelect) {
+        currentAreaUnits = areaUnitsSelect.value;
+    }
+    if (currencySelect) {
+        defaultCurrency = currencySelect.value;
+    }
+    if (kerfWidthInput) {
+        currentSettings.kerf_width = parseFloat(kerfWidthInput.value);
+    }
+    if (allowRotationCheckbox) {
+        currentSettings.allow_rotation = allowRotationCheckbox.checked;
+    }
+    
+    // Save all settings to backend
+    const settingsToSave = {
+        units: currentUnits,
+        precision: currentPrecision,
+        area_units: currentAreaUnits,
+        default_currency: defaultCurrency,
+        kerf_width: currentSettings.kerf_width,
+        allow_rotation: currentSettings.allow_rotation
+    };
+    
+    // Send to Ruby backend
+    Object.keys(settingsToSave).forEach(key => {
+        callRuby('update_global_setting', JSON.stringify({ key: key, value: settingsToSave[key] }));
+    });
+    
+    // Update UI
+    displayMaterials();
+    displayPartsPreview();
+    
+    // If report is visible, re-render it
+    const reportTab = document.getElementById('reportTabContent');
+    if (reportTab && reportTab.classList.contains('active')) {
+        renderReport();
+    }
+    
+    // Show success message
+    showMessage('Settings saved successfully!');
+    
+    // Close modal
+    closeSettings();
 }
 
 function closeSettings() {
@@ -1221,4 +1318,19 @@ function renderSelectionStatusTree(components) {
     html += '</div>';
     
     container.innerHTML = html;
+}
+
+
+// Material search helper functions
+function handleMaterialSearch() {
+    displayMaterials();
+}
+
+function clearMaterialSearch() {
+    const searchInput = document.getElementById('materialSearchInput');
+    if (searchInput) {
+        searchInput.value = '';
+        displayMaterials();
+        searchInput.focus();
+    }
 }

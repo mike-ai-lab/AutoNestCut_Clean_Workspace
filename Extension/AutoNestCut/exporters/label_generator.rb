@@ -162,22 +162,19 @@ module AutoNestCut
       
       content = ""
       
-      # Add real QR code if enabled and generated
+      # Embed Real QR Code
       if @options[:qr_enabled] && qr_svg
-        # Extract the SVG content (remove outer <svg> tags to embed properly)
-        if qr_svg.include?('<svg')
-          # Extract viewBox and content
-          qr_content = qr_svg.gsub(/<svg[^>]*>/, '').gsub(/<\/svg>/, '')
-          
-          # Embed QR code as a nested SVG with proper positioning
-          content += "<svg x=\"#{padding}\" y=\"#{padding}\" width=\"#{qr_size}\" height=\"#{qr_size}\" viewBox=\"0 0 #{extract_viewbox_size(qr_svg)} #{extract_viewbox_size(qr_svg)}\">"
-          content += qr_content
-          content += "</svg>"
-        else
-          # Fallback: show placeholder if QR generation failed
-          content += "<rect x=\"#{padding}\" y=\"#{padding}\" width=\"#{qr_size}\" height=\"#{qr_size}\" fill=\"#e0e0e0\" stroke=\"#666\" stroke-width=\"0.5\" rx=\"2\"/>"
-          content += "<text x=\"#{padding + qr_size/2}\" y=\"#{padding + qr_size/2}\" font-family=\"Arial\" font-size=\"8pt\" fill=\"#666\" text-anchor=\"middle\" dominant-baseline=\"middle\">QR</text>"
-        end
+        # Embed the SVG content inside a group positioned correctly
+        # We assume qr_svg is a full <svg> string, so we wrap it to position it
+        content += "<g transform=\"translate(#{padding}, #{padding})\">"
+        # We need to ensure the embedded SVG inherits the correct size or is handled by browser/viewer
+        # The qr_generator already sets width/height in mm, which works in most SVG viewers
+        content += qr_svg
+        content += "</g>"
+      elsif @options[:qr_enabled]
+        # Fallback if generation failed
+        content += "<rect x=\"#{padding}\" y=\"#{padding}\" width=\"#{qr_size}\" height=\"#{qr_size}\" fill=\"#e0e0e0\" stroke=\"#666\" stroke-width=\"0.5\" rx=\"2\"/>"
+        content += "<text x=\"#{padding + qr_size/2}\" y=\"#{padding + qr_size/2}\" font-family=\"Arial\" font-size=\"8pt\" fill=\"#666\" text-anchor=\"middle\" dominant-baseline=\"middle\">Err</text>"
       end
       
       # Add text content with proper spacing

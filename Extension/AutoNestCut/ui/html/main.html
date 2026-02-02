@@ -97,6 +97,8 @@
         .report-stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-color: #cbd5e1;
+            cursor: pointer;
         }
         
         .report-stat-label {
@@ -147,36 +149,48 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
         
-        /* Table Styling */
+        /* Table Styling - Consistent behavior for all report tables */
         .report-table-container table {
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
-            table-layout: fixed;
+            table-layout: auto; /* Auto layout for content-based sizing */
+            direction: ltr; /* Force left-to-right */
+        }
+        
+        .report-table-container {
+            overflow-x: auto; /* Enable horizontal scroll when needed */
+            overflow-y: visible;
+            direction: ltr; /* Force left-to-right */
         }
         
         .report-table-container th {
-            text-align: left;
+            text-align: left !important; /* Force left alignment */
             padding: 12px 20px;
             font-weight: 600;
             color: #64748b;
             border-bottom: 1px solid #e2e8f0;
             background: #ffffff;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            white-space: normal; /* Allow headers to wrap */
+            word-wrap: break-word;
+            line-height: 1.4;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            direction: ltr; /* Force left-to-right */
         }
         
         .report-table-container td {
+            text-align: left !important; /* Force left alignment */
             padding: 12px 20px;
             color: #0f172a;
             border-bottom: 1px solid #e2e8f0;
-            vertical-align: middle;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            vertical-align: top;
+            white-space: normal; /* Allow text wrapping in cells */
+            word-wrap: break-word; /* Break long words */
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            direction: ltr; /* Force left-to-right */
         }
         
         .report-table-container tr:last-child td {
@@ -218,20 +232,21 @@
         /* Additional styles for new design */
         .section {
             background: #ffffff;
-            border: 1px solid #d0d7de;
-            border-radius: 6px;
-            margin-bottom: 40px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            overflow: hidden;
         }
         .section-header {
             padding: 14px 18px;
-            background: #f6f8fa;
-            border-bottom: 1px solid #d0d7de;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
         }
-        .section-header:hover { background: #f1f5f9; }
+        .section-header:hover { background: #f8fafc; }
         .section-title { font-size: 15px; font-weight: 600; color: #24292e; }
         .section-toggle { font-size: 13px; color: #656d76; }
         .section-content { 
@@ -604,35 +619,122 @@
             background: #1a1a1a;
         }
         
-        /* Google Sheets-style Table for Stock Materials */
+        /* Modern Table Styling - Unified across Config and Report */
         .google-sheets-table {
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            font-size: 14px;
+            border-collapse: collapse;
+            font-size: 13px;
+            table-layout: auto; /* Auto layout for smart column sizing */
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
         
         .google-sheets-table thead {
-            background: #F2F2F2;
+            background: #ffffff !important;
             position: sticky;
             top: 0;
             z-index: 200;
         }
         
         .google-sheets-table th {
-            padding: 14px 16px;
+            padding: 12px 20px;
             text-align: left;
-            font-weight: 700;
+            font-weight: 600;
             font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #64748B;
-            border-bottom: 1px solid #E2E8F0;
+            font-size: 13px;
+            text-transform: none;
+            letter-spacing: normal;
+            color: #64748b !important;
+            border-bottom: 1px solid #e2e8f0;
             white-space: nowrap;
-            background: #F2F2F2;
+            background: #ffffff !important;
             position: relative;
             z-index: 200;
+        }
+        
+        /* Smart column width hints - let browser calculate optimal widths */
+        /* Numeric columns (IDs, quantities, dimensions) should be narrow */
+        .google-sheets-table th:nth-child(2), /* Width */
+        .google-sheets-table th:nth-child(3), /* Height */
+        .google-sheets-table th:nth-child(4), /* Thickness */
+        .google-sheets-table th:nth-child(6)  /* Qty */
+        {
+            width: 1%; /* Hint: shrink to content */
+            white-space: nowrap;
+        }
+        
+        /* Text columns (names, materials) should expand */
+        .google-sheets-table th:nth-child(1), /* Component/Material Name */
+        .google-sheets-table th:nth-child(5)  /* Material */
+        {
+            width: auto; /* Hint: expand to fill */
+        }
+        
+        /* Price columns need medium width */
+        .google-sheets-table th:nth-child(6)[style*="Price"],
+        #materialsTable th:nth-child(6) /* Price per Sheet */
+        {
+            width: 10%;
+            min-width: 120px;
+        }
+        
+        /* Actions column should be narrow and centered */
+        .google-sheets-table th:last-child {
+            width: 1%;
+            white-space: nowrap;
+            text-align: center;
+        }
+        
+        /* Ensure table cells respect the column hints */
+        .google-sheets-table td {
+            padding: 12px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #0f172a;
+            text-align: left;
+            vertical-align: middle;
+            background: white;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        /* Numeric cells should align right and not wrap */
+        .google-sheets-table td:nth-child(2),
+        .google-sheets-table td:nth-child(3),
+        .google-sheets-table td:nth-child(4),
+        .google-sheets-table td:nth-child(6):not(:last-child)
+        {
+            white-space: nowrap;
+            text-align: right;
+        }
+        
+        /* Actions cell centered */
+        .google-sheets-table td:last-child {
+            text-align: center;
+        }
+        
+        /* Hide all table customization controls in config tab */
+        #configTab .table-with-controls .table-controls {
+            display: none !important;
+        }
+        
+        /* Hide column resize handles everywhere */
+        .column-resize-handle {
+            display: none !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+        
+        /* Remove resize cursor from table headers */
+        .google-sheets-table th {
+            cursor: default !important;
+        }
+        
+        /* Hide the visual separator lines that might look like resize handles */
+        .google-sheets-table th::after {
+            display: none !important;
+        }
+        
+        /* Search clear button hover effect */
+        #clearSearchBtn:hover {
+            color: #0f172a !important;
         }
         
         .google-sheets-table th:nth-child(1) { width: auto; min-width: 200px; } /* Material/Component Name - Auto width */
@@ -644,13 +746,13 @@
         .google-sheets-table th:nth-child(7) { text-align: center; width: 8%; min-width: 80px; } /* Actions */
         
         .google-sheets-table td {
-            padding: 0;
-            border-bottom: 1px solid #E2E8F0;
-            color: #2D3748;
+            padding: 12px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #0f172a;
             text-align: left;
-            vertical-align: top;
+            vertical-align: middle;
             background: white;
-            height: 1px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
         
         .google-sheets-table tbody tr {
@@ -658,58 +760,56 @@
         }
         
         .google-sheets-table tbody tr:hover td {
-            background: rgba(143, 213, 255, 0.03);
+            background: #f8fafc;
         }
         
+        .google-sheets-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* Remove cell-content wrapper - use direct padding */
         .google-sheets-table .cell-content {
-            display: flex;
-            flex-direction: column;
-            min-height: 56px;
-            padding: 10px 16px;
+            display: block;
             width: 100%;
-            height: 100%;
-            justify-content: center;
-            position: relative;
         }
         
         .google-sheets-table .material-name-cell .cell-content {
-            justify-content: flex-start;
-            gap: 4px;
+            display: block;
         }
         
         .google-sheets-table .data-input {
             font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            color: rgb(45, 55, 72);
+            font-size: 13px;
+            font-weight: 400;
+            color: #0f172a;
             background: transparent;
-            border: 2px solid transparent;
+            border: 1px solid transparent;
             border-radius: 4px;
             cursor: text;
             width: 100%;
             resize: none;
             overflow: hidden;
             line-height: 1.5;
-            padding: 4px;
-            margin: -6px;
-            margin-bottom: 0;
+            padding: 0;
+            margin: 0;
             display: block;
-            white-space: pre-wrap;
-            word-break: break-word;
-            overflow-wrap: break-word;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .google-sheets-table .data-input:focus {
             outline: none;
-            border-color: #8FD5FF;
-            background: white;
+            border-color: #3b82f6;
+            background: #f8fafc;
             z-index: 2;
             position: relative;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
         }
         
         .google-sheets-table .material-name-cell .data-input {
-            color: #E46D3A;
-            font-weight: 700;
+            color: #0f172a;
+            font-weight: 600;
         }
         
         .google-sheets-table textarea.data-input {
@@ -892,16 +992,6 @@
                             <label>Prepared By</label>
                             <input type="text" id="prepared_by" value="Int. Arch. M.Shkeir">
                         </div>
-                        <div class="form-group">
-                            <label>Kerf Width (mm)</label>
-                            <input type="number" id="kerf_width" value="3.0" step="0.1">
-                        </div>
-                    </div>
-                    <div class="form-group" style="margin-top: 10px;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="allow_rotation" checked>
-                            <span style="font-size: 14px; color: #24292e;">Allow part rotation</span>
-                        </label>
                     </div>
                 </div>
             </div>
@@ -925,41 +1015,24 @@
                     <span class="section-title">Components Found (<span id="totalComponentsCount">0</span>)</span>
                     <span class="section-toggle"></span>
                 </div>
-                <div class="section-content">
-                    <div class="table-with-controls">
-                        <div class="table-controls">
-                            <button class="icon-btn" onclick="openTableCustomization('componentsTable')" title="Customize Table">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                    <path d="M9 9h6v6H9z"/>
-                                    <path d="M9 3v6M15 3v6M21 9H3M21 15H3"/>
-                                </svg>
-                            </button>
-                            <button class="icon-btn" onclick="copyTableAsMarkdown('componentsTable')" title="Copy Markdown">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-                                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-                                </svg>
-                            </button>
-                        </div>
-                        <div style="overflow-y: auto; max-height: 400px;">
-                            <table id="componentsTable">
-                                <thead>
-                                    <tr>
-                                        <th>Component</th>
-                                        <th>Width (mm)</th>
-                                        <th>Height (mm)</th>
-                                        <th>Thickness (mm)</th>
-                                        <th>Material</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="componentsTableBody">
-                                    <tr>
-                                        <td colspan="5" style="text-align: center; color: #656d76; padding: 20px;">No components found</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                <div class="section-content" style="padding: 0;">
+                    <div style="overflow-y: auto; overflow-x: auto; max-height: 400px;">
+                        <table class="google-sheets-table" id="componentsTable">
+                            <thead>
+                                <tr>
+                                    <th>Component</th>
+                                    <th>Width (mm)</th>
+                                    <th>Height (mm)</th>
+                                    <th>Thickness (mm)</th>
+                                    <th>Material</th>
+                                </tr>
+                            </thead>
+                            <tbody id="componentsTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: #656d76; padding: 20px;">No components found</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -971,42 +1044,25 @@
                     <span class="section-toggle"></span>
                 </div>
                 <div class="section-content" style="padding: 0;">
-                    <div class="table-with-controls">
-                        <div class="table-controls">
-                            <button class="icon-btn" onclick="openTableCustomization('partsPreviewTable')" title="Customize Table">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                    <path d="M9 9h6v6H9z"/>
-                                    <path d="M9 3v6M15 3v6M21 9H3M21 15H3"/>
-                                </svg>
-                            </button>
-                            <button class="icon-btn" onclick="copyTableAsMarkdown('partsPreviewTable')" title="Copy Markdown">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-                                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-                                </svg>
-                            </button>
-                        </div>
-                        <div style="overflow-y: auto; overflow-x: auto; max-height: 600px;">
-                            <table class="google-sheets-table" id="partsPreviewTable">
-                                <thead>
-                                    <tr>
-                                        <th>Component Name</th>
-                                        <th>Width (mm)</th>
-                                        <th>Height (mm)</th>
-                                        <th>Thickness (mm)</th>
-                                        <th>Material</th>
-                                        <th>Qty</th>
-                                        <th>Area (m²)</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="partsTableBody">
-                                    <tr>
-                                        <td colspan="7" style="text-align: center; color: #656d76; padding: 20px;">No parts to display</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    <div style="overflow-y: auto; overflow-x: auto; max-height: 600px;">
+                        <table class="google-sheets-table" id="partsPreviewTable">
+                            <thead>
+                                <tr>
+                                    <th>Component Name</th>
+                                    <th>Width (mm)</th>
+                                    <th>Height (mm)</th>
+                                    <th>Thickness (mm)</th>
+                                    <th>Material</th>
+                                    <th>Qty</th>
+                                    <th>Area (m²)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="partsTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: #656d76; padding: 20px;">No parts to display</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -1018,48 +1074,36 @@
                     <span class="section-toggle"></span>
                 </div>
                 <div class="section-content" style="padding: 0;">
-                    <div class="table-with-controls">
-                        <div class="table-controls">
-                            <button type="button" onclick="exportDatabase()" class="icon-btn" title="Export Database">
+                    <div style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; position: relative;">
+                        <div style="position: relative; display: inline-block; width: 100%; max-width: 400px;">
+                            <input type="text" id="materialSearchInput" placeholder="Search materials..." oninput="handleMaterialSearch()" style="width: 100%; padding: 8px 32px 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px;">
+                            <button id="clearSearchBtn" onclick="clearMaterialSearch()" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 4px; display: none; color: #64748b; transition: color 0.2s; line-height: 0;" title="Clear search">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
                                 </svg>
                             </button>
-                            <button class="icon-btn" onclick="openTableCustomization('materialsTable')" title="Customize Table">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                    <path d="M9 9h6v6H9z"/>
-                                    <path d="M9 3v6M15 3v6M21 9H3M21 15H3"/>
-                                </svg>
-                            </button>
-                            <button class="icon-btn" onclick="copyTableAsMarkdown('materialsTable')" title="Copy Markdown">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-                                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-                                </svg>
-                            </button>
-                            <input type="text" id="materialSearchInput" placeholder="Search materials..." oninput="displayMaterials()" style="flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 13px; margin-left: auto;">
                         </div>
-                        <div style="overflow-y: auto; overflow-x: auto; max-height: 600px;">
-                            <table class="google-sheets-table" id="materialsTable">
-                                <thead>
-                                    <tr>
-                                        <th>Material Name</th>
-                                        <th>Width (mm)</th>
-                                        <th>Height (mm)</th>
-                                        <th>Thickness (mm)</th>
-                                        <th>Density (kg/m³)</th>
-                                        <th>Price per Sheet</th>
-                                        <th style="text-align: center;">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="materials_tbody">
-                                    <tr>
-                                        <td colspan="7" style="text-align: center; color: #656d76; padding: 20px;">No materials available</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    </div>
+                    <div style="overflow-y: auto; overflow-x: auto; max-height: 600px;">
+                        <table class="google-sheets-table" id="materialsTable">
+                            <thead>
+                                <tr>
+                                    <th>Material Name</th>
+                                    <th>Width (mm)</th>
+                                    <th>Height (mm)</th>
+                                    <th>Thickness (mm)</th>
+                                    <th>Density (kg/m³)</th>
+                                    <th>Price per Sheet</th>
+                                    <th style="text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="materials_tbody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: #656d76; padding: 20px;">No materials available</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -1338,88 +1382,70 @@
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeSettings()">&times;</span>
+            <h2 style="margin: 0 0 20px 0; font-size: 20px; font-weight: 600; color: #0f172a;">Settings</h2>
+
+            <div class="settings-section">
+                <h3>Nesting Settings</h3>
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>Kerf Width (mm)</label>
+                        <input type="number" id="settingsKerfWidth" value="3.0" step="0.1" class="sort-select" style="width: 100%;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-top: 24px;">
+                            <input type="checkbox" id="settingsAllowRotation" checked>
+                            <span style="font-size: 14px; color: #24292e;">Allow part rotation</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
 
             <div class="settings-section">
                 <h3>Units</h3>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <select id="settingsUnits" class="sort-select">
-                        <option value="mm">Millimeters (mm)</option>
-                        <option value="cm">Centimeters (cm)</option>
-                        <option value="m">Meters (m)</option>
-                        <option value="in">Inches (in)</option>
-                        <option value="ft">Feet (ft)</option>
-                    </select>
-                    <button onclick="updateUnits()" class="icon-btn" title="Update Units">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-                            <path d="M21 3v5h-5"/>
-                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-                            <path d="M3 21v-5h5"/>
-                        </svg>
-                    </button>
-                </div>
+                <select id="settingsUnits" class="sort-select" style="width: 100%;">
+                    <option value="mm">Millimeters (mm)</option>
+                    <option value="cm">Centimeters (cm)</option>
+                    <option value="m">Meters (m)</option>
+                    <option value="in">Inches (in)</option>
+                    <option value="ft">Feet (ft)</option>
+                </select>
             </div>
+            
             <div class="settings-section">
                 <h3>Precision</h3>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <select id="settingsPrecision" class="sort-select">
-                        <option value="0">0</option>
-                        <option value="1">0.0</option>
-                        <option value="2">0.00</option>
-                        <option value="3">0.000</option>
-                    </select>
-                    <button onclick="updatePrecision()" class="icon-btn" title="Update Precision">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-                            <path d="M21 3v5h-5"/>
-                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-                            <path d="M3 21v-5h5"/>
-                        </svg>
-                    </button>
-                </div>
+                <select id="settingsPrecision" class="sort-select" style="width: 100%;">
+                    <option value="0">0</option>
+                    <option value="1">0.0</option>
+                    <option value="2">0.00</option>
+                    <option value="3">0.000</option>
+                </select>
             </div>
+            
             <div class="settings-section">
                 <h3>Area Units</h3>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <select id="settingsAreaUnits" class="sort-select">
-                        <option value="mm2">Square Millimeters (mm²)</option>
-                        <option value="cm2">Square Centimeters (cm²)</option>
-                        <option value="m2">Square Meters (m²)</option>
-                        <option value="in2">Square Inches (in²)</option>
-                        <option value="ft2">Square Feet (ft²)</option>
-                    </select>
-                    <button onclick="updateAreaUnits()" class="icon-btn" title="Update Area Units">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-                            <path d="M21 3v5h-5"/>
-                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-                            <path d="M3 21v-5h5"/>
-                        </svg>
-                    </button>
-                </div>
+                <select id="settingsAreaUnits" class="sort-select" style="width: 100%;">
+                    <option value="mm2">Square Millimeters (mm²)</option>
+                    <option value="cm2">Square Centimeters (cm²)</option>
+                    <option value="m2">Square Meters (m²)</option>
+                    <option value="in2">Square Inches (in²)</option>
+                    <option value="ft2">Square Feet (ft²)</option>
+                </select>
             </div>
+            
             <div class="settings-section">
                 <h3>Default Currency</h3>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <select id="settingsCurrency" class="sort-select">
-                        <option value="USD">USD ($)</option>
-                        <option value="EUR">EUR (€)</option>
-                        <option value="SAR">SAR (ر.س)</option>
-                        <option value="AED">AED (د.إ)</option>
-                        <option value="GBP">GBP (£)</option>
-                    </select>
-                    <button onclick="updateCurrency()" class="icon-btn" title="Update Currency">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-                            <path d="M21 3v5h-5"/>
-                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-                            <path d="M3 21v-5h5"/>
-                        </svg>
-                    </button>
-                </div>
+                <select id="settingsCurrency" class="sort-select" style="width: 100%;">
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="SAR">SAR (ر.س)</option>
+                    <option value="AED">AED (د.إ)</option>
+                    <option value="GBP">GBP (£)</option>
+                </select>
             </div>
-            <div class="settings-buttons">
-                <button onclick="closeSettings()" class="primary">Close</button>
+            
+            <div class="settings-buttons" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                <button onclick="closeSettings()" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">Cancel</button>
+                <button onclick="saveAllSettings()" class="primary" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">Save Changes</button>
             </div>
         </div>
     </div>
@@ -3207,6 +3233,7 @@
     <script src="svg_diagram_generator.js"></script>
     <script src="diagrams_report.js?v=20250201_AGGRESSIVE_FIX"></script>
     <script src="card_visualizations.js"></script>
+    <script src="card_visualizations_extended.js"></script>
     <script src="resizer_fix.js"></script>
     <script src="table_customization.js"></script>
     <script src="export_validator.js"></script>
@@ -3321,6 +3348,12 @@
                     setTimeout(() => {
                         if (typeof reinitializeTableCustomization === 'function') {
                             reinitializeTableCustomization();
+                        }
+                        
+                        // Initialize card visualizations (modals for summary cards)
+                        if (typeof initializeCardVisualizations === 'function') {
+                            console.log('Initializing card visualizations');
+                            initializeCardVisualizations();
                         }
                     }, 300);
                 }, 100);
@@ -3536,6 +3569,279 @@
         function closeMaterialWarning() {
             document.getElementById('materialWarningModal').style.display = 'none';
         }
+        
+        // ========================================
+        // SUMMARY CARD MODAL FUNCTIONS
+        // ========================================
+        
+        function openCostModal() {
+            if (!g_reportData || !g_reportData.unique_board_types) {
+                alert('No cost data available. Please generate a report first.');
+                return;
+            }
+            
+            const modal = document.getElementById('costModal');
+            const content = document.getElementById('costModalContent');
+            const boardTypes = g_reportData.unique_board_types;
+            const currency = g_reportData.summary?.currency || window.defaultCurrency || 'USD';
+            const currencySymbol = window.currencySymbols[currency] || currency;
+            
+            let html = '<div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px;">';
+            html += '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="border-bottom: 2px solid #e2e8f0;">';
+            html += '<th style="padding: 12px; text-align: left; font-weight: 600; color: #475569;">Material</th>';
+            html += '<th style="padding: 12px; text-align: right; font-weight: 600; color: #475569;">Sheets</th>';
+            html += '<th style="padding: 12px; text-align: right; font-weight: 600; color: #475569;">Price/Sheet</th>';
+            html += '<th style="padding: 12px; text-align: right; font-weight: 600; color: #475569;">Total Cost</th>';
+            html += '</tr></thead><tbody>';
+            
+            let totalCost = 0;
+            boardTypes.forEach((board, index) => {
+                const bgColor = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+                html += `<tr style="background: ${bgColor}; border-bottom: 1px solid #e2e8f0;">`;
+                html += `<td style="padding: 12px; color: #0f172a; font-weight: 500;">${escapeHtml(board.material)}</td>`;
+                html += `<td style="padding: 12px; text-align: right; color: #0f172a;">${board.count}</td>`;
+                html += `<td style="padding: 12px; text-align: right; color: #0f172a;">${currencySymbol}${formatNumber(board.price_per_sheet || 0, 2)}</td>`;
+                html += `<td style="padding: 12px; text-align: right; color: #0f172a; font-weight: 600;">${currencySymbol}${formatNumber(board.total_cost || 0, 2)}</td>`;
+                html += '</tr>';
+                totalCost += board.total_cost || 0;
+            });
+            
+            html += '<tr style="background: #dbeafe; border-top: 2px solid #3b82f6;">';
+            html += '<td colspan="3" style="padding: 12px; font-weight: 700; color: #1e40af;">TOTAL PROJECT COST</td>';
+            html += `<td style="padding: 12px; text-align: right; font-weight: 700; color: #1e40af; font-size: 16px;">${currencySymbol}${formatNumber(totalCost, 2)}</td>`;
+            html += '</tr>';
+            html += '</tbody></table></div>';
+            
+            content.innerHTML = html;
+            modal.style.display = 'block';
+        }
+        
+        function closeCostModal() {
+            document.getElementById('costModal').style.display = 'none';
+        }
+        
+        function openEfficiencyModal() {
+            if (!g_reportData || !g_boardsData) {
+                alert('No efficiency data available. Please generate a report first.');
+                return;
+            }
+            
+            const modal = document.getElementById('efficiencyModal');
+            const content = document.getElementById('efficiencyModalContent');
+            const boards = g_boardsData;
+            
+            // Group boards by material
+            const materialStats = {};
+            boards.forEach(board => {
+                const material = board.material;
+                if (!materialStats[material]) {
+                    materialStats[material] = {
+                        totalBoards: 0,
+                        totalEfficiency: 0,
+                        totalWaste: 0,
+                        totalUsedArea: 0,
+                        totalWasteArea: 0
+                    };
+                }
+                materialStats[material].totalBoards++;
+                materialStats[material].totalEfficiency += board.efficiency_percentage || 0;
+                materialStats[material].totalWaste += board.waste_percentage || 0;
+                materialStats[material].totalUsedArea += board.used_area || 0;
+                materialStats[material].totalWasteArea += board.waste_area || 0;
+            });
+            
+            let html = '<div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px;">';
+            html += '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="border-bottom: 2px solid #e2e8f0;">';
+            html += '<th style="padding: 12px; text-align: left; font-weight: 600; color: #475569;">Material</th>';
+            html += '<th style="padding: 12px; text-align: right; font-weight: 600; color: #475569;">Sheets</th>';
+            html += '<th style="padding: 12px; text-align: right; font-weight: 600; color: #475569;">Avg Efficiency</th>';
+            html += '<th style="padding: 12px; text-align: right; font-weight: 600; color: #475569;">Avg Waste</th>';
+            html += '<th style="padding: 12px; text-align: right; font-weight: 600; color: #475569;">Used Area</th>';
+            html += '<th style="padding: 12px; text-align: right; font-weight: 600; color: #475569;">Waste Area</th>';
+            html += '</tr></thead><tbody>';
+            
+            let index = 0;
+            for (const material in materialStats) {
+                const stats = materialStats[material];
+                const avgEfficiency = stats.totalEfficiency / stats.totalBoards;
+                const avgWaste = stats.totalWaste / stats.totalBoards;
+                const bgColor = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+                const efficiencyColor = avgEfficiency >= 80 ? '#10b981' : avgEfficiency >= 60 ? '#f59e0b' : '#ef4444';
+                
+                html += `<tr style="background: ${bgColor}; border-bottom: 1px solid #e2e8f0;">`;
+                html += `<td style="padding: 12px; color: #0f172a; font-weight: 500;">${escapeHtml(material)}</td>`;
+                html += `<td style="padding: 12px; text-align: right; color: #0f172a;">${stats.totalBoards}</td>`;
+                html += `<td style="padding: 12px; text-align: right; color: ${efficiencyColor}; font-weight: 600;">${formatNumber(avgEfficiency, 1)}%</td>`;
+                html += `<td style="padding: 12px; text-align: right; color: #ef4444;">${formatNumber(avgWaste, 1)}%</td>`;
+                html += `<td style="padding: 12px; text-align: right; color: #0f172a;">${formatNumber(stats.totalUsedArea / 1000000, 2)} m²</td>`;
+                html += `<td style="padding: 12px; text-align: right; color: #0f172a;">${formatNumber(stats.totalWasteArea / 1000000, 2)} m²</td>`;
+                html += '</tr>';
+                index++;
+            }
+            
+            html += '</tbody></table></div>';
+            
+            // Add overall summary
+            const overallEfficiency = g_reportData.summary?.overall_efficiency || 0;
+            html += '<div style="background: #d1fae5; border-radius: 8px; padding: 16px; border-left: 4px solid #10b981;">';
+            html += '<div style="display: flex; justify-content: space-between; align-items: center;">';
+            html += '<span style="font-weight: 600; color: #065f46;">Overall Project Efficiency:</span>';
+            html += `<span style="font-size: 24px; font-weight: 700; color: #065f46;">${formatNumber(overallEfficiency, 1)}%</span>`;
+            html += '</div></div>';
+            
+            content.innerHTML = html;
+            modal.style.display = 'block';
+        }
+        
+        function closeEfficiencyModal() {
+            document.getElementById('efficiencyModal').style.display = 'none';
+        }
+        
+        function openSheetsModal() {
+            if (!g_reportData || !g_reportData.unique_board_types) {
+                alert('No sheet data available. Please generate a report first.');
+                return;
+            }
+            
+            const modal = document.getElementById('sheetsModal');
+            const content = document.getElementById('sheetsModalContent');
+            const boardTypes = g_reportData.unique_board_types;
+            const reportUnits = window.currentUnits || 'mm';
+            const reportPrecision = window.currentPrecision ?? 1;
+            
+            let html = '<div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px;">';
+            html += '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="border-bottom: 2px solid #e2e8f0;">';
+            html += '<th style="padding: 12px; text-align: left; font-weight: 600; color: #475569;">Material</th>';
+            html += `<th style="padding: 12px; text-align: left; font-weight: 600; color: #475569;">Dimensions (${reportUnits})</th>`;
+            html += '<th style="padding: 12px; text-align: right; font-weight: 600; color: #475569;">Thickness</th>';
+            html += '<th style="padding: 12px; text-align: right; font-weight: 600; color: #475569;">Quantity</th>';
+            html += '<th style="padding: 12px; text-align: right; font-weight: 600; color: #475569;">Total Area</th>';
+            html += '</tr></thead><tbody>';
+            
+            let totalSheets = 0;
+            boardTypes.forEach((board, index) => {
+                const bgColor = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+                const width = (board.stock_width || 0) / window.unitFactors[reportUnits];
+                const height = (board.stock_height || 0) / window.unitFactors[reportUnits];
+                const thickness = (board.thickness || 0) / window.unitFactors[reportUnits];
+                
+                html += `<tr style="background: ${bgColor}; border-bottom: 1px solid #e2e8f0;">`;
+                html += `<td style="padding: 12px; color: #0f172a; font-weight: 500;">${escapeHtml(board.material)}</td>`;
+                html += `<td style="padding: 12px; color: #0f172a;">${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)}</td>`;
+                html += `<td style="padding: 12px; text-align: right; color: #0f172a;">${formatNumber(thickness, reportPrecision)} ${reportUnits}</td>`;
+                html += `<td style="padding: 12px; text-align: right; color: #0f172a; font-weight: 600;">${board.count}</td>`;
+                html += `<td style="padding: 12px; text-align: right; color: #0f172a;">${getAreaDisplay(board.total_area)} ${getAreaUnitLabel()}</td>`;
+                html += '</tr>';
+                totalSheets += board.count;
+            });
+            
+            html += '<tr style="background: #fef3c7; border-top: 2px solid #f59e0b;">';
+            html += '<td colspan="3" style="padding: 12px; font-weight: 700; color: #92400e;">TOTAL SHEETS REQUIRED</td>';
+            html += `<td style="padding: 12px; text-align: right; font-weight: 700; color: #92400e; font-size: 16px;">${totalSheets}</td>`;
+            html += '<td></td>';
+            html += '</tr>';
+            html += '</tbody></table></div>';
+            
+            content.innerHTML = html;
+            modal.style.display = 'block';
+        }
+        
+        function closeSheetsModal() {
+            document.getElementById('sheetsModal').style.display = 'none';
+        }
+        
+        function openPartsModal() {
+            if (!g_reportData || !g_reportData.unique_part_types) {
+                alert('No parts data available. Please generate a report first.');
+                return;
+            }
+            
+            const modal = document.getElementById('partsModal');
+            const content = document.getElementById('partsModalContent');
+            const partTypes = g_reportData.unique_part_types;
+            
+            // Group parts by material
+            const materialParts = {};
+            partTypes.forEach(part => {
+                const material = part.material;
+                if (!materialParts[material]) {
+                    materialParts[material] = [];
+                }
+                materialParts[material].push(part);
+            });
+            
+            let html = '';
+            let totalParts = 0;
+            
+            for (const material in materialParts) {
+                const parts = materialParts[material];
+                const materialTotal = parts.reduce((sum, p) => sum + p.total_quantity, 0);
+                totalParts += materialTotal;
+                
+                html += `<div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px; border-left: 4px solid #8b5cf6;">`;
+                html += `<h4 style="margin: 0 0 12px 0; color: #6d28d9; font-size: 16px; font-weight: 600;">${escapeHtml(material)} (${materialTotal} parts)</h4>`;
+                html += '<table style="width: 100%; border-collapse: collapse;">';
+                html += '<thead><tr style="border-bottom: 2px solid #e2e8f0;">';
+                html += '<th style="padding: 8px; text-align: left; font-weight: 600; color: #475569; font-size: 13px;">Part Name</th>';
+                html += '<th style="padding: 8px; text-align: right; font-weight: 600; color: #475569; font-size: 13px;">Quantity</th>';
+                html += '<th style="padding: 8px; text-align: right; font-weight: 600; color: #475569; font-size: 13px;">Total Area</th>';
+                html += '</tr></thead><tbody>';
+                
+                parts.forEach((part, index) => {
+                    const bgColor = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+                    html += `<tr style="background: ${bgColor}; border-bottom: 1px solid #e2e8f0;">`;
+                    html += `<td style="padding: 8px; color: #0f172a; font-size: 13px;">${escapeHtml(part.name)}</td>`;
+                    html += `<td style="padding: 8px; text-align: right; color: #0f172a; font-weight: 600; font-size: 13px;">${part.total_quantity}</td>`;
+                    html += `<td style="padding: 8px; text-align: right; color: #0f172a; font-size: 13px;">${getAreaDisplay(part.total_area)} ${getAreaUnitLabel()}</td>`;
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table></div>';
+            }
+            
+            // Add overall summary
+            html += '<div style="background: #ede9fe; border-radius: 8px; padding: 16px; border-left: 4px solid #8b5cf6;">';
+            html += '<div style="display: flex; justify-content: space-between; align-items: center;">';
+            html += '<span style="font-weight: 600; color: #5b21b6;">Total Parts to Cut:</span>';
+            html += `<span style="font-size: 24px; font-weight: 700; color: #5b21b6;">${totalParts}</span>`;
+            html += '</div>';
+            html += `<div style="margin-top: 8px; font-size: 13px; color: #6d28d9;">Unique Part Types: ${partTypes.length}</div>`;
+            html += '</div>';
+            
+            content.innerHTML = html;
+            modal.style.display = 'block';
+        }
+        
+        function closePartsModal() {
+            document.getElementById('partsModal').style.display = 'none';
+        }
+        
+        // Close modals on ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeCostModal();
+                closeEfficiencyModal();
+                closeSheetsModal();
+                closePartsModal();
+            }
+        });
+        
+        // Close modals on background click
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                if (e.target.id === 'costModal') closeCostModal();
+                if (e.target.id === 'efficiencyModal') closeEfficiencyModal();
+                if (e.target.id === 'sheetsModal') closeSheetsModal();
+                if (e.target.id === 'partsModal') closePartsModal();
+            }
+        });
+        
+        // ========================================
+        // END SUMMARY CARD MODAL FUNCTIONS
+        // ========================================
         
         function toggleComponentsList() {
             const list = document.getElementById('componentsList');
@@ -3953,17 +4259,18 @@
             }
             
             if (allParts.length === 0) {
-                return '<thead><tr><th>Part ID</th><th>Name</th><th>Dimensions</th><th>Material</th><th>Board</th><th>Grain</th><th>Edge Banding</th></tr></thead><tbody><tr><td colspan="7">No detailed parts available</td></tr></tbody>';
+                return '<thead><tr><th>Part ID</th><th>Name</th><th>Dimensions</th><th>Thickness</th><th>Material</th><th>Board</th><th>Grain</th><th>Edge Banding</th></tr></thead><tbody><tr><td colspan="8">No detailed parts available</td></tr></tbody>';
             }
             
             const reportUnits = window.currentUnits || 'mm';
             const reportPrecision = window.currentPrecision ?? 1;
             
-            let html = `<thead><tr><th>Part ID</th><th>Name</th><th>Dimensions (${reportUnits})</th><th>Material</th><th>Sheet #</th><th>Grain</th><th>Edge Banding</th></tr></thead><tbody>`;
+            let html = `<thead><tr><th>Part ID</th><th>Name</th><th>Dimensions (${reportUnits})</th><th>Thickness (${reportUnits})</th><th>Material</th><th>Sheet #</th><th>Grain</th><th>Edge Banding</th></tr></thead><tbody>`;
             
             allParts.forEach((part, index) => {
                 const width = (part.width || 0) / window.unitFactors[reportUnits];
                 const height = (part.height || 0) / window.unitFactors[reportUnits];
+                const thickness = (part.thickness || 0) / window.unitFactors[reportUnits];
                 const partId = part.part_unique_id || part.instance_id || `P${index + 1}`;
                 
                 // Handle edge banding display - use edge_banding_display if available
@@ -3986,6 +4293,7 @@
                     <td>${escapeHtml(partId)}</td>
                     <td>${escapeHtml(part.name)}</td>
                     <td>${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)}</td>
+                    <td>${formatNumber(thickness, reportPrecision)}</td>
                     <td>${escapeHtml(part.material)}</td>
                     <td>${part.board_number}</td>
                     <td>${escapeHtml(part.grain_direction || 'Any')}</td>
@@ -4769,38 +5077,7 @@ button:hover {
     border-right: 1px solid #d0d7de;
 }
 .column-resize-handle {
-    position: absolute;
-    top: 0;
-    right: -3px;
-    width: 6px;
-    height: 100%;
-    cursor: col-resize;
-    background: rgba(0, 124, 186, 0.2);
-    border-right: 1px solid rgba(0, 124, 186, 0.4);
-    z-index: 10;
-    transition: all 0.2s ease;
-}
-.column-resize-handle:hover {
-    background: rgba(0, 124, 186, 0.6);
-    border-right: 2px solid #007cba;
-    width: 8px;
-    right: -4px;
-}
-.column-resize-handle.resizing {
-    background: #007cba;
-    border-right: 2px solid #005a87;
-    width: 8px;
-    right: -4px;
-}
-.table-with-controls .column-resize-handle {
-    opacity: 0.6;
-}
-.table-with-controls:hover .column-resize-handle {
-    opacity: 0.8;
-}
-.table-with-controls .column-resize-handle:hover {
-    opacity: 1;
-    transform: scaleX(1.2);
+    display: none !important;
 }
 .table-with-controls table th:not(:last-child)::after {
     content: '';
