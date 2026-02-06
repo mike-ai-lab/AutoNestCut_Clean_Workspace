@@ -283,24 +283,21 @@ module AutoNestCut
         original_selection = model.selection.to_a
         model.selection.clear
         
-        # Create test components in a temporary group to isolate them
-        test_group = model.active_entities.add_group
-        test_entities = test_group.entities
-        
-        # Create test components
+        # Create test components directly in model (not in group to avoid deleted entities error)
         test_instances = []
         3.times do |i|
           definition = model.definitions.add("AnalyzerTest_#{i}_#{Time.now.to_i}")
           entities = definition.entities
-          face = entities.add_face([0,0,0], [100,0,0], [100,100,0], [0,100,0])
-          face.pushpull(-18)
+          face = entities.add_face([0,0,0], [100.mm,0,0], [100.mm,100.mm,0], [0,100.mm,0])
+          face.pushpull(-18.mm)
           
-          instance = test_entities.add_instance(definition, Geom::Transformation.new([i*200, 0, 0]))
+          instance = model.active_entities.add_instance(definition, Geom::Transformation.new([i*200.mm, 0, 0]))
           test_instances << instance
         end
         
         # Select only test instances
-        model.selection.add(test_instances)
+        model.selection.clear
+        test_instances.each { |inst| model.selection.add(inst) }
         
         # Analyze
         analyzer = ModelAnalyzer.new
@@ -310,7 +307,7 @@ module AutoNestCut
         
         # Cleanup
         model.selection.clear
-        test_group.erase!
+        test_instances.each { |inst| inst.erase! rescue nil }
         model.definitions.purge_unused
         
         # Restore original selection
@@ -374,28 +371,42 @@ module AutoNestCut
       begin
         model = Sketchup.active_model
         
+        # Save current selection
+        original_selection = model.selection.to_a
+        model.selection.clear
+        
         # Create nested structure
         inner_def = model.definitions.add("Inner_#{Time.now.to_i}")
-        face = inner_def.entities.add_face([0,0,0], [100,0,0], [100,100,0], [0,100,0])
-        face.pushpull(-18)
+        face = inner_def.entities.add_face([0,0,0], [100.mm,0,0], [100.mm,100.mm,0], [0,100.mm,0])
+        face.pushpull(-18.mm)
         
         outer_def = model.definitions.add("Outer_#{Time.now.to_i}")
         outer_def.entities.add_instance(inner_def, Geom::Transformation.new)
         
         outer_instance = model.active_entities.add_instance(outer_def, Geom::Transformation.new)
         
+        # Select the outer instance
+        model.selection.clear
+        model.selection.add(outer_instance)
+        
         analyzer = ModelAnalyzer.new
-        parts_by_material = analyzer.analyze_selection(model.selection.add(outer_instance))
+        parts_by_material = analyzer.analyze_selection(model.selection)
         
         # Should handle nested components
         assert(!parts_by_material.empty?, "Should analyze nested components")
         
         # Cleanup
+        model.selection.clear
         outer_instance.erase!
         model.definitions.purge_unused
         
+        # Restore original selection
+        model.selection.add(original_selection) unless original_selection.empty?
+        
         pass_test(test_name)
       rescue => e
+        model.selection.clear rescue nil
+        model.definitions.purge_unused rescue nil
         fail_test(test_name, e)
       end
     end
@@ -414,15 +425,15 @@ module AutoNestCut
           parts << part
         end
         
-        # Create board
-        board = Board.new(2440, 1220, 18, "Plywood")
+        # Create board with correct parameter order: (material, width, height)
+        board = Board.new("Plywood", 2440, 1220)
         
         # Nest parts
         nester = Nester.new
         result = nester.nest_parts(parts, [board])
         
         assert(result[:boards].length > 0, "Should create at least one board")
-        assert(result[:boards][0].parts.length > 0, "Board should have parts")
+        assert(result[:boards][0].parts_on_board.length > 0, "Board should have parts")
         
         pass_test(test_name)
       rescue => e
@@ -437,12 +448,12 @@ module AutoNestCut
         part = create_mock_part(1500, 800, 18, "Plywood")
         part.grain_direction = 'Any' # Allow rotation
         
-        board = Board.new(2440, 1220, 18, "Plywood")
+        board = Board.new("Plywood", 2440, 1220)
         
         nester = Nester.new
         result = nester.nest_parts([part], [board])
         
-        assert(result[:boards][0].parts.length > 0, "Part should fit with rotation")
+        assert(result[:boards][0].parts_on_board.length > 0, "Part should fit with rotation")
         
         pass_test(test_name)
       rescue => e
@@ -470,7 +481,7 @@ module AutoNestCut
       begin
         # Create part larger than board
         part = create_mock_part(3000, 2000, 18, "Plywood")
-        board = Board.new(2440, 1220, 18, "Plywood")
+        board = Board.new("Plywood", 2440, 1220)
         
         nester = Nester.new
         result = nester.nest_parts([part], [board])
@@ -491,11 +502,11 @@ module AutoNestCut
       test_name = "Report Generation"
       begin
         # Create mock boards with parts
-        board = Board.new(2440, 1220, 18, "Plywood")
+        board = Board.new("Plywood", 2440, 1220)
         part = create_mock_part(400, 300, 18, "Plywood")
         part.x = 0
         part.y = 0
-        board.add_part(part)
+        board.add_part(part, 0, 0)
         
         # Generate report
         generator = ReportGenerator.new
@@ -514,11 +525,11 @@ module AutoNestCut
     def self.test_report_data_integrity
       test_name = "Report Data Integrity"
       begin
-        board = Board.new(2440, 1220, 18, "Plywood")
+        board = Board.new("Plywood", 2440, 1220)
         part = create_mock_part(400, 300, 18, "Plywood")
         part.x = 0
         part.y = 0
-        board.add_part(part)
+        board.add_part(part, 0, 0)
         
         generator = ReportGenerator.new
         report_data = generator.generate_report_data([board], {})
