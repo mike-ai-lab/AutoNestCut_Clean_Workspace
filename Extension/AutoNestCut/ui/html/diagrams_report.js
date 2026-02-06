@@ -2247,84 +2247,75 @@ function initReportAssemblyViewer() {
     console.log('Report assembly viewer initialized');
 }
 
-// CRITICAL FIX: Create mapping between 3D viewer parts and diagram parts
-// This function matches 3D viewer parts to their corresponding diagram part IDs (P27, P28, P29, P30)
+// CRITICAL: Direct ID mapping using backend-provided unique IDs
+// No matching needed - backend provides the SAME persistent_id for both 3D viewer and diagram parts
 function createPartIdMapping() {
     if (!window.reportAssemblyGroups || !g_boardsData) {
         console.warn('⚠️ Cannot create ID mapping - missing data');
         return;
     }
     
-    console.log('🔗 Creating ID mapping between 3D viewer and diagrams...');
-    
-    // Collect all diagram parts with their IDs
-    const diagramParts = [];
-    g_boardsData.forEach((board, boardIndex) => {
-        const parts = board.parts || [];
-        parts.forEach(part => {
-            const partId = part.part_unique_id || part.instance_id || part.part_number;
-            if (partId) {
-                diagramParts.push({
-                    id: partId,
-                    name: part.name,
-                    material: part.material,
-                    width: parseFloat(part.width) || 0,
-                    height: parseFloat(part.height) || 0,
-                    thickness: parseFloat(part.thickness) || 0,
-                    boardNumber: boardIndex + 1
-                });
-            }
-        });
-    });
-    
+    console.log('🔗 Creating ID mapping using backend unique IDs...');
     console.log(`📊 Found ${diagramParts.length} diagram parts with IDs`);
     console.log(`🎨 Found ${window.reportAssemblyGroups.length} 3D viewer parts`);
     
-    // Match each 3D viewer part to a diagram part
+    // Create a lookup map of diagram parts by their unique_id
+    const diagramPartsMap = new Map();
+    diagramParts.forEach(part => {
+        if (part.unique_id) {
+            diagramPartsMap.set(part.unique_id, part.id); // Map unique_id -> diagram ID (P27, P28, etc.)
+        }
+    });
+    
+    console.log(`📋 Created diagram lookup map with ${diagramPartsMap.size} entries`);
+    
+    // Match each 3D viewer part using its viewer_unique_id
     let matchCount = 0;
-    const usedDiagramIds = new Set();
+    const unmatchedParts = [];
     
     window.reportAssemblyGroups.forEach((group, index) => {
         const viewerPart = group.userData;
-        const viewerName = viewerPart.partName;
-        const viewerMaterial = viewerPart.materialName;
-        const viewerDims = [
-            parseFloat(viewerPart.width) || 0,
-            parseFloat(viewerPart.height) || 0,
-            parseFloat(viewerPart.thickness) || 0
-        ].sort((a, b) => b - a);
+        const viewerUniqueId = viewerPart.viewer_unique_id; // Backend provides this
         
-        // Find matching diagram part (that hasn't been used yet)
-        for (const diagramPart of diagramParts) {
-            // Skip if already matched
-            if (usedDiagramIds.has(diagramPart.id)) continue;
-            
-            // Match by name + material + dimensions
-            const nameMatch = diagramPart.name === viewerName;
-            const materialMatch = diagramPart.material === viewerMaterial;
-            
-            const diagramDims = [diagramPart.width, diagramPart.height, diagramPart.thickness].sort((a, b) => b - a);
-            const tolerance = 2.0; // Increased tolerance to 2mm
-            const dimsMatch = Math.abs(viewerDims[0] - diagramDims[0]) < tolerance &&
-                            Math.abs(viewerDims[1] - diagramDims[1]) < tolerance &&
-                            Math.abs(viewerDims[2] - diagramDims[2]) < tolerance;
-            
-            if (nameMatch && materialMatch && dimsMatch) {
-                // MATCH FOUND!
-                group.userData.uniqueId = diagramPart.id;
-                group.userData.partUniqueId = diagramPart.id;
-                usedDiagramIds.add(diagramPart.id);
-                matchCount++;
-                break;
-            }
+        if (!viewerUniqueId) {
+            console.warn(`⚠️ Group ${index}: No viewer_unique_id found`);
+            unmatchedParts.push({
+                name: viewerPart.partName,
+                reason: 'No viewer_unique_id from backend'
+            });
+            return;
         }
         
-        if (!group.userData.uniqueId) {
-            // Silently skip - not all 3D parts need to match diagram parts
+        // Direct lookup using the unique ID
+        const diagramId = diagramPartsMap.get(viewerUniqueId);
+        
+        if (diagramId) {
+            // PERFECT MATCH using backend IDs!
+            group.userData.uniqueId = diagramId;
+            group.userData.partUniqueId = diagramId;
+            matchCount++;
+            console.log(`✅ Group ${index}: Matched ${viewerPart.partName} -> ${diagramId} (unique_id: ${viewerUniqueId})`);
+        } else {
+            // No diagram part with this unique_id (part might not be in cut list)
+            unmatchedParts.push({
+                name: viewerPart.partName,
+                unique_id: viewerUniqueId,
+                reason: 'Not found in diagram parts (may not be a sheet good)'
+            });
         }
     });
     
     console.log(`🎯 ID Mapping complete: ${matchCount}/${window.reportAssemblyGroups.length} parts matched`);
+    
+    if (unmatchedParts.length > 0) {
+        console.log(`ℹ️ ${unmatchedParts.length} 3D parts not matched (expected for non-sheet-good parts):`);
+        unmatchedParts.slice(0, 5).forEach(p => {
+            console.log(`  - ${p.name} | ${p.reason}`);
+        });
+        if (unmatchedParts.length > 5) {
+            console.log(`  ... and ${unmatchedParts.length - 5} more`);
+        }
+    }
 }
 
 function initAssemblyViewer(geometryData) {

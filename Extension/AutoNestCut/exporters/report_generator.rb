@@ -436,10 +436,16 @@ module AutoNestCut
           part_name = "Part_#{part_counter}"
         end
         
-        # CRITICAL FIX: Generate a stable unique ID for this 3D viewer part
-        # This ID will be used to match with the diagram parts (P27, P28, P29, P30)
-        # Format: "3D_<counter>" to distinguish from diagram IDs
-        viewer_unique_id = "3D_#{part_counter}"
+        # CRITICAL: Use SketchUp's persistent_id as the unique ID
+        # This SAME ID is used in Part.rb, ensuring perfect matching between 3D viewer and diagrams
+        viewer_unique_id = if part.respond_to?(:persistent_id)
+          part.persistent_id.to_s
+        elsif part.respond_to?(:entityID)
+          "entity_#{part.entityID}"
+        else
+          "part_#{part_counter}"
+        end
+        
         part_counter += 1
         
         # Get material name - prioritize actual face materials over component material

@@ -515,7 +515,12 @@ function createPartSVG(part, scale, padding, partIndex, reportUnits, reportPreci
         
         // Then highlight this part in 3D viewer
         if (typeof highlightPartInAssemblyViewer === 'function') {
-            highlightPartInAssemblyViewer(part);
+            // CRITICAL FIX: Ensure part_unique_id is set before passing to 3D viewer
+            const partWithId = {
+                ...part,
+                part_unique_id: partId  // Ensure the ID is always set
+            };
+            highlightPartInAssemblyViewer(partWithId);
         }
     });
     

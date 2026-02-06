@@ -4,7 +4,7 @@ module AutoNestCut
   class Part
     attr_accessor :name, :width, :height, :thickness, :material, :grain_direction, :edge_banding
     attr_reader :original_definition
-    attr_accessor :x, :y, :rotated, :instance_id
+    attr_accessor :x, :y, :rotated, :instance_id, :unique_id  # Added unique_id
     attr_accessor :texture_data # Ensure texture_data is accessible
 
     # Constructor now expects a component_definition_or_instance and optionally a specific Sketchup::Material object
@@ -116,6 +116,15 @@ module AutoNestCut
       @y = 0.0
       @rotated = false
       @instance_id = nil
+      
+      # Generate unique ID from SketchUp's persistent_id or entityID
+      if component_definition_or_instance.respond_to?(:persistent_id)
+        @unique_id = component_definition_or_instance.persistent_id.to_s
+      elsif component_definition_or_instance.respond_to?(:entityID)
+        @unique_id = "entity_#{component_definition_or_instance.entityID}"
+      else
+        @unique_id = "part_#{SecureRandom.uuid}"
+      end
     end
 
     def create_placed_instance
@@ -129,6 +138,7 @@ module AutoNestCut
       placed_part.grain_direction = @grain_direction
       placed_part.edge_banding = @edge_banding
       placed_part.texture_data = @texture_data # Copy texture data too
+      placed_part.unique_id = @unique_id # CRITICAL: Copy the unique ID!
 
       placed_part.instance_id = nil # This is a new placement
       placed_part.x = 0.0
@@ -219,6 +229,7 @@ module AutoNestCut
         y: @y.round(2),
         rotated: @rotated,
         instance_id: @instance_id,
+        unique_id: @unique_id,  # CRITICAL: Include unique_id in hash!
         texture_data: @texture_data # Include texture_data in hash
       }
     end
