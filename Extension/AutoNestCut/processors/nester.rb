@@ -7,6 +7,7 @@ module AutoNestCut
       kerf_width = settings['kerf_width'].to_f || 3.0
       allow_rotation = settings['allow_rotation'] || true
       @progress_callback = progress_callback
+      @current_settings = settings # Store settings for auto-fix updates
       
       total_materials = part_types_by_material_and_quantities.keys.length
       start_time = Time.now
@@ -116,8 +117,35 @@ module AutoNestCut
         else
           unless remaining_parts.empty?
             unplaceable_part = remaining_parts.first
-            error_msg = "Unable to place component '#{unplaceable_part.name}' (#{unplaceable_part.width.round(1)}x#{unplaceable_part.height.round(1)}mm) on sheet (#{stock_width.round(1)}x#{stock_height.round(1)}mm) for material '#{material}'. Check dimensions and kerf settings."
-            raise StandardError, error_msg
+            
+            # AUTO-FIX: Try to automatically resolve the issue
+            auto_fix_result = auto_fix_unplaceable_part(unplaceable_part, material, stock_width, stock_height, kerf_width, allow_rotation)
+            
+            if auto_fix_result[:fixed]
+              # Notify user about the auto-fix
+              report_progress("⚠️ Auto-fixed: #{auto_fix_result[:message]}", base_overall_progress + 50)
+              
+              # Apply the fix and retry with updated dimensions
+              if auto_fix_result[:new_stock_width] && auto_fix_result[:new_stock_height]
+                stock_width = auto_fix_result[:new_stock_width]
+                stock_height = auto_fix_result[:new_stock_height]
+                
+                # Update stock materials config for this material
+                stock_materials_config = @current_settings['stock_materials'] || {}
+                stock_materials_config[material] = {
+                  'width' => stock_width,
+                  'height' => stock_height
+                }
+                @current_settings['stock_materials'] = stock_materials_config
+                
+                # Retry nesting with new dimensions
+                return nest_individual_parts(individual_parts_to_place, material, stock_width, stock_height, kerf_width, allow_rotation, base_overall_progress, total_materials)
+              end
+            else
+              # Could not auto-fix, raise error
+              error_msg = "Unable to place component '#{unplaceable_part.name}' (#{unplaceable_part.width.round(1)}x#{unplaceable_part.height.round(1)}mm) on sheet (#{stock_width.round(1)}x#{stock_height.round(1)}mm) for material '#{material}'. #{auto_fix_result[:reason]}"
+              raise StandardError, error_msg
+            end
           end
           break
         end
@@ -159,6 +187,90 @@ module AutoNestCut
       end
       
       false
+    end
+    
+    # Auto-fix method to handle unplaceable parts gracefully
+    def auto_fix_unplaceable_part(part, material, current_width, current_height, kerf_width, allow_rotation)
+      part_width = part.width
+      part_height = part.height
+      
+      # Calculate required dimensions (with some margin for kerf and spacing)
+      margin = kerf_width * 2 + 10 # Extra margin for safety
+      required_width = part_width + margin
+      required_height = part_height + margin
+      
+      # Check if rotation would help (if not already allowed)
+      if !allow_rotation && part_height > current_height && part_width <= current_height
+        return {
+          fixed: true,
+          message: "Enabled rotation for material '#{material}' to fit component '#{part.name}'",
+          enable_rotation: true
+        }
+      end
+      
+      # Check if part fits with rotation
+      fits_rotated = allow_rotation && (
+        (part_width <= current_width && part_height <= current_height) ||
+        (part_height <= current_width && part_width <= current_height)
+      )
+      
+      if fits_rotated
+        # Part should fit with rotation, might be kerf issue
+        return {
+          fixed: false,
+          reason: "Component should fit with rotation enabled. Try reducing kerf width in settings."
+        }
+      end
+      
+      # Calculate new sheet dimensions needed
+      # For tall components, use the component height as the new sheet dimension
+      new_width = [current_width, required_width, required_height].max
+      new_height = [current_height, required_height, required_width].max
+      
+      # Round up to nearest 100mm for standard sizing
+      new_width = ((new_width / 100.0).ceil * 100).to_f
+      new_height = ((new_height / 100.0).ceil * 100).to_f
+      
+      # For very tall components (like wardrobe panels), be more flexible
+      # Check if this is a tall vertical component
+      is_tall_component = part_height > 2000 || part_width > 2000
+      
+      if is_tall_component
+        # For tall components, just ensure the sheet can accommodate them
+        # Use the larger dimension as width (horizontal on sheet)
+        new_width = [part_width, part_height].max + margin
+        new_height = [part_width, part_height].min + margin
+        
+        # Round up to nearest 100mm
+        new_width = ((new_width / 100.0).ceil * 100).to_f
+        new_height = ((new_height / 100.0).ceil * 100).to_f
+        
+        return {
+          fixed: true,
+          message: "Auto-adjusted sheet size for '#{material}' to #{new_width.round(0)}×#{new_height.round(0)}mm to accommodate tall component '#{part.name}' (#{part_width.round(0)}×#{part_height.round(0)}mm)",
+          new_stock_width: new_width,
+          new_stock_height: new_height
+        }
+      end
+      
+      # For normal components, check if adjustment is reasonable (not more than 100% increase)
+      width_increase = ((new_width - current_width) / current_width * 100).round(1)
+      height_increase = ((new_height - current_height) / current_height * 100).round(1)
+      
+      if width_increase > 100 && height_increase > 100
+        return {
+          fixed: false,
+          reason: "Component is too large (requires #{width_increase}% width increase, #{height_increase}% height increase). Consider splitting the component or using a different material."
+        }
+      end
+      
+      # Auto-fix: Adjust sheet dimensions
+      {
+        fixed: true,
+        message: "Auto-adjusted sheet size for '#{material}' from #{current_width.round(0)}×#{current_height.round(0)}mm to #{new_width.round(0)}×#{new_height.round(0)}mm to fit component '#{part.name}' (#{part_width.round(0)}×#{part_height.round(0)}mm)",
+        new_stock_width: new_width,
+        new_stock_height: new_height
+      }
     end
   end
 end

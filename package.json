@@ -1,0 +1,21 @@
+{
+  "name": "autonestcut_clean_workspace",
+  "version": "1.0.0",
+  "description": "**Automated nesting and cut list generation for sheet goods**",
+  "main": "diagrams_report_from_git.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mike-ai-lab/AutoNestCut_Clean_Workspace.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/mike-ai-lab/AutoNestCut_Clean_Workspace/issues"
+  },
+  "homepage": "https://github.com/mike-ai-lab/AutoNestCut_Clean_Workspace#readme"
+}

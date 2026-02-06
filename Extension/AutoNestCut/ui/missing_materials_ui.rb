@@ -21,8 +21,8 @@ module AutoNestCut
         }
       )
       
-      # Load HTML
-      html_path = File.join(__dir__, 'html', 'missing_materials_dialog.html')
+      # Load HTML - Use improved version
+      html_path = File.join(__dir__, 'html', 'missing_materials_dialog_improved.html')
       dialog.set_file(html_path)
       
       # Handle material choices callback

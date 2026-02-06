@@ -798,11 +798,60 @@ function toggleFold() {
 */
 
 function highlightMaterial(material) {
+    console.log('👁️ Highlight button clicked for material:', material);
     callRuby('highlight_material', material);
 }
 
 function clearHighlight() {
+    console.log('🧹 Clear highlight button clicked');
     callRuby('clear_highlight');
+}
+
+// Track currently highlighted material for visual feedback
+let currentlyHighlightedMaterial = null;
+
+function setHighlightActiveState(materialName) {
+    // Remove previous active state
+    removeHighlightActiveState();
+    
+    // Find all material rows and highlight the matching one
+    const rows = document.querySelectorAll('#materials_tbody tr');
+    rows.forEach(row => {
+        const nameCell = row.querySelector('td:first-child textarea');
+        if (nameCell && nameCell.value === materialName) {
+            row.style.backgroundColor = '#e3f2fd';
+            row.style.borderLeft = '4px solid #2196F3';
+            
+            // Add active class to the eye icon
+            const eyeBtn = row.querySelector('.action-btn[title="Highlight in SketchUp"]');
+            if (eyeBtn) {
+                eyeBtn.style.backgroundColor = '#2196F3';
+                eyeBtn.style.color = 'white';
+                eyeBtn.classList.add('highlight-active');
+            }
+        }
+    });
+    
+    currentlyHighlightedMaterial = materialName;
+}
+
+function removeHighlightActiveState() {
+    // Remove highlight from all rows
+    const rows = document.querySelectorAll('#materials_tbody tr');
+    rows.forEach(row => {
+        row.style.backgroundColor = '';
+        row.style.borderLeft = '';
+        
+        // Remove active class from eye icons
+        const eyeBtn = row.querySelector('.action-btn[title="Highlight in SketchUp"]');
+        if (eyeBtn) {
+            eyeBtn.style.backgroundColor = '';
+            eyeBtn.style.color = '';
+            eyeBtn.classList.remove('highlight-active');
+        }
+    });
+    
+    currentlyHighlightedMaterial = null;
 }
 
 /* COMMENTED OUT: purgeOldAutoMaterials and related functions - not needed for used-only materials view

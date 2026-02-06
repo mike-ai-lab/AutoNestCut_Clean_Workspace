@@ -12,6 +12,81 @@ require_relative '../compatibility' # Ensure Compatibility is loaded for desktop
 require_relative '../models/part' # Ensure Part class is loaded
 
 module AutoNestCut
+  # Custom drawing tool for highlighting components by material
+  class MaterialHighlightTool
+    def initialize(entities_with_transforms)
+      @entities_with_transforms = entities_with_transforms
+      @all_points = []
+      
+      # Calculate bounding box points for all entities
+      entities_with_transforms.each do |entity, world_trans|
+        next unless entity && entity.valid?
+        
+        bb = entity.definition.bounds rescue entity.bounds
+        next unless bb
+        
+        # Get all 8 corner points and transform to world space
+        (0..7).each do |i|
+          pt = bb.corner(i).clone
+          pt.transform!(world_trans)
+          @all_points << pt
+        end
+      end
+    end
+    
+    def activate
+      Sketchup.active_model.active_view.invalidate
+    end
+    
+    def deactivate(view)
+      view.invalidate
+    end
+    
+    def draw(view)
+      return unless @all_points.any?
+      
+      # Draw individual bounding boxes
+      @entities_with_transforms.each do |entity, world_trans|
+        next unless entity && entity.valid?
+        
+        bb = entity.definition.bounds rescue entity.bounds
+        next unless bb
+        
+        points = (0..7).map do |i|
+          pt = bb.corner(i).clone
+          pt.transform!(world_trans)
+          pt
+        end
+        
+        view.line_width = 3
+        view.line_stipple = ''
+        view.drawing_color = Sketchup::Color.new(52, 152, 219)  # Blue
+        
+        # Draw edges of the bounding box
+        edges = [
+          [0,1],[1,2],[2,3],[3,0], # bottom
+          [4,5],[5,6],[6,7],[7,4], # top
+          [0,4],[1,5],[2,6],[3,7]  # verticals
+        ]
+        
+        edges.each do |start_i, end_i|
+          view.draw(GL_LINES, points[start_i], points[end_i])
+        end
+        
+        # Draw corner spheres
+        view.drawing_color = Sketchup::Color.new(231, 76, 60)  # Red
+        points.each do |pt|
+          view.draw_points(pt, 8, 1, Sketchup::Color.new(231, 76, 60))
+        end
+      end
+    end
+    
+    def onCancel(reason, view)
+      Sketchup.active_model.select_tool(nil)
+      view.invalidate
+    end
+  end
+
   class UIDialogManager
 
     # Cache for nesting results to avoid recalculating if inputs haven't changed
@@ -96,6 +171,7 @@ module AutoNestCut
     end
 
     def show_config_dialog(parts_by_material, original_components = [], hierarchy_tree = [], assembly_entity = nil, skip_validation = false)
+      # Update instance variables with new data
       @parts_by_material = parts_by_material
       @original_components = original_components
       @hierarchy_tree = hierarchy_tree
@@ -108,6 +184,18 @@ module AutoNestCut
         @assembly_data = capture_assembly_data(@assembly_entity)
       end
       
+      # If dialog already exists and is visible, just refresh its data
+      if @dialog && @dialog.visible?
+        puts "🔄 Config dialog already open - refreshing with new assembly data"
+        # Clear any active highlight from previous assembly
+        clear_component_highlight
+        # Send updated data to existing dialog
+        send_initial_data
+        @dialog.bring_to_front
+        return
+      end
+      
+      # Create new dialog if it doesn't exist
       # Use HtmlDialog for SU2017+ or WebDialog for older versions
       if defined?(UI::HtmlDialog)
         @dialog = UI::HtmlDialog.new(
@@ -171,6 +259,12 @@ module AutoNestCut
       # Handle processing (nesting and report generation)
       @dialog.add_action_callback("process") do |action_context, settings_json|
         begin
+          # Clear any active highlight when starting nesting
+          if @currently_highlighted_material
+            clear_component_highlight
+            @dialog.execute_script("removeHighlightActiveState();")
+          end
+          
           new_settings_from_ui = JSON.parse(settings_json)
           
           # Save global settings from the UI's full settings object
@@ -704,10 +798,32 @@ module AutoNestCut
       end
 
       @dialog.add_action_callback("highlight_material") do |action_context, material_name|
-        highlight_components_by_material(material_name)
+        # Prevent duplicate calls within 500ms
+        current_time = Time.now.to_f
+        if @last_highlight_call && (current_time - @last_highlight_call) < 0.5
+          puts "🔍 Ignoring duplicate highlight call (within 500ms)"
+          next
+        end
+        @last_highlight_call = current_time
+        
+        # Toggle: if clicking the same material, turn off highlight
+        if @currently_highlighted_material == material_name
+          puts "🔍 Toggling OFF highlight for: '#{material_name}'"
+          clear_component_highlight
+          @currently_highlighted_material = nil
+          # Notify JavaScript to remove active state
+          @dialog.execute_script("removeHighlightActiveState();")
+        else
+          puts "🔍 Toggling ON highlight for: '#{material_name}'"
+          @currently_highlighted_material = material_name
+          highlight_components_by_material(material_name)
+          # Notify JavaScript to add active state
+          @dialog.execute_script("setHighlightActiveState('#{material_name.gsub("'", "\\'")}');")
+        end
       end
 
       @dialog.add_action_callback("clear_highlight") do |action_context|
+        puts "🔍 Ruby callback received: clear_highlight"
         clear_component_highlight
       end
 
@@ -886,6 +1002,11 @@ module AutoNestCut
           cleanup
         end
       end
+      
+      # Clear highlight when dialog is closed
+      @dialog.set_on_closed {
+        clear_component_highlight if @currently_highlighted_material
+      }
 
       @dialog.show
     end
@@ -1465,7 +1586,10 @@ module AutoNestCut
         puts "ERROR: Synchronous nesting failed: #{e.message}"
         puts e.backtrace.join("\n")
         @dialog.execute_script("hideProgressOverlay()")
-        @dialog.execute_script("alert('Nesting failed: #{e.message}')")
+        
+        # Show user-friendly notification with the error
+        error_notification = e.message.gsub("'", "\\'")
+        @dialog.execute_script("showNotification('error', 'Nesting Error', '#{error_notification}', 10000)")
       end
     end
 
@@ -1782,32 +1906,153 @@ module AutoNestCut
 
     def highlight_components_by_material(material_name)
       model = Sketchup.active_model
-      selection = model.selection
-      selection.clear
 
-      matching_entities = []
+      matching_entities_with_transforms = []
 
-      if @original_components && !@original_components.empty?
-        @original_components.each do |comp_data|
-          # Use string comparison for material names
-          if comp_data[:material].to_s.strip.downcase == material_name.to_s.strip.downcase
-            found_entity = find_entity_by_id(model, comp_data[:entity_id])
-            if found_entity
-              matching_entities << found_entity
-            end
-          end
+      # Extract thickness from material name (e.g., "Plywood_08_1K_12.0mm_grain_Any" -> 12.0)
+      thickness_match = material_name.match(/_(\d+(?:\.\d+)?)mm_grain_/)
+      target_thickness = thickness_match ? thickness_match[1].to_f : nil
+      
+      # Strip BOTH timestamp and thickness suffix patterns
+      # Pattern 1: _TIMESTAMP_NUMBER (e.g., _1770383521_65)
+      # Pattern 2: _XXmm_grain_YYY (e.g., _18.0mm_grain_Any)
+      base_material_name = material_name.gsub(/_\d{10,}_\d+/, '').gsub(/_\d+(\.\d+)?mm_grain_\w+$/, '')
+      
+      puts "🔍 Ruby callback: highlight_material('#{material_name}')"
+      puts "🔍 Base material: '#{base_material_name}'"
+      puts "🔍 Target thickness: #{target_thickness}mm" if target_thickness
+
+      # Search only within the analyzed assembly, not the entire model
+      if @assembly_entity && @assembly_entity.valid?
+        puts "DEBUG: Searching within assembly: #{@assembly_entity.definition.name rescue @assembly_entity.class}"
+        
+        if @assembly_entity.is_a?(Sketchup::ComponentInstance)
+          search_entities_recursive(@assembly_entity.definition.entities, base_material_name, material_name, target_thickness, @assembly_entity.transformation, matching_entities_with_transforms)
+        elsif @assembly_entity.is_a?(Sketchup::Group)
+          search_entities_recursive(@assembly_entity.entities, base_material_name, material_name, target_thickness, @assembly_entity.transformation, matching_entities_with_transforms)
+        end
+      else
+        puts "DEBUG: No assembly entity, searching entire model"
+        search_entities_recursive(model.entities, base_material_name, material_name, target_thickness, Geom::Transformation.new, matching_entities_with_transforms)
+      end
+
+      puts "DEBUG: Found #{matching_entities_with_transforms.length} matching components"
+
+      if matching_entities_with_transforms.any?
+        # Save original rendering options if not already saved
+        save_rendering_options unless @original_rendering_options
+        
+        # Save original dialog size if not already saved
+        save_dialog_size unless @original_dialog_size
+        
+        # Apply X-Ray mode for better visibility
+        rendering_options = model.rendering_options
+        rendering_options["ModelTransparency"] = true
+        rendering_options["DrawHiddenGeometry"] = false
+        rendering_options["DrawHiddenObjects"] = false
+        
+        # Resize dialog to compact panel
+        resize_dialog_to_panel
+        
+        # Activate highlighting tool
+        model.select_tool(MaterialHighlightTool.new(matching_entities_with_transforms))
+        
+        puts "✅ Highlighting #{matching_entities_with_transforms.length} components with material: #{material_name}"
+      else
+        puts "DEBUG: No matching components found"
+        UI.messagebox("No components found with material: #{material_name}\n\nSearched for:\n- #{material_name}\n- #{base_material_name}")
+      end
+    end
+    
+    def search_entities_recursive(entities, base_material, full_material, target_thickness, parent_transform, results)
+      entities.each do |entity|
+        next unless entity.is_a?(Sketchup::ComponentInstance) || entity.is_a?(Sketchup::Group)
+        
+        # Get entity material
+        entity_material = entity.material&.display_name || entity.material&.name || ""
+        
+        # Calculate world transform
+        world_transform = parent_transform * entity.transformation
+        
+        # Get entity thickness (smallest dimension of bounding box)
+        bounds = entity.bounds
+        dimensions = [
+          (bounds.max.x - bounds.min.x).abs,
+          (bounds.max.y - bounds.min.y).abs,
+          (bounds.max.z - bounds.min.z).abs
+        ].sort
+        entity_thickness = dimensions[0].to_mm.round(1)
+        
+        # Check if material matches
+        material_matches = entity_material.downcase == base_material.downcase || 
+                          entity_material.downcase == full_material.downcase
+        
+        # Check if thickness matches (with tolerance of 0.5mm)
+        thickness_matches = if target_thickness
+          (entity_thickness - target_thickness).abs < 0.5
+        else
+          true # If no target thickness specified, match all
+        end
+        
+        if material_matches && thickness_matches
+          results << [entity, world_transform]
+          puts "DEBUG: ✓ Found match: #{entity.definition.name rescue entity.class} with material '#{entity_material}' and thickness #{entity_thickness}mm"
+        elsif material_matches && !thickness_matches
+          puts "DEBUG: ✗ Material matches but thickness doesn't: #{entity.definition.name rescue entity.class} (#{entity_thickness}mm vs #{target_thickness}mm)"
+        end
+        
+        # Recurse into children
+        if entity.is_a?(Sketchup::ComponentInstance)
+          search_entities_recursive(entity.definition.entities, base_material, full_material, target_thickness, world_transform, results)
+        elsif entity.is_a?(Sketchup::Group)
+          search_entities_recursive(entity.entities, base_material, full_material, target_thickness, world_transform, results)
         end
       end
-      
-      model.selection.add(matching_entities)
-
-      if matching_entities.any?
-        view = model.active_view
-        view.zoom(matching_entities)
-      else
-
-        UI.messagebox("No components found with material: #{material_name}")
+    end
+    
+    def save_rendering_options
+      model = Sketchup.active_model
+      rendering_options = model.rendering_options
+      @original_rendering_options = {
+        "ModelTransparency" => rendering_options["ModelTransparency"],
+        "DrawHiddenGeometry" => rendering_options["DrawHiddenGeometry"],
+        "DrawHiddenObjects" => rendering_options["DrawHiddenObjects"]
+      }
+    end
+    
+    def restore_rendering_options
+      return unless @original_rendering_options
+      model = Sketchup.active_model
+      rendering_options = model.rendering_options
+      @original_rendering_options.each do |key, value|
+        rendering_options[key] = value
       end
+      @original_rendering_options = nil
+    end
+    
+    def save_dialog_size
+      return unless @dialog
+      size = @dialog.get_size
+      if size.is_a?(Hash)
+        @original_dialog_size = { width: size[:width], height: size[:height] }
+      elsif size.is_a?(Array)
+        @original_dialog_size = { width: size[0], height: size[1] }
+      else
+        @original_dialog_size = { width: 900, height: 700 } # Default fallback
+      end
+    end
+    
+    def restore_dialog_size
+      return unless @dialog && @original_dialog_size
+      @dialog.set_size(@original_dialog_size[:width], @original_dialog_size[:height])
+      @original_dialog_size = nil
+    end
+    
+    def resize_dialog_to_panel
+      return unless @dialog
+      size = @dialog.get_size
+      current_height = size.is_a?(Hash) ? size[:height] : (size.is_a?(Array) ? size[1] : 700)
+      @dialog.set_size(350, current_height)
     end
 
     # Helper method to find an entity by its ID recursively in the model
@@ -1853,7 +2098,22 @@ module AutoNestCut
     end
 
     def clear_component_highlight
-      Sketchup.active_model.selection.clear
+      # Deactivate the highlight tool
+      Sketchup.active_model.select_tool(nil)
+      
+      # Restore rendering options
+      restore_rendering_options
+      
+      # Restore dialog size
+      restore_dialog_size
+      
+      # Clear tracked material
+      @currently_highlighted_material = nil
+      
+      # Refresh view
+      Sketchup.active_model.active_view.invalidate
+      
+      puts "✅ Highlight cleared"
     end
 
     def purge_old_auto_materials

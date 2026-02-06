@@ -1442,7 +1442,7 @@ function selectPartInReportViewer(part) {
             animateCameraToTarget(targetPos, center);
         }
     } else {
-        console.warn(`❌ No matching part found for unique ID: ${partUniqueId}`);
+        // Silently skip - not all parts have matches
     }
 }
 
@@ -1505,11 +1505,38 @@ function handle3DViewerClick(event, canvas) {
                 if (group && group.userData.partName) {
                     console.log('🖱️ 3D Viewer clicked:', group.userData.partName);
                     
-                    // Don't apply 3D highlight here - let the diagram highlighting handle it
-                    // This prevents duplicate highlights that persist
+                    // IMMEDIATE VISUAL FEEDBACK: Flash white for 150ms
+                    group.traverse((child) => {
+                        if (child.isMesh && child.material) {
+                            // Store original if not stored
+                            if (!group.userData.originalMaterial) {
+                                group.userData.originalMaterial = {
+                                    color: child.material.color.getHex(),
+                                    emissive: child.material.emissive.getHex(),
+                                    opacity: child.material.opacity
+                                };
+                            }
+                            // White flash
+                            child.material.emissive.setHex(0xFFFFFF);
+                            child.material.emissiveIntensity = 1.0;
+                            child.material.needsUpdate = true;
+                        }
+                    });
                     
-                    // Highlight the diagram (which will clear all highlights first)
-                    highlightDiagramFromViewer(group.userData);
+                    // After 150ms, restore and highlight diagram
+                    setTimeout(() => {
+                        group.traverse((child) => {
+                            if (child.isMesh && child.material) {
+                                child.material.emissive.setHex(0x000000);
+                                child.material.emissiveIntensity = 0;
+                                child.material.needsUpdate = true;
+                            }
+                        });
+                        
+                        // Highlight the diagram
+                        highlightDiagramFromViewer(group.userData);
+                    }, 150);
+                    
                     break;
                 }
             }
@@ -1582,6 +1609,12 @@ function highlightDiagramFromViewer(partUserData) {
     const partName = partUserData.partName;
     const materialName = partUserData.materialName;
     
+    // Validate we have a unique ID
+    if (!uniqueId) {
+        console.warn('⚠️ Cannot highlight - no unique ID found for 3D part');
+        return;
+    }
+    
     // Search through all boards to find the EXACT matching part by unique ID
     let foundPart = null;
     let foundBoardIndex = -1;
@@ -1597,7 +1630,6 @@ function highlightDiagramFromViewer(partUserData) {
             if (uniqueId && partUniqueId && uniqueId === partUniqueId) {
                 foundPart = part;
                 foundBoardIndex = boardIndex;
-                console.log(`✅ EXACT ID MATCH: ${partUniqueId} on Board ${boardIndex + 1}`);
                 break;
             }
         }
@@ -1606,15 +1638,13 @@ function highlightDiagramFromViewer(partUserData) {
     }
     
     if (!foundPart) {
-        console.warn(`❌ No matching diagram part found for unique ID: ${uniqueId}`);
+        // Silently skip - not all 3D parts have diagram matches
         return;
     }
     
     // Get the part ID for highlighting
     const partId = foundPart.part_unique_id || foundPart.part_number || foundPart.instance_id || foundPart.name;
     const boardNumber = foundBoardIndex + 1;
-    
-    console.log(`🎯 Highlighting: ${partId} on Board ${boardNumber}`);
     
     // Scroll to and highlight the diagram
     scrollToPieceDiagram(partId, boardNumber);
@@ -2238,9 +2268,9 @@ function createPartIdMapping() {
                     id: partId,
                     name: part.name,
                     material: part.material,
-                    width: part.width,
-                    height: part.height,
-                    thickness: part.thickness || 0,
+                    width: parseFloat(part.width) || 0,
+                    height: parseFloat(part.height) || 0,
+                    thickness: parseFloat(part.thickness) || 0,
                     boardNumber: boardIndex + 1
                 });
             }
@@ -2258,9 +2288,11 @@ function createPartIdMapping() {
         const viewerPart = group.userData;
         const viewerName = viewerPart.partName;
         const viewerMaterial = viewerPart.materialName;
-        const viewerDims = [viewerPart.width, viewerPart.height, viewerPart.thickness].sort((a, b) => b - a);
-        
-        console.log(`\n🔍 Matching 3D part ${index + 1}: ${viewerName} | ${viewerMaterial} | ${viewerDims.join('×')}mm`);
+        const viewerDims = [
+            parseFloat(viewerPart.width) || 0,
+            parseFloat(viewerPart.height) || 0,
+            parseFloat(viewerPart.thickness) || 0
+        ].sort((a, b) => b - a);
         
         // Find matching diagram part (that hasn't been used yet)
         for (const diagramPart of diagramParts) {
@@ -2272,7 +2304,7 @@ function createPartIdMapping() {
             const materialMatch = diagramPart.material === viewerMaterial;
             
             const diagramDims = [diagramPart.width, diagramPart.height, diagramPart.thickness].sort((a, b) => b - a);
-            const tolerance = 1.0;
+            const tolerance = 2.0; // Increased tolerance to 2mm
             const dimsMatch = Math.abs(viewerDims[0] - diagramDims[0]) < tolerance &&
                             Math.abs(viewerDims[1] - diagramDims[1]) < tolerance &&
                             Math.abs(viewerDims[2] - diagramDims[2]) < tolerance;
@@ -2283,17 +2315,16 @@ function createPartIdMapping() {
                 group.userData.partUniqueId = diagramPart.id;
                 usedDiagramIds.add(diagramPart.id);
                 matchCount++;
-                console.log(`✅ MATCHED to diagram part: ${diagramPart.id} (Board ${diagramPart.boardNumber})`);
                 break;
             }
         }
         
         if (!group.userData.uniqueId) {
-            console.warn(`❌ No match found for 3D part ${index + 1}: ${viewerName}`);
+            // Silently skip - not all 3D parts need to match diagram parts
         }
     });
     
-    console.log(`\n🎯 ID Mapping complete: ${matchCount}/${window.reportAssemblyGroups.length} parts matched`);
+    console.log(`🎯 ID Mapping complete: ${matchCount}/${window.reportAssemblyGroups.length} parts matched`);
 }
 
 function initAssemblyViewer(geometryData) {

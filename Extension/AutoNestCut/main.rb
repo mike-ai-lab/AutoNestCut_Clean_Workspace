@@ -34,6 +34,7 @@ module AutoNestCut
 
   require_relative 'ui/dialog_manager'
   require_relative 'ui/missing_materials_ui'
+  require_relative 'ui/nesting_error_ui'
   require_relative 'ui/progress_dialog'
   require_relative 'ui/view_export_ui'
   require_relative 'ui/material_database_ui'

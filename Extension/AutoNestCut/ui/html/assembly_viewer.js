@@ -332,15 +332,26 @@ function selectComponent(index) {
     const mesh = componentMeshes[index];
     
     if (mesh) {
-        // Highlight material
-        const highlightMaterial = new THREE.MeshPhongMaterial({
-            color: 0x00FF00,
+        // IMMEDIATE CLICK FEEDBACK: Quick white flash
+        const flashMaterial = new THREE.MeshPhongMaterial({
+            color: 0xFFFFFF,
             shininess: 100,
-            emissive: 0x00AA00,
+            emissive: 0xFFFFFF,
             side: THREE.DoubleSide
         });
-        mesh.material = highlightMaterial;
-        mesh.scale.set(1.05, 1.05, 1.05);
+        mesh.material = flashMaterial;
+        
+        // After 100ms, switch to green highlight
+        setTimeout(() => {
+            const highlightMaterial = new THREE.MeshPhongMaterial({
+                color: 0x00FF00,
+                shininess: 100,
+                emissive: 0x00AA00,
+                side: THREE.DoubleSide
+            });
+            mesh.material = highlightMaterial;
+            mesh.scale.set(1.05, 1.05, 1.05);
+        }, 100);
         
         // Update UI
         const item = document.querySelector(`[data-component-index="${index}"]`);
