@@ -1606,14 +1606,17 @@ function highlight3DViewerComponent(clickedGroup) {
 function highlightDiagramFromViewer(partUserData) {
     // CRITICAL FIX: Use unique ID as PRIMARY matching criterion
     const uniqueId = partUserData.uniqueId || partUserData.partUniqueId;
+    const displayId = partUserData.displayId;
     const partName = partUserData.partName;
     const materialName = partUserData.materialName;
     
     // Validate we have a unique ID
     if (!uniqueId) {
-        console.warn('⚠️ Cannot highlight - no unique ID found for 3D part');
+        console.warn('⚠️ Cannot highlight - no unique ID found for 3D part:', partName);
         return;
     }
+    
+    console.log(`🔍 3D → SVG: Looking for part with unique_id=${uniqueId}, display_id=${displayId}`);
     
     // Search through all boards to find the EXACT matching part by unique ID
     let foundPart = null;
@@ -1624,12 +1627,13 @@ function highlightDiagramFromViewer(partUserData) {
         const parts = board.parts || [];
         
         for (let part of parts) {
-            // EXACT ID MATCH - most reliable
-            const partUniqueId = part.part_unique_id || part.instance_id || part.part_number;
+            // EXACT ID MATCH using persistent_id
+            const partUniqueId = part.unique_id || part.part_unique_id;
             
             if (uniqueId && partUniqueId && uniqueId === partUniqueId) {
                 foundPart = part;
                 foundBoardIndex = boardIndex;
+                console.log(`✅ Found exact match: ${part.name} on board ${boardIndex + 1}`);
                 break;
             }
         }
@@ -1639,12 +1643,15 @@ function highlightDiagramFromViewer(partUserData) {
     
     if (!foundPart) {
         // Silently skip - not all 3D parts have diagram matches
+        console.log(`ℹ️ No diagram match for 3D part ${partName} (unique_id: ${uniqueId})`);
         return;
     }
     
-    // Get the part ID for highlighting
-    const partId = foundPart.part_unique_id || foundPart.part_number || foundPart.instance_id || foundPart.name;
+    // Use display ID for highlighting (P1, P2, etc.)
+    const partId = displayId || foundPart.instance_id || foundPart.part_number || foundPart.name;
     const boardNumber = foundBoardIndex + 1;
+    
+    console.log(`🎯 Highlighting diagram: ${partId} on board ${boardNumber}`);
     
     // Scroll to and highlight the diagram
     scrollToPieceDiagram(partId, boardNumber);
@@ -2242,45 +2249,88 @@ function initReportAssemblyViewer() {
     
     // CRITICAL FIX: Create ID mapping between 3D viewer parts and diagram parts
     // This must be done AFTER all parts are loaded
-    createPartIdMapping();
+    createPartIdMapping(geometryData);
     
     console.log('Report assembly viewer initialized');
 }
 
 // CRITICAL: Direct ID mapping using backend-provided unique IDs
 // No matching needed - backend provides the SAME persistent_id for both 3D viewer and diagram parts
-function createPartIdMapping() {
-    if (!window.reportAssemblyGroups || !g_boardsData) {
+function createPartIdMapping(geometryData) {
+    if (!window.reportAssemblyGroups || !g_boardsData || !geometryData) {
         console.warn('⚠️ Cannot create ID mapping - missing data');
         return;
     }
     
     console.log('🔗 Creating ID mapping using backend unique IDs...');
-    console.log(`📊 Found ${diagramParts.length} diagram parts with IDs`);
+    
+    // Extract all parts from all boards
+    const diagramParts = [];
+    g_boardsData.forEach(board => {
+        if (board.parts && Array.isArray(board.parts)) {
+            board.parts.forEach(part => {
+                diagramParts.push(part);
+            });
+        }
+    });
+    
+    console.log(`📊 Found ${diagramParts.length} diagram parts across ${g_boardsData.length} boards`);
     console.log(`🎨 Found ${window.reportAssemblyGroups.length} 3D viewer parts`);
     
     // Create a lookup map of diagram parts by their unique_id
     const diagramPartsMap = new Map();
+    
+    // DEBUG: Log first diagram part structure
+    if (diagramParts.length > 0) {
+        console.log('🔍 DEBUG: First diagram part structure:', Object.keys(diagramParts[0]));
+        console.log('🔍 DEBUG: First diagram part:', JSON.stringify(diagramParts[0], null, 2));
+    }
+    
     diagramParts.forEach(part => {
-        if (part.unique_id) {
-            diagramPartsMap.set(part.unique_id, part.id); // Map unique_id -> diagram ID (P27, P28, etc.)
+        // Backend sends part_unique_id (persistent_id) and instance_id (P1, P2, etc.)
+        const uniqueId = part.part_unique_id || part.unique_id;
+        const displayId = part.instance_id;
+        
+        if (uniqueId && displayId) {
+            diagramPartsMap.set(uniqueId, displayId); // Map persistent_id -> display ID (P1, P2, etc.)
         }
     });
     
     console.log(`📋 Created diagram lookup map with ${diagramPartsMap.size} entries`);
     
+    // DEBUG: Log first few entries in the map
+    let mapEntries = 0;
+    diagramPartsMap.forEach((value, key) => {
+        if (mapEntries < 3) {
+            console.log(`  Map entry: unique_id=${key} -> diagram_id=${value}`);
+            mapEntries++;
+        }
+    });
+    
     // Match each 3D viewer part using its viewer_unique_id
     let matchCount = 0;
     const unmatchedParts = [];
     
+    console.log(`🔍 DEBUG: Starting matching loop with ${window.reportAssemblyGroups.length} groups and ${geometryData.parts.length} geometry parts`);
+    
     window.reportAssemblyGroups.forEach((group, index) => {
-        const viewerPart = group.userData;
-        const viewerUniqueId = viewerPart.viewer_unique_id; // Backend provides this
+        console.log(`🔍 DEBUG: Processing group ${index}`);
+        
+        // CRITICAL FIX: Get viewer_unique_id from geometryData.parts, NOT from group.userData
+        const partData = geometryData.parts[index];
+        if (!partData) {
+            console.warn(`⚠️ Group ${index}: No part data found`);
+            return;
+        }
+        
+        console.log(`🔍 DEBUG: Group ${index} partData:`, partData.name, 'viewer_unique_id:', partData.viewer_unique_id);
+        
+        const viewerUniqueId = partData.viewer_unique_id; // Backend provides this in geometryData
         
         if (!viewerUniqueId) {
-            console.warn(`⚠️ Group ${index}: No viewer_unique_id found`);
+            console.warn(`⚠️ Group ${index}: No viewer_unique_id found in part data`);
             unmatchedParts.push({
-                name: viewerPart.partName,
+                name: partData.name || group.userData.partName,
                 reason: 'No viewer_unique_id from backend'
             });
             return;
@@ -2291,14 +2341,16 @@ function createPartIdMapping() {
         
         if (diagramId) {
             // PERFECT MATCH using backend IDs!
-            group.userData.uniqueId = diagramId;
-            group.userData.partUniqueId = diagramId;
+            // CRITICAL FIX: Store BOTH the persistent_id AND display_id
+            group.userData.uniqueId = viewerUniqueId;      // Store persistent_id (1343129)
+            group.userData.partUniqueId = viewerUniqueId;  // Store persistent_id (1343129)
+            group.userData.displayId = diagramId;          // Store display_id (P7)
             matchCount++;
-            console.log(`✅ Group ${index}: Matched ${viewerPart.partName} -> ${diagramId} (unique_id: ${viewerUniqueId})`);
+            console.log(`✅ Group ${index}: Matched ${partData.name} -> ${diagramId} (unique_id: ${viewerUniqueId})`);
         } else {
             // No diagram part with this unique_id (part might not be in cut list)
             unmatchedParts.push({
-                name: viewerPart.partName,
+                name: partData.name,
                 unique_id: viewerUniqueId,
                 reason: 'Not found in diagram parts (may not be a sheet good)'
             });

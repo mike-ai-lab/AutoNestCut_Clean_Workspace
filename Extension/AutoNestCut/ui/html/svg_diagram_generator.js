@@ -216,6 +216,11 @@ function createPartSVG(part, scale, padding, partIndex, reportUnits, reportPreci
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     group.classList.add('part-group');
     
+    // CRITICAL: Store unique_id as data attribute for 3D viewer → SVG highlighting
+    if (part.unique_id) {
+        group.setAttribute('data-unique-id', part.unique_id);
+    }
+    
     // Draw part with grain pattern (exactly like canvas drawPartWithGrain)
     const baseColor = getMaterialColor(part.material);
     const partRect = createSVGElement('rect', {
@@ -477,8 +482,14 @@ function createPartSVG(part, scale, padding, partIndex, reportUnits, reportPreci
     
     // Add click handler to highlight in assembly viewer
     group.addEventListener('click', function() {
-        const partId = part.part_unique_id || part.part_number || part.instance_id || `P${partIndex + 1}`;
-        console.log(`🖱️ Clicked SVG part: ${part.name} (${partId})`);
+        // CRITICAL FIX: Use unique_id (persistent_id) for 3D viewer matching
+        // The 3D viewer expects part_unique_id to match group.userData.uniqueId (persistent_id)
+        const persistentId = part.unique_id || part.part_unique_id;
+        const displayId = part.instance_id || part.part_number || `P${partIndex + 1}`;
+        
+        console.log(`🖱️ Clicked SVG part: ${part.name}`);
+        console.log(`   Display ID: ${displayId}`);
+        console.log(`   Persistent ID: ${persistentId}`);
         
         // CRITICAL FIX: Use centralized clear function
         console.log('🧹 Clearing ALL highlights from SVG click');
@@ -515,10 +526,13 @@ function createPartSVG(part, scale, padding, partIndex, reportUnits, reportPreci
         
         // Then highlight this part in 3D viewer
         if (typeof highlightPartInAssemblyViewer === 'function') {
-            // CRITICAL FIX: Ensure part_unique_id is set before passing to 3D viewer
+            // CRITICAL FIX: Pass persistent_id as part_unique_id for exact matching
+            // The 3D viewer uses this to match against group.userData.uniqueId
             const partWithId = {
                 ...part,
-                part_unique_id: partId  // Ensure the ID is always set
+                part_unique_id: persistentId,  // Use persistent_id for 3D viewer matching
+                instance_id: displayId,        // Keep display ID for logging
+                name: part.name
             };
             highlightPartInAssemblyViewer(partWithId);
         }
@@ -723,8 +737,14 @@ function highlightPartInSVGDiagram(partId, boardNumber) {
         return;
     }
     
-    // Find the target part group
-    const targetGroup = svg.querySelector(`.part-group[data-part-id="${partId}"]`);
+    // CRITICAL FIX: Search by data-unique-id (persistent_id) instead of data-part-id
+    // This allows 3D viewer clicks (which use persistent_id) to find the correct SVG element
+    let targetGroup = svg.querySelector(`.part-group[data-unique-id="${partId}"]`);
+    
+    // Fallback: If not found by unique_id, try by data-part-id (for table clicks using display ID)
+    if (!targetGroup) {
+        targetGroup = svg.querySelector(`.part-group[data-part-id="${partId}"]`);
+    }
     
     if (!targetGroup) {
         console.warn(`Part group not found: ${partId}`);

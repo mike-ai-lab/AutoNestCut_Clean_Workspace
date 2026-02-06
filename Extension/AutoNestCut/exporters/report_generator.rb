@@ -164,7 +164,8 @@ module AutoNestCut
           part_weight = part_instance.weight_kg(density)
           
           parts_placed_on_boards << {
-            part_unique_id: part_instance.instance_id,
+            part_unique_id: part_instance.unique_id,  # CRITICAL: Use persistent_id for matching
+            instance_id: part_instance.instance_id,   # Keep for display (P1, P2, etc.)
             name: part_name,  # Use generated unique name
             width: part_instance.width.round(2),
             height: part_instance.height.round(2),
@@ -436,12 +437,33 @@ module AutoNestCut
           part_name = "Part_#{part_counter}"
         end
         
+        # CRITICAL FIX: For nested components, drill down to get the INNER part's persistent_id
+        # This matches what Part.rb does when creating parts for nesting
+        actual_part = part
+        
+        # If this is a component instance with a single nested component/group inside, drill down
+        if part.is_a?(Sketchup::ComponentInstance)
+          inner_entities = part.definition.entities.select { |e| e.is_a?(Sketchup::Group) || e.is_a?(Sketchup::ComponentInstance) }
+          if inner_entities.length == 1
+            # Single nested component - use its ID instead
+            actual_part = inner_entities.first
+            puts "  🔍 Nested component detected: #{part_name} - using inner part's ID"
+          end
+        elsif part.is_a?(Sketchup::Group)
+          inner_entities = part.entities.select { |e| e.is_a?(Sketchup::Group) || e.is_a?(Sketchup::ComponentInstance) }
+          if inner_entities.length == 1
+            # Single nested group - use its ID instead
+            actual_part = inner_entities.first
+            puts "  🔍 Nested group detected: #{part_name} - using inner part's ID"
+          end
+        end
+        
         # CRITICAL: Use SketchUp's persistent_id as the unique ID
         # This SAME ID is used in Part.rb, ensuring perfect matching between 3D viewer and diagrams
-        viewer_unique_id = if part.respond_to?(:persistent_id)
-          part.persistent_id.to_s
-        elsif part.respond_to?(:entityID)
-          "entity_#{part.entityID}"
+        viewer_unique_id = if actual_part.respond_to?(:persistent_id)
+          actual_part.persistent_id.to_s
+        elsif actual_part.respond_to?(:entityID)
+          "entity_#{actual_part.entityID}"
         else
           "part_#{part_counter}"
         end
