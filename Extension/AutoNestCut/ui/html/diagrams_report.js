@@ -674,7 +674,8 @@ function renderReport() {
         let partsHtml = `<thead><tr><th>ID</th><th>Name</th><th>Dimensions (${reportUnits})</th><th>Material</th><th>Grain</th><th>Edge<br>Banding</th><th>Board#</th><th>Cost</th><th>Level</th></tr></thead><tbody>`;
         
         partsWithCosts.forEach(part => {
-            const partId = part.part_unique_id || part.part_number;
+            // CRITICAL FIX: Use instance_id (P1, P2, P3) for display, not persistent_id
+            const partId = part.instance_id || part.part_number || `P${partsWithCosts.indexOf(part) + 1}`;
             const width = (part.width || 0) / window.unitFactors[reportUnits];
             const height = (part.height || 0) / window.unitFactors[reportUnits];
             // Removed unit from dimensionsStr
@@ -809,7 +810,8 @@ function renderBoardsSummary(reportData) {
                         <tbody>`;
             
             partsOnBoard.forEach((part, index) => {
-                const partId = part.part_unique_id || part.part_number;
+                // CRITICAL FIX: Use instance_id (P1, P2, P3) for display, not persistent_id
+                const partId = part.instance_id || part.part_number || `P${index + 1}`;
                 const partWidth = (part.width || 0) / window.unitFactors[reportUnits];
                 const partHeight = (part.height || 0) / window.unitFactors[reportUnits];
                 const dimensionsStr = `${formatNumber(partWidth, reportPrecision)} × ${formatNumber(partHeight, reportPrecision)}`;
@@ -1313,7 +1315,6 @@ function highlightPartInAssemblyViewer(part) {
     const canvas = document.getElementById('reportAssembly3DCanvas');
     const offScreen = document.getElementById('reportViewer3DOffScreen');
     const controls = document.getElementById('reportViewControls');
-    const explodeControls = document.getElementById('reportExplodeControls');
     const powerBtn = document.getElementById('reportViewer3DPowerBtn');
     
     if (!canvas) {
@@ -1326,7 +1327,6 @@ function highlightPartInAssemblyViewer(part) {
         canvas.style.display = 'block';
         if (offScreen) offScreen.style.display = 'none';
         if (controls) controls.style.display = 'flex';
-        if (explodeControls) explodeControls.style.display = 'flex';
         if (powerBtn) powerBtn.style.background = 'rgba(76, 175, 80, 0.3)';
         
         // Initialize viewer if not already initialized
@@ -1717,7 +1717,7 @@ function renderAssemblyViews(assemblyData) {
                 <canvas id="reportAssembly3DCanvas" style="display: none; width: 100%; height: 100%;"></canvas>
                 <div id="reportExplodeControls" style="display: none; position: absolute; right: 60px; top: 50%; transform: translateY(-50%); height: 60%; flex-direction: column; align-items: center; gap: 10px; z-index: 100; background: rgba(255, 255, 255, 0.9); padding: 15px 8px; border-radius: 30px;">
                     <span style="writing-mode: vertical-rl; font-size: 11px; font-weight: 700; color: #4a4a4a;">EXPLODE</span>
-                    <input type="range" min="0" max="100" value="0" id="reportExplodeSlider" oninput="updateReportExplosion(this.value)" style="writing-mode: vertical-lr; direction: rtl; width: 6px; height: 100%; cursor: ns-resize;">
+                    <input type="range" min="0" max="100" value="0" id="reportExplodeSlider" style="writing-mode: vertical-lr; direction: rtl; width: 6px; height: 100%; cursor: ns-resize;">
                 </div>
                 <div id="reportViewControls" style="display: none; position: absolute; right: 10px; top: 10px; flex-direction: column; gap: 4px; z-index: 100;">
                     <button onclick="toggleReportProjection()" style="background: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 6px; opacity: 0.9; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,1)'" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.9)'" title="Toggle Perspective">
@@ -1993,23 +1993,80 @@ function setReportView(view) {
     window.reportControls.update();
 }
 
-function updateReportExplosion(value) {
-    if (!window.reportAssemblyGroups || window.reportAssemblyGroups.length === 0) return;
-    const t = value / 100;
-    const explosionDistance = 300;
+// Explode functionality for 3D viewer
+function initReportExplodeSlider() {
+    const slider = document.getElementById('reportExplodeSlider');
+    const explodeControls = document.getElementById('reportExplodeControls');
     
-    window.reportAssemblyGroups.forEach(group => {
-        if (group.userData.explodeVector && group.userData.originalPosition) {
-            const vec = group.userData.explodeVector;
-            const orig = group.userData.originalPosition;
+    if (!slider) {
+        console.warn('Explode slider not found');
+        return;
+    }
+    
+    // Show explode controls when 3D viewer is active
+    if (explodeControls) {
+        explodeControls.style.display = 'flex';
+    }
+    
+    // Store original positions and calculate explode vectors
+    if (window.reportAssemblyGroups && window.reportAssemblyGroups.length > 0) {
+        window.reportAssemblyGroups.forEach((group, index) => {
+            // Store original position (already centered at 0,0,0)
+            if (!group.userData.originalPosition) {
+                group.userData.originalPosition = group.position.clone();
+            }
             
-            // Apply explosion: original position + (explode vector * t * distance)
-            group.position.set(
-                orig.x + vec.x * t * explosionDistance,
-                orig.y + vec.y * t * explosionDistance,
-                orig.z + vec.z * t * explosionDistance
-            );
+            // Calculate explode vector from center
+            const partCenter = new THREE.Box3().setFromObject(group).getCenter(new THREE.Vector3());
+            let explodeVector = partCenter.clone().sub(new THREE.Vector3(0, 0, 0));
+            
+            // Fallback for parts exactly at center
+            if (explodeVector.length() === 0) {
+                explodeVector = new THREE.Vector3(0, 1, 0);
+            }
+            
+            explodeVector.normalize();
+            
+            // Store explode vector and distance factor
+            group.userData.explodeVector = explodeVector;
+            
+            // Calculate distance factor based on assembly size
+            if (window.reportAssemblyBounds) {
+                group.userData.distanceFactor = window.reportAssemblyBounds.size / 2;
+            } else {
+                group.userData.distanceFactor = 500; // Default fallback
+            }
+        });
+    }
+    
+    // Wire slider to explode function
+    slider.addEventListener('input', function(e) {
+        const percentage = parseFloat(e.target.value) / 100.0;
+        updateReportExplode(percentage);
+    });
+    
+    console.log('✓ Explode slider initialized');
+}
+
+function updateReportExplode(percentage) {
+    if (!window.reportAssemblyGroups || window.reportAssemblyGroups.length === 0) {
+        return;
+    }
+    
+    window.reportAssemblyGroups.forEach((group) => {
+        if (!group.userData.originalPosition || !group.userData.explodeVector) {
+            return;
         }
+        
+        // Calculate translation distance
+        const translationDist = group.userData.distanceFactor * percentage;
+        
+        // Create move vector
+        const moveVector = group.userData.explodeVector.clone();
+        moveVector.multiplyScalar(translationDist);
+        
+        // Apply transformation relative to original position
+        group.position.copy(group.userData.originalPosition).add(moveVector);
     });
 }
 
@@ -2144,8 +2201,6 @@ function initReportAssemblyViewer() {
             width: partData.width || 0,
             height: partData.height || 0,
             thickness: partData.thickness || 0,
-            explodeVector: new THREE.Vector3(...(partData.explode_vector || [0, 0, 0])),
-            originalPosition: null, // Will be set after centering
             originalMaterial: {
                 color: 0xcccccc,
                 opacity: 0.85,
@@ -2187,7 +2242,6 @@ function initReportAssemblyViewer() {
         }
         
         if (partIndex === 0) {
-            console.log(`First part explode vector:`, partData.explode_vector);
             console.log(`First part material:`, partData.material);
             console.log(`First part has texture:`, hasTexture);
         }
@@ -2216,7 +2270,6 @@ function initReportAssemblyViewer() {
     // Center all parts and store their centered position as the original
     window.reportAssemblyGroups.forEach(group => {
         group.position.sub(center);
-        group.userData.originalPosition = group.position.clone();
     });
     
     const distance = maxDim * 2.5;
@@ -2250,6 +2303,9 @@ function initReportAssemblyViewer() {
     // CRITICAL FIX: Create ID mapping between 3D viewer parts and diagram parts
     // This must be done AFTER all parts are loaded
     createPartIdMapping(geometryData);
+    
+    // Initialize explode slider
+    initReportExplodeSlider();
     
     console.log('Report assembly viewer initialized');
 }
