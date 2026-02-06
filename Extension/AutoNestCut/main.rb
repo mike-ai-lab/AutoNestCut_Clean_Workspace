@@ -746,22 +746,24 @@ module AutoNestCut
       
       # Flatten parts data for label generation
       all_parts = []
+      part_counter = 1
       parts_by_material.each do |material, part_entries|
         part_entries.each do |entry|
           part_obj = entry.is_a?(Hash) && entry.key?(:part_type) ? entry[:part_type] : entry
           
-          # Extract part data
+          # Extract part data with sequential part ID
           part_data = {
-            part_id: part_obj.respond_to?(:id) ? part_obj.id : "N/A",
+            part_id: part_counter,
             name: part_obj.respond_to?(:name) ? part_obj.name : "Unknown",
             width: part_obj.respond_to?(:width) ? part_obj.width : 0,
             height: part_obj.respond_to?(:height) ? part_obj.height : 0,
             thickness: part_obj.respond_to?(:thickness) ? part_obj.thickness : 0,
             material: material,
-            board_number: entry.is_a?(Hash) ? entry[:board_number] : nil
+            board_number: entry.is_a?(Hash) ? entry[:board_number] : 1
           }
           
           all_parts << part_data
+          part_counter += 1
         end
       end
       

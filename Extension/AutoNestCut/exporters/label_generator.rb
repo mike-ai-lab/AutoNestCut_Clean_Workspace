@@ -1,17 +1,18 @@
 # frozen_string_literal: true
 
 # Label Generator for AutoNestCut
-# Creates labels with QR codes and part information for nesting diagrams
+# Creates labels stylized to match a specific industrial design template.
 
 require_relative 'qr_code_generator'
 
 module AutoNestCut
   class LabelGenerator
     
-    # Label styles
-    STYLE_MINIMAL = 'minimal'       # ID only
-    STYLE_COMPACT = 'compact'       # ID + dimensions
-    STYLE_DETAILED = 'detailed'     # All information
+    # Style constants based on the target image
+    STYLE_ORANGE = '#E65100'
+    STYLE_BLACK = '#000000'
+    STYLE_WHITE = '#FFFFFF'
+    STYLE_BORDER_WIDTH = 2.5 # mm, thick borders as seen in image
     
     # Label positions
     POSITION_TOP_LEFT = 'top-left'
@@ -26,26 +27,24 @@ module AutoNestCut
       @options = default_options.merge(options)
     end
     
-    # Default label options
+    # Default label options refined for the specific style
     def default_options
       {
         enabled: true,
         qr_enabled: true,
-        qr_size: 20,              # mm (smaller for now)
+        qr_size: 28,                  # mm, specific size to fit orange zone
         label_position: POSITION_AUTO,
-        label_style: STYLE_COMPACT,
-        font_size: 10,            # pt (larger for readability)
-        padding: 4,               # mm (more padding)
-        background_color: '#FFFFFF',
-        border_color: '#333333',
-        text_color: '#000000',
-        border_width: 1,          # mm (thicker border)
+        # Base font size reference, actual sizes are calculated relative to layout
+        font_size: 12,                
+        background_color: STYLE_WHITE,
+        border_color: STYLE_BLACK,
+        text_color: STYLE_BLACK,
+        border_width: STYLE_BORDER_WIDTH,
+        # Fields needed to populate the specific design slots
         include_fields: {
-          part_id: true,
-          part_name: true,
-          dimensions: true,
-          material: false,
-          board_number: false
+          part_id: true,    # For top banner "Part_XX" and footer "ID: XX"
+          dimensions: true, # For main dimensions area
+          board_number: true # For footer "B#X"
         }
       }
     end
@@ -54,7 +53,7 @@ module AutoNestCut
     def generate_label(part_data, part_dimensions)
       return nil unless @options[:enabled]
       
-      # Calculate label dimensions
+      # Calculate label dimensions based on a fixed aspect ratio style
       label_size = calculate_label_size(part_data)
       
       # Calculate label position on part
@@ -64,76 +63,42 @@ module AutoNestCut
       # Generate QR code
       qr_svg = nil
       if @options[:qr_enabled]
-        qr_svg = @qr_generator.generate_qr_code(part_data, size: @options[:qr_size])
+        # Generate QR without internal padding as we place it precisely
+        qr_svg = @qr_generator.generate_qr_code(part_data, size: @options[:qr_size], padding: 0)
       end
       
-      # Generate label content
-      label_content = generate_label_content(part_data, qr_svg, label_size)
+      # Generate the complex internal SVG content structure
+      label_content = generate_styled_label_content(part_data, qr_svg, label_size)
       
-      # Create positioned label SVG
+      # Create the outer container and place the content
       create_positioned_label(label_content, position, label_size)
     end
     
-    # Calculate label size based on content
+    # Calculate label size based on fixed target aspect ratio
+    # The target image is roughly square, slightly taller than wide.
+    # Let's define a standard size that scales nicely.
     def calculate_label_size(part_data)
-      qr_size = @options[:qr_enabled] ? @options[:qr_size] : 0
-      padding = @options[:padding]
-      font_size = @options[:font_size]
+      # Standard base size in mm that accommodates the layout nicely
+      base_width = 90.0
+      base_height = 98.0 # slightly taller ratio
       
-      # Estimate text height based on number of lines
-      text_lines = count_text_lines(part_data)
-      line_height = font_size * 0.6 # mm per line
-      text_height = (text_lines * line_height) + (font_size * 0.5) # Add top margin
-      
-      # Estimate text width (rough approximation)
-      text_width = 50 # mm (enough for most part names)
-      
-      # Calculate dimensions
-      if @options[:qr_enabled]
-        width = qr_size + text_width + (padding * 3)
-        height = [qr_size, text_height].max + (padding * 2)
-      else
-        width = text_width + (padding * 2)
-        height = text_height + (padding * 2)
-      end
-      
-      { width: width, height: height }
+      { width: base_width, height: base_height }
     end
     
-    # Count number of text lines based on style
-    def count_text_lines(part_data)
-      case @options[:label_style]
-      when STYLE_MINIMAL
-        1 # Just ID
-      when STYLE_COMPACT
-        2 # ID + dimensions
-      when STYLE_DETAILED
-        4 # ID + name + dimensions + material
-      else
-        2
-      end
-    end
-    
-    # Calculate optimal label position on part
+    # Calculate optimal label position on part (Unchanged logic)
     def calculate_label_position(part_dimensions, label_size)
       part_width = part_dimensions[:width]
       part_height = part_dimensions[:height]
       label_width = label_size[:width]
       label_height = label_size[:height]
       
-      # Check if part is large enough for label
-      min_size = 50 # mm
-      if part_width < min_size || part_height < min_size
-        return { skip: true, reason: 'Part too small' }
-      end
-      
-      # Check if label fits
-      if label_width > part_width * 0.8 || label_height > part_height * 0.8
-        return { skip: true, reason: 'Label too large for part' }
+      # Check if part is large enough for label (needs to be bigger than the label itself)
+      if part_width < label_width + 10 || part_height < label_height + 10
+        return { skip: true, reason: 'Part too small for standard label style' }
       end
       
       # Calculate position based on preference
-      margin = 5 # mm from edge
+      margin = STYLE_BORDER_WIDTH * 2 # mm from edge, accounting for thick borders
       
       position = case @options[:label_position]
       when POSITION_TOP_LEFT
@@ -146,119 +111,196 @@ module AutoNestCut
         { x: part_width - label_width - margin, y: part_height - label_height - margin }
       when POSITION_CENTER
         { x: (part_width - label_width) / 2, y: (part_height - label_height) / 2 }
-      else # AUTO
-        # Choose best position (top-right by default)
+      else # AUTO - Top Right preference
         { x: part_width - label_width - margin, y: margin }
       end
       
       position.merge(skip: false)
     end
     
-    # Generate label content (QR + text)
-    def generate_label_content(part_data, qr_svg, label_size)
-      padding = @options[:padding]
-      qr_size = @options[:qr_size]
-      font_size = @options[:font_size]
+    # Generate the specific stylized content structure
+    def generate_styled_label_content(part_data, qr_svg, label_size)
+      w = label_size[:width]
+      h = label_size[:height]
+      bw = @options[:border_width]
+      half_bw = bw / 2.0
+
+      # Layout Ratios based on image analysis
+      top_row_height = h * 0.32
+      bottom_row_height = h - top_row_height
+      left_col_width = w * 0.38
+      right_col_width = w - left_col_width
+      metal_corner_size = top_row_height
       
+      # Font sizes relative to container height (viewBox-native units, not pt)
+      font_xl = h * 0.13  # "Part_48" 
+      font_lg = h * 0.09  # Dimensions values
+      font_md = h * 0.065 # "Dimensions:" label
+      font_sm = h * 0.055 # Footer ID/B#
+
       content = ""
+
+      # --- 1. SVG Definitions (Gradients, Patterns, and Fonts) ---
+      content += <<~svg_defs
+        <defs>
+          <style type="text/css">
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&amp;display=swap');
+          </style>
+          <pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="4" height="4">
+            <path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2" stroke="#{STYLE_BLACK}" stroke-width="0.8"/>
+          </pattern>
+          <radialGradient id="metalGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+            <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+            <stop offset="40%" style="stop-color:#d0d0d0;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#a0a0a0;stop-opacity:1" />
+          </radialGradient>
+          <clipPath id="bannerClip">
+            <rect x="#{bw}" y="#{inset}" width="#{w - metal_corner_size - bw * 2}" height="#{top_row_height - bw}"/>
+          </clipPath>
+          <clipPath id="dimensionsClip">
+            <rect x="#{left_col_width + bw}" y="#{top_row_height + bw}" width="#{right_col_width - bw * 2}" height="#{bottom_row_height - bw * 2}"/>
+          </clipPath>
+        </defs>
+      svg_defs
+
+      # --- 2. Background Structure & Color Zones ---
+      # We inset these slightly so the outer thick border defined in create_positioned_label doesn't overlap awkwardly
+      inset = half_bw
+
+      # Top Left Banner (White)
+      content += "<rect x='#{inset}' y='#{inset}' width='#{w - metal_corner_size - bw}' height='#{top_row_height - bw}' fill='#{STYLE_WHITE}' />"
+
+      # Top Right Metallic Corner
+      content += "<rect x='#{w - metal_corner_size + half_bw}' y='#{inset}' width='#{metal_corner_size - bw}' height='#{metal_corner_size - bw}' fill='url(#metalGradient)' />"
+
+      # Bottom Left (Orange Solid Base)
+      content += "<rect x='#{inset}' y='#{top_row_height + half_bw}' width='#{left_col_width - bw}' height='#{bottom_row_height - bw}' fill='#{STYLE_ORANGE}' />"
+
+      # Bottom Left (Diagonal Pattern Overlay - top half of orange zone)
+      pattern_height = bottom_row_height * 0.45
+      content += "<rect x='#{inset}' y='#{top_row_height + half_bw}' width='#{left_col_width - bw}' height='#{pattern_height}' fill='url(#diagonalHatch)' />"
+
+      # Bottom Right (White)
+      content += "<rect x='#{left_col_width + half_bw}' y='#{top_row_height + half_bw}' width='#{right_col_width - bw}' height='#{bottom_row_height - bw}' fill='#{STYLE_WHITE}' />"
+
+
+      # --- 3. Internal Dividing Lines (Thick Black) ---
+      # Horizontal divider spanning full width
+      content += "<line x1='#{inset}' y1='#{top_row_height}' x2='#{w - inset}' y2='#{top_row_height}' stroke='#{STYLE_BLACK}' stroke-width='#{bw}' stroke-linecap='butt' />"
       
-      # Embed Real QR Code
+      # Vertical divider (separating orange/white bottom sections)
+      content += "<line x1='#{left_col_width}' y1='#{top_row_height + half_bw}' x2='#{left_col_width}' y2='#{h - inset}' stroke='#{STYLE_BLACK}' stroke-width='#{bw}' stroke-linecap='butt' />"
+      
+      # Vertical divider (separating top banner and metal corner)
+      content += "<line x1='#{w - metal_corner_size}' y1='#{inset}' x2='#{w - metal_corner_size}' y2='#{top_row_height - half_bw}' stroke='#{STYLE_BLACK}' stroke-width='#{bw}' stroke-linecap='butt' />"
+
+
+      # --- 4. Content Placement ---
+      
+      # Data Extraction
+      part_id = escape_xml(part_data[:part_id] || part_data['part_id'] || 'N/A')
+      board_num = escape_xml(part_data[:board_number] || part_data['board_number'] || '1')
+      dim_w = (part_data[:width] || part_data['width']).to_f.round(1)
+      dim_h = (part_data[:height] || part_data['height']).to_f.round(1)
+      dim_t = (part_data[:thickness] || part_data['thickness']).to_f.round(1)
+      # Ensure consistent formatting X.0mm
+      dim_w_str = (dim_w % 1 == 0 ? "#{dim_w.to_i}.0" : dim_w.to_s)
+      dim_h_str = (dim_h % 1 == 0 ? "#{dim_h.to_i}.0" : dim_h.to_s)
+      dim_t_str = (dim_t % 1 == 0 ? "#{dim_t.to_i}.0" : dim_t.to_s)
+
+      common_font = "font-family=\"'Inter', sans-serif\" fill=\"#{STYLE_BLACK}\""
+      label_font = "font-family=\"'Inter', sans-serif\" fill=\"#888888\""  # Grey for W/H/TH labels
+
+      # Top Banner Text "Part_XX" - clipped to avoid overlap, no distortion
+      banner_text = "Part_#{part_id}"
+      content += "<g clip-path=\"url(#bannerClip)\">"
+      content += "<text x='#{bw * 3}' y='#{top_row_height / 2}' #{common_font} font-size='#{font_xl}' font-weight='bold' dominant-baseline='middle'>#{banner_text}</text>"
+      content += "</g>"
+
+      # QR Code Placement (in the solid orange section)
       if @options[:qr_enabled] && qr_svg
-        # Embed the SVG content inside a group positioned correctly
-        # We assume qr_svg is a full <svg> string, so we wrap it to position it
-        content += "<g transform=\"translate(#{padding}, #{padding})\">"
-        # We need to ensure the embedded SVG inherits the correct size or is handled by browser/viewer
-        # The qr_generator already sets width/height in mm, which works in most SVG viewers
+        qr_pos_x = (left_col_width - @options[:qr_size]) / 2
+        # Center vertically in the bottom (solid orange) part of the left column
+        qr_available_height = bottom_row_height - pattern_height
+        qr_pos_y = top_row_height + pattern_height + (qr_available_height - @options[:qr_size]) / 2
+        
+        content += "<g transform=\"translate(#{qr_pos_x}, #{qr_pos_y})\">"
         content += qr_svg
         content += "</g>"
-      elsif @options[:qr_enabled]
-        # Fallback if generation failed
-        content += "<rect x=\"#{padding}\" y=\"#{padding}\" width=\"#{qr_size}\" height=\"#{qr_size}\" fill=\"#e0e0e0\" stroke=\"#666\" stroke-width=\"0.5\" rx=\"2\"/>"
-        content += "<text x=\"#{padding + qr_size/2}\" y=\"#{padding + qr_size/2}\" font-family=\"Arial\" font-size=\"8pt\" fill=\"#666\" text-anchor=\"middle\" dominant-baseline=\"middle\">Err</text>"
       end
+
+      # Right Column Content - with proper padding to avoid edge clipping
+      right_col_padding_x = left_col_width + bw * 3  # More padding from left edge
+      right_col_top_y = top_row_height + bw * 3
+      label_offset_x = font_xs * 2.5  # Space for W/H/TH labels
+
+      content += "<g clip-path=\"url(#dimensionsClip)\">"
       
-      # Add text content with proper spacing
-      text_x = @options[:qr_enabled] ? (qr_size + padding * 3) : (padding * 2)
-      text_y_start = padding + 4 # Start position in mm
-      line_height = 4.5 # Spacing between lines in mm
+      # "Dimensions (mm)" Label - unit shown once
+      content += "<text x='#{right_col_padding_x}' y='#{right_col_top_y + font_md}' #{common_font} font-size='#{font_md}'>Dimensions</text>"
+      content += "<text x='#{right_col_padding_x + font_md * 5.5}' y='#{right_col_top_y + font_md}' #{label_font} font-size='#{font_xs}'>(mm)</text>"
+
+      # Large Dimension Values with W/H/TH labels (no "mm" on each line)
+      dim_line1_y = right_col_top_y + font_md + font_lg * 1.5
+      dim_line2_y = right_col_top_y + font_md + font_lg * 2.8
+      dim_line3_y = right_col_top_y + font_md + font_lg * 4.1
       
-      text_content = generate_text_content(part_data)
-      text_content.each_with_index do |line, index|
-        y_offset = text_y_start + (index * line_height)
-        content += "<text x=\"#{text_x}\" y=\"#{y_offset}\" font-family=\"Arial, sans-serif\" font-size=\"#{font_size}pt\" fill=\"#{@options[:text_color]}\" font-weight=\"bold\">#{escape_xml(line)}</text>"
-      end
+      # W label and width value
+      content += "<text x='#{right_col_padding_x}' y='#{dim_line1_y}' #{label_font} font-size='#{font_xs}' font-weight='bold'>W</text>"
+      content += "<text x='#{right_col_padding_x + label_offset_x}' y='#{dim_line1_y}' #{common_font} font-size='#{font_lg}' font-weight='bold'>#{dim_w_str}</text>"
       
+      # H label and height value
+      content += "<text x='#{right_col_padding_x}' y='#{dim_line2_y}' #{label_font} font-size='#{font_xs}' font-weight='bold'>H</text>"
+      content += "<text x='#{right_col_padding_x + label_offset_x}' y='#{dim_line2_y}' #{common_font} font-size='#{font_lg}' font-weight='bold'>#{dim_h_str}</text>"
+      
+      # TH label and thickness value
+      content += "<text x='#{right_col_padding_x}' y='#{dim_line3_y}' #{label_font} font-size='#{font_xs}' font-weight='bold'>TH</text>"
+      content += "<text x='#{right_col_padding_x + label_offset_x}' y='#{dim_line3_y}' #{common_font} font-size='#{font_lg}' font-weight='bold'>#{dim_t_str}</text>"
+      
+      content += "</g>"
+
+      # Footer Section - line centered between thickness text and footer text
+      footer_line_y = h - (font_sm * 2.5)
+      # Thin footer line
+      content += "<line x1='#{right_col_padding_x}' y1='#{footer_line_y}' x2='#{w - bw * 2}' y2='#{footer_line_y}' stroke='#{STYLE_BLACK}' stroke-width='1' />"
+      
+      footer_text_y = footer_line_y + font_sm * 1.4
+      # ID text left
+      content += "<text x='#{right_col_padding_x}' y='#{footer_text_y}' #{common_font} font-size='#{font_sm}'>ID: P#{part_id}</text>"
+      # Board number right aligned
+      content += "<text x='#{w - bw * 3}' y='#{footer_text_y}' #{common_font} font-size='#{font_sm}' text-anchor='end'>B##{board_num}</text>"
+
       content
     end
     
-    # Generate text lines based on style
-    def generate_text_content(part_data)
-      lines = []
-      fields = @options[:include_fields]
-      
-      # Part ID (always included)
-      if fields[:part_id]
-        part_id = part_data[:part_id] || part_data['part_id'] || 'N/A'
-        lines << "ID: #{part_id}"
-      end
-      
-      # Part name (on separate line)
-      if fields[:part_name] && @options[:label_style] != STYLE_MINIMAL
-        name = part_data[:name] || part_data['name']
-        lines << truncate_text(name, 18) if name
-      end
-      
-      # Dimensions (on separate line)
-      if fields[:dimensions]
-        width = (part_data[:width] || part_data['width']).to_f.round(0)
-        height = (part_data[:height] || part_data['height']).to_f.round(0)
-        thickness = (part_data[:thickness] || part_data['thickness']).to_f.round(0)
-        lines << "#{width}×#{height}×#{thickness}mm"
-      end
-      
-      # Material (detailed style only)
-      if fields[:material] && @options[:label_style] == STYLE_DETAILED
-        material = part_data[:material] || part_data['material']
-        lines << truncate_text(material, 15) if material
-      end
-      
-      # Board number
-      if fields[:board_number]
-        board = part_data[:board_number] || part_data['board_number']
-        lines << "Board #{board}" if board
-      end
-      
-      lines
-    end
-    
-    # Create positioned label SVG
+    # Create positioned label SVG container (Updated for thick borders)
     def create_positioned_label(content, position, label_size)
       x = position[:x]
       y = position[:y]
       width = label_size[:width]
       height = label_size[:height]
+      bw = @options[:border_width]
       
       svg = "<g class=\"part-label\" transform=\"translate(#{x}, #{y})\">"
       
-      # Background rectangle
-      svg += "<rect x=\"0\" y=\"0\" width=\"#{width}\" height=\"#{height}\" "
-      svg += "fill=\"#{@options[:background_color]}\" "
-      svg += "stroke=\"#{@options[:border_color]}\" "
-      svg += "stroke-width=\"#{@options[:border_width]}\" "
-      svg += "rx=\"2\" ry=\"2\"/>"
+      # Main Outer Border Rectangle
+      # We draw the stroke *outside* the defined width/height to avoid crushing content
+      svg += "<rect x='#{bw/2.0}' y='#{bw/2.0}' width='#{width - bw}' height='#{height - bw}' "
+      svg += "fill='none' " # Fill handled by inner content structures
+      svg += "stroke='#{@options[:border_color]}' "
+      svg += "stroke-width='#{bw}' "
+      # Small border radius for outer corners
+      svg += "rx='#{bw}' ry='#{bw}'/>"
       
-      # Content
+      # Clip path to ensure inner square corners don't bleed out the rounded outer corners
+      svg += "<clipPath id='labelClip'><rect x='#{bw}' y='#{bw}' width='#{width - bw*2}' height='#{height - bw*2}' rx='#{bw/2}' ry='#{bw/2}'/></clipPath>"
+      svg += "<g clip-path='url(#labelClip)'>"
       svg += content
+      svg += "</g>"
       
       svg += "</g>"
       
       svg
-    end
-    
-    # Utility: Truncate text to max length
-    def truncate_text(text, max_length)
-      return text if text.length <= max_length
-      text[0...max_length-3] + '...'
     end
     
     # Utility: Escape XML special characters
@@ -272,24 +314,9 @@ module AutoNestCut
           .gsub("'", '&apos;')
     end
     
-    # Utility: Extract viewBox size from SVG string
-    def extract_viewbox_size(svg_string)
-      # Extract viewBox attribute: viewBox="0 0 WIDTH HEIGHT"
-      if svg_string =~ /viewBox="0 0 (\d+) \d+"/
-        return $1.to_i
-      end
-      # Fallback: assume 21x21 (QR version 1)
-      21
-    end
-    
     # Update label options
     def update_options(new_options)
       @options.merge!(new_options)
-    end
-    
-    # Get current options
-    def options
-      @options
     end
     
   end
