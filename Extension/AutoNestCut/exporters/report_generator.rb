@@ -437,25 +437,33 @@ module AutoNestCut
           part_name = "Part_#{part_counter}"
         end
         
-        # CRITICAL FIX: For nested components, drill down to get the INNER part's persistent_id
+        # CRITICAL FIX: Recursively drill down to the DEEPEST nested component/group
         # This matches what Part.rb does when creating parts for nesting
         actual_part = part
+        nesting_depth = 0
         
-        # If this is a component instance with a single nested component/group inside, drill down
-        if part.is_a?(Sketchup::ComponentInstance)
-          inner_entities = part.definition.entities.select { |e| e.is_a?(Sketchup::Group) || e.is_a?(Sketchup::ComponentInstance) }
-          if inner_entities.length == 1
-            # Single nested component - use its ID instead
-            actual_part = inner_entities.first
-            puts "  🔍 Nested component detected: #{part_name} - using inner part's ID"
+        # Keep drilling down until we reach the deepest single nested component/group
+        loop do
+          inner_entities = if actual_part.is_a?(Sketchup::ComponentInstance)
+            actual_part.definition.entities.select { |e| e.is_a?(Sketchup::Group) || e.is_a?(Sketchup::ComponentInstance) }
+          elsif actual_part.is_a?(Sketchup::Group)
+            actual_part.entities.select { |e| e.is_a?(Sketchup::Group) || e.is_a?(Sketchup::ComponentInstance) }
+          else
+            []
           end
-        elsif part.is_a?(Sketchup::Group)
-          inner_entities = part.entities.select { |e| e.is_a?(Sketchup::Group) || e.is_a?(Sketchup::ComponentInstance) }
+          
+          # If there's exactly one nested component/group, drill down
           if inner_entities.length == 1
-            # Single nested group - use its ID instead
             actual_part = inner_entities.first
-            puts "  🔍 Nested group detected: #{part_name} - using inner part's ID"
+            nesting_depth += 1
+          else
+            # Either no nested components or multiple - stop drilling
+            break
           end
+        end
+        
+        if nesting_depth > 0
+          puts "  🔍 Drilled down #{nesting_depth} level(s) for #{part_name} - using deepest part's ID"
         end
         
         # CRITICAL: Use SketchUp's persistent_id as the unique ID
@@ -519,8 +527,10 @@ module AutoNestCut
       
       entities.each do |e|
         if e.is_a?(Sketchup::Face)
-          vertices = []
-          uvs = []
+          # CRITICAL FIX: Use SketchUp's built-in mesh triangulation
+          # This handles ALL shapes correctly: L-shapes, holes, concave polygons, etc.
+          # Flag 7 = include normals, UVs, and all mesh data
+          mesh = e.mesh(7)
           
           # Get material for this face
           face_material = e.material || e.back_material
@@ -528,35 +538,27 @@ module AutoNestCut
             material_list << face_material.name
           end
           
-          e.outer_loop.vertices.each_with_index do |v, idx|
-            pt = v.position.transform(current_transform)
-            vertices << {
-              x: pt.x.to_mm / 100.0,
-              y: pt.y.to_mm / 100.0,
-              z: pt.z.to_mm / 100.0
-            }
-            
-            # Generate UV coordinates
-            # Use simple planar mapping for all faces to avoid TextureWriter issues
-            # The 3D viewer will handle texture mapping on the client side
-            uvs << generate_planar_uv(v.position, e.normal)
+          # CRITICAL FIX: Properly extract RGB color from SketchUp material
+          color = if face_material && face_material.color
+            r = face_material.color.red
+            g = face_material.color.green
+            b = face_material.color.blue
+            (r << 16) | (g << 8) | b  # Combine into 0xRRGGBB format
+          else
+            0x74b9ff  # Default blue-gray color
           end
           
-          color = face_material ? (face_material.color.to_i & 0xFFFFFF) : 0x74b9ff
           material_name = face_material ? face_material.name : nil
           
           # Extract texture data if available (with caching)
           texture_data = nil
           if face_material && face_material.texture
             begin
-              # Check cache first
               texture_id = face_material.texture.object_id
               
               if @@texture_cache[texture_id]
-                # Use cached texture path
                 texture_data = @@texture_cache[texture_id]
               else
-                # Export texture and cache it
                 temp_dir = File.join(Dir.tmpdir, 'autonestcut_textures')
                 Dir.mkdir(temp_dir) unless Dir.exist?(temp_dir)
                 texture_filename = "#{face_material.name.gsub(/[^\w]/, '_')}_#{texture_id}.png"
@@ -573,13 +575,57 @@ module AutoNestCut
             end
           end
           
-          faces << { 
-            vertices: vertices, 
-            uvs: uvs,
-            color: color,
-            material: material_name,
-            texture: texture_data
-          }
+          # Process mesh polygons (already triangulated by SketchUp!)
+          polys = mesh.polygons
+          points = mesh.points
+          
+          # Get UVs if textured
+          uv_coords = (face_material && face_material.texture) ? mesh.uvs(true) : nil
+          
+          polys.each do |poly|
+            # Each polygon is a triangle (SketchUp triangulates automatically)
+            vertices = []
+            uvs = []
+            
+            # Fan triangulation: (0, i+1, i+2)
+            (0..poly.length-3).each do |i|
+              indices = [0, i+1, i+2]
+              
+              triangle_verts = []
+              triangle_uvs = []
+              
+              indices.each do |idx|
+                # PolygonMesh indices are 1-based, sometimes negative for hidden edges
+                vertex_index = poly[idx].abs
+                
+                # Get point and transform
+                pt = points[vertex_index - 1].transform(current_transform)
+                triangle_verts << {
+                  x: pt.x.to_mm / 100.0,
+                  y: pt.y.to_mm / 100.0,
+                  z: pt.z.to_mm / 100.0
+                }
+                
+                # Get UV if available
+                if uv_coords && vertex_index <= uv_coords.length
+                  uv = uv_coords[vertex_index - 1]
+                  triangle_uvs << { x: uv.x.to_f, y: uv.y.to_f }
+                else
+                  triangle_uvs << { x: 0.0, y: 0.0 }
+                end
+              end
+              
+              # Add this triangle as a separate face
+              # Frontend will render each triangle directly without re-triangulation
+              faces << { 
+                vertices: triangle_verts,  # Already a triangle (3 vertices)
+                uvs: triangle_uvs,
+                color: color,
+                material: material_name,
+                texture: texture_data
+              }
+            end
+          end
           
         elsif e.is_a?(Sketchup::Group)
           collect_component_faces(e, current_transform * e.transformation, faces, material_list)

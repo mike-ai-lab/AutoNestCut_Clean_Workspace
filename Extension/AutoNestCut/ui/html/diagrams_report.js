@@ -1496,21 +1496,54 @@ function handle3DViewerClick(event, canvas) {
         // Find the first mesh intersection
         for (let intersect of intersects) {
             if (intersect.object.isMesh) {
-                // Find the parent group that contains userData
+                // CRITICAL FIX: Drill down to the DEEPEST parent group with userData
+                // This matches what the backend does when extracting component geometry
                 let group = intersect.object;
-                while (group && !group.userData.partName) {
+                let deepestGroup = null;
+                
+                // Walk up the parent chain and find the deepest group with partName
+                while (group) {
+                    if (group.userData && group.userData.partName) {
+                        deepestGroup = group;
+                        // Don't break - keep going up to find if there's a deeper parent
+                    }
                     group = group.parent;
                 }
                 
-                if (group && group.userData.partName) {
-                    console.log('🖱️ 3D Viewer clicked:', group.userData.partName);
+                // Now walk back down from the deepest group to find the actual deepest child
+                if (deepestGroup) {
+                    // Recursively drill down to find the deepest single child with userData
+                    let currentGroup = deepestGroup;
+                    let drillDepth = 0;
+                    
+                    while (true) {
+                        // Find children that are groups with userData
+                        const childGroups = currentGroup.children.filter(child => 
+                            child.type === 'Group' && child.userData && child.userData.partName
+                        );
+                        
+                        // If exactly one child group, drill down
+                        if (childGroups.length === 1) {
+                            currentGroup = childGroups[0];
+                            drillDepth++;
+                        } else {
+                            // Either no children or multiple - stop drilling
+                            break;
+                        }
+                    }
+                    
+                    if (drillDepth > 0) {
+                        console.log(`🔍 Drilled down ${drillDepth} level(s) to deepest part:`, currentGroup.userData.partName);
+                    }
+                    
+                    console.log('🖱️ 3D Viewer clicked:', currentGroup.userData.partName);
                     
                     // IMMEDIATE VISUAL FEEDBACK: Flash white for 150ms
-                    group.traverse((child) => {
+                    currentGroup.traverse((child) => {
                         if (child.isMesh && child.material) {
                             // Store original if not stored
-                            if (!group.userData.originalMaterial) {
-                                group.userData.originalMaterial = {
+                            if (!currentGroup.userData.originalMaterial) {
+                                currentGroup.userData.originalMaterial = {
                                     color: child.material.color.getHex(),
                                     emissive: child.material.emissive.getHex(),
                                     opacity: child.material.opacity
@@ -1525,7 +1558,7 @@ function handle3DViewerClick(event, canvas) {
                     
                     // After 150ms, restore and highlight diagram
                     setTimeout(() => {
-                        group.traverse((child) => {
+                        currentGroup.traverse((child) => {
                             if (child.isMesh && child.material) {
                                 child.material.emissive.setHex(0x000000);
                                 child.material.emissiveIntensity = 0;
@@ -1534,7 +1567,7 @@ function handle3DViewerClick(event, canvas) {
                         });
                         
                         // Highlight the diagram
-                        highlightDiagramFromViewer(group.userData);
+                        highlightDiagramFromViewer(currentGroup.userData);
                     }, 150);
                     
                     break;
@@ -1919,18 +1952,19 @@ function toggleReportTexture() {
                             // Show texture if available
                             if (hasStoredTexture) {
                                 child.material.map = child.userData.originalMaterial.map;
-                                child.material.color.setHex(0xFFFFFF);
+                                child.material.vertexColors = false;  // Disable vertex colors when showing texture
+                                child.material.color.setHex(0xFFFFFF);  // White to show texture properly
                                 child.material.needsUpdate = true;
                                 console.log(`✅ Enabled texture for group ${idx}`);
                             } else {
-                                console.log(`⚠️ No texture available for group ${idx}`);
+                                console.log(`⚠️ No texture available for group ${idx} - keeping vertex colors`);
                             }
                         } else {
-                            // Hide texture, show color only
+                            // Hide texture, show vertex colors
                             child.material.map = null;
-                            child.material.color.setHex(0xcccccc);
+                            child.material.vertexColors = true;  // Re-enable vertex colors to show face colors
                             child.material.needsUpdate = true;
-                            console.log(`❌ Disabled texture for group ${idx}`);
+                            console.log(`❌ Disabled texture for group ${idx} - showing vertex colors`);
                         }
                     }
                 });
@@ -2140,24 +2174,41 @@ function initReportAssemblyViewer() {
         faces.forEach(face => {
             const vertices = face.vertices;
             const faceUVs = face.uvs;
-            if (!vertices || vertices.length < 3) return;
             
-            // Triangulate and swap Y/Z
-            for (let i = 1; i < vertices.length - 1; i++) {
-                positions.push(vertices[0].x, vertices[0].z, -vertices[0].y);
-                positions.push(vertices[i].x, vertices[i].z, -vertices[i].y);
-                positions.push(vertices[i + 1].x, vertices[i + 1].z, -vertices[i + 1].y);
-                
-                // Push UVs if available
-                if (faceUVs && faceUVs.length === vertices.length) {
-                    uvs.push(faceUVs[0].x, faceUVs[0].y);
-                    uvs.push(faceUVs[i].x, faceUVs[i].y);
-                    uvs.push(faceUVs[i + 1].x, faceUVs[i + 1].y);
-                } else {
-                    uvs.push(0, 0);
-                    uvs.push(0.5, 0);
-                    uvs.push(0.5, 0.5);
-                }
+            // CRITICAL: SketchUp's mesh API already triangulated the face
+            // Each face is now a triangle (3 vertices) - render directly!
+            if (!vertices || vertices.length !== 3) {
+                console.warn('Expected triangle (3 vertices), got:', vertices ? vertices.length : 0);
+                return;
+            }
+            
+            // Get face color (hex integer from Ruby)
+            const faceColor = face.color || 0xcccccc;
+            
+            // Convert hex color to RGB components (0-1 range for Three.js)
+            const r = ((faceColor >> 16) & 0xFF) / 255;
+            const g = ((faceColor >> 8) & 0xFF) / 255;
+            const b = (faceColor & 0xFF) / 255;
+            
+            // Render triangle directly (no triangulation needed!)
+            positions.push(vertices[0].x, vertices[0].z, -vertices[0].y);
+            positions.push(vertices[1].x, vertices[1].z, -vertices[1].y);
+            positions.push(vertices[2].x, vertices[2].z, -vertices[2].y);
+            
+            // Push vertex colors
+            colors.push(r, g, b);
+            colors.push(r, g, b);
+            colors.push(r, g, b);
+            
+            // Push UVs
+            if (faceUVs && faceUVs.length === 3) {
+                uvs.push(faceUVs[0].x, faceUVs[0].y);
+                uvs.push(faceUVs[1].x, faceUVs[1].y);
+                uvs.push(faceUVs[2].x, faceUVs[2].y);
+            } else {
+                uvs.push(0, 0);
+                uvs.push(0.5, 0);
+                uvs.push(0.5, 0.5);
             }
         });
         
@@ -2166,20 +2217,26 @@ function initReportAssemblyViewer() {
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         
+        // CRITICAL FIX: Add vertex colors to geometry (used when no texture or texture disabled)
+        if (colors.length > 0) {
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        }
+        
         if (uvs.length > 0) {
             geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
         }
         geometry.computeVertexNormals();
         
+        // CRITICAL: Use vertex colors by default, but textures will override when loaded
         const material = new THREE.MeshStandardMaterial({ 
-            color: 0xcccccc,
+            vertexColors: true,  // Enable vertex colors (will show actual face colors)
             metalness: 0.1,
             roughness: 0.6,
             side: THREE.DoubleSide,
             transparent: true,
             opacity: 0.85,
             emissive: 0x000000,
-            emissiveIntensity: 1.0
+            emissiveIntensity: 0.0
         });
         
         const mesh = new THREE.Mesh(geometry, material);
@@ -2223,8 +2280,11 @@ function initReportAssemblyViewer() {
                     console.log(`✓ Texture loaded for ${partData.name}`);
                     texture.wrapS = THREE.RepeatWrapping;
                     texture.wrapT = THREE.RepeatWrapping;
+                    
+                    // When texture is loaded, disable vertex colors and use texture
                     mesh.material.map = texture;
-                    mesh.material.color.setHex(0xFFFFFF);
+                    mesh.material.vertexColors = false;  // Disable vertex colors when texture is active
+                    mesh.material.color.setHex(0xFFFFFF);  // White color to show texture properly
                     mesh.material.needsUpdate = true;
                     
                     // Store texture in BOTH group userData AND mesh userData for toggle
