@@ -154,6 +154,7 @@ button:hover {
     flex-direction: column;
     align-items: stretch;
     text-align: left;
+    position: relative; /* CRITICAL: Makes maximize button position relative to card, not window! */
 }
 
 .diagram-card h3 {
@@ -1324,4 +1325,109 @@ td .cost-breakdown-wrapper {
 
 .board-info-group {
     pointer-events: none;
+}
+
+/* Diagram Header and Tags - 2x2 Grid Layout */
+.diagram-header {
+    width: 100%;
+    margin-bottom: 16px;
+    position: relative;
+    padding-right: 0px;
+    padding-top: 0px;
+}
+
+.diagram-tags {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 6px;
+    margin-top: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    padding-right: 0; /* Ensure tags don't extend into button space */
+}
+
+.diagram-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    background: transparent;
+    color: #24292e;
+    border: 1px solid #d0d7de;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.diagram-tag svg {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+}
+
+.diagram-tag span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* Remove all the colorful tag styles */
+.material-tag,
+.dimensions-tag,
+.thickness-tag,
+.efficiency-tag,
+.efficiency-tag.efficiency-high,
+.efficiency-tag.efficiency-medium,
+.efficiency-tag.efficiency-low {
+    background: transparent;
+    color: #24292e;
+    border: 1px solid #d0d7de;
+}
+
+/* Diagram Maximize Button - Clean white button in upper right corner */
+.diagram-maximize-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    left: auto;
+    bottom: auto;
+    margin: 0;
+}
+
+.diagram-maximize-btn:hover {
+    background: white;
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    transform: scale(1.08);
+}
+
+.diagram-maximize-btn svg {
+    width: 16px;
+    height: 16px;
+    color: #64748b;
+    transition: color 0.2s;
+}
+
+.diagram-maximize-btn:hover svg {
+    color: #3b82f6;
 }

@@ -303,6 +303,25 @@ function renderDiagrams() {
         tagsContainer.appendChild(efficiencyTag);
         
         header.appendChild(tagsContainer);
+        
+        // Add maximize button inside header (positioned absolutely in corner)
+        const maximizeBtn = document.createElement('button');
+        maximizeBtn.className = 'diagram-maximize-btn';
+        maximizeBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
+                <path d="M21 8V5a2 2 0 0 0-2-2h-3"></path>
+                <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+                <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
+            </svg>
+        `;
+        maximizeBtn.title = 'Maximize view';
+        maximizeBtn.onclick = (e) => {
+            e.stopPropagation();
+            openMaximizedView(null, board, boardIndex, reportUnits, reportPrecision);
+        };
+        header.appendChild(maximizeBtn);
+        
         card.appendChild(header);
 
         // ✅ SVG REPLACEMENT: Generate SVG diagram instead of canvas
@@ -2632,7 +2651,7 @@ async function captureDiagramImages() {
     }
     
     const diagrams = [];
-    const canvases = document.querySelectorAll('.diagram-canvas');
+    const canvases = Array.from(document.querySelectorAll('.diagram-canvas')).filter(el => el.tagName === 'CANVAS');
     const svgs = document.querySelectorAll('svg.diagram-canvas');
     
     console.log(`📊 Found ${canvases.length} canvas diagrams and ${svgs.length} SVG diagrams`);
@@ -3465,6 +3484,278 @@ function initResizer() {
             isResizing = false;
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
+        }
+    });
+}
+
+
+// ========================================
+// MAXIMIZE DIAGRAM VIEW
+// ========================================
+
+function openMaximizedView(sourceCanvas, board, boardIndex, reportUnits, reportPrecision) {
+    const overlay = document.createElement('div');
+    overlay.className = 'sheet-maximize-overlay';
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.15); backdrop-filter: blur(2px);
+        z-index: 9999; display: flex; align-items: center; justify-content: center;
+        padding: 40px; animation: fadeIn 0.2s ease-out;
+    `;
+    
+    const canvasContainer = document.createElement('div');
+    canvasContainer.style.cssText = `
+        background: white; border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column;
+        overflow: hidden; animation: slideUp 0.3s ease-out; margin: auto;
+    `;
+    
+    const header = document.createElement('div');
+    header.style.cssText = `
+        padding: 16px 24px; border-bottom: 1px solid #e2e8f0;
+        display: flex; justify-content: space-between; align-items: center;
+        background: #f8fafc;
+    `;
+    
+    const headerInfo = document.createElement('div');
+    headerInfo.style.cssText = `display: flex; gap: 20px; align-items: center; flex-wrap: wrap;`;
+    
+    const title = document.createElement('h3');
+    title.style.cssText = `margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;`;
+    title.textContent = `Board ${boardIndex + 1}`;
+    
+    const material = document.createElement('span');
+    material.style.cssText = `
+        font-size: 14px; color: #64748b; padding: 4px 12px;
+        background: white; border-radius: 6px; border: 1px solid #e2e8f0;
+    `;
+    material.textContent = board.material || 'Unknown Material';
+    
+    const dimensions = document.createElement('span');
+    dimensions.style.cssText = `
+        font-size: 14px; color: #64748b; padding: 4px 12px;
+        background: white; border-radius: 6px; border: 1px solid #e2e8f0;
+    `;
+    const width = board.stock_width / window.unitFactors[reportUnits];
+    const height = board.stock_height / window.unitFactors[reportUnits];
+    dimensions.textContent = `${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)} ${reportUnits}`;
+    
+    const efficiency = document.createElement('span');
+    efficiency.style.cssText = `
+        font-size: 14px; font-weight: 600; padding: 4px 12px;
+        background: ${board.efficiency_percentage >= 80 ? '#d4edda' : board.efficiency_percentage >= 60 ? '#fff3cd' : '#f8d7da'};
+        color: ${board.efficiency_percentage >= 80 ? '#155724' : board.efficiency_percentage >= 60 ? '#856404' : '#721c24'};
+        border-radius: 6px;
+    `;
+    efficiency.textContent = `${formatNumber(board.efficiency_percentage || 0, 1)}% Efficiency`;
+    
+    headerInfo.appendChild(title);
+    headerInfo.appendChild(material);
+    headerInfo.appendChild(dimensions);
+    headerInfo.appendChild(efficiency);
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.style.cssText = `
+        background: transparent; border: none; cursor: pointer; padding: 8px;
+        border-radius: 6px; display: flex; align-items: center; justify-content: center;
+        transition: background 0.2s;
+    `;
+    closeBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+    `;
+    closeBtn.onmouseover = () => closeBtn.style.background = '#f1f5f9';
+    closeBtn.onmouseout = () => closeBtn.style.background = 'transparent';
+    closeBtn.onclick = (e) => {
+        e.stopPropagation(); // Prevent event bubbling to overlay
+        closeMaximizedView(overlay);
+    };
+    
+    header.appendChild(headerInfo);
+    header.appendChild(closeBtn);
+    
+    const canvasWrapper = document.createElement('div');
+    canvasWrapper.style.cssText = `
+        padding: 24px; overflow: auto; flex: 1; display: flex;
+        align-items: center; justify-content: center; background: #fafafa; min-height: 0;
+    `;
+    
+    const maxCanvas = document.createElement('canvas');
+    maxCanvas.style.cssText = `
+        max-width: 100%; max-height: 100%;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-radius: 8px; background: white;
+    `;
+    
+    drawMaximizedBoard(maxCanvas, board, reportUnits, reportPrecision);
+    
+    canvasWrapper.appendChild(maxCanvas);
+    canvasContainer.appendChild(header);
+    canvasContainer.appendChild(canvasWrapper);
+    overlay.appendChild(canvasContainer);
+    document.body.appendChild(overlay);
+    
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeMaximizedView(overlay);
+    });
+    
+    const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+            closeMaximizedView(overlay);
+            document.removeEventListener('keydown', escapeHandler);
+        }
+    };
+    document.addEventListener('keydown', escapeHandler);
+    
+    if (!document.getElementById('maximize-animations')) {
+        const style = document.createElement('style');
+        style.id = 'maximize-animations';
+        style.textContent = `
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes slideUp {
+                from { opacity: 0; transform: translateY(20px) scale(0.95); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+function closeMaximizedView(overlay) {
+    overlay.style.animation = 'fadeOut 0.2s ease-out';
+    overlay.querySelector('div').style.animation = 'slideDown 0.2s ease-out';
+    
+    if (!document.getElementById('maximize-exit-animations')) {
+        const style = document.createElement('style');
+        style.id = 'maximize-exit-animations';
+        style.textContent = `
+            @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+            @keyframes slideDown {
+                from { opacity: 1; transform: translateY(0) scale(1); }
+                to { opacity: 0; transform: translateY(20px) scale(0.95); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    setTimeout(() => overlay.remove(), 200);
+}
+
+function drawMaximizedBoard(canvas, board, reportUnits, reportPrecision) {
+    const ctx = canvas.getContext('2d');
+    const padding = 60;
+    const boardWidth = parseFloat(board.stock_width) || 1000;
+    const boardHeight = parseFloat(board.stock_height) || 1000;
+    
+    const targetWidth = Math.min(Math.max(800, window.innerWidth * 0.7), window.innerWidth * 0.85);
+    const maxHeight = window.innerHeight * 0.65;
+    
+    let scale = (targetWidth - 2 * padding) / boardWidth;
+    const calculatedHeight = boardHeight * scale + 2 * padding;
+    
+    if (calculatedHeight > maxHeight) {
+        scale = (maxHeight - 2 * padding) / boardHeight;
+    }
+    
+    const dpr = Math.min(window.devicePixelRatio * 1.5, 3);
+    canvas.width = (boardWidth * scale + 2 * padding) * dpr;
+    canvas.height = (boardHeight * scale + 2 * padding) * dpr;
+    canvas.style.width = (boardWidth * scale + 2 * padding) + 'px';
+    canvas.style.height = (boardHeight * scale + 2 * padding) + 'px';
+    ctx.scale(dpr, dpr);
+    
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(padding, padding, boardWidth * scale, boardHeight * scale);
+    
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(padding, padding, boardWidth * scale, boardHeight * scale);
+    
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = `600 ${Math.max(15, 17 * scale)}px 'Inter', -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    const displayWidth = boardWidth / window.unitFactors[reportUnits];
+    ctx.fillText(`${formatNumber(displayWidth, reportPrecision)} ${reportUnits}`, padding + (boardWidth * scale) / 2, padding - 15);
+    
+    ctx.save();
+    ctx.translate(padding - 25, padding + (boardHeight * scale) / 2);
+    ctx.rotate(-Math.PI / 2);
+    const displayHeight = boardHeight / window.unitFactors[reportUnits];
+    ctx.fillText(`${formatNumber(displayHeight, reportPrecision)} ${reportUnits}`, 0, 0);
+    ctx.restore();
+    
+    const parts = board.parts || [];
+    const offcuts = board.offcuts || [];
+    
+    if (offcuts && offcuts.length > 0) {
+        offcuts.forEach((offcut) => {
+            const offcutX = padding + (offcut.x || 0) * scale;
+            const offcutY = padding + (offcut.y || 0) * scale;
+            const offcutWidth = (offcut.width || offcut.w || 0) * scale;
+            const offcutHeight = (offcut.height || offcut.h || 0) * scale;
+            
+            if (offcutWidth > 0 && offcutHeight > 0) {
+                drawCrossedOffcut(ctx, offcutX, offcutY, offcutWidth, offcutHeight);
+            }
+        });
+    }
+    
+    parts.forEach((part, partIndex) => {
+        const partPosX = parseFloat(part.x) || 0;
+        const partPosY = parseFloat(part.y) || 0;
+        const partW = parseFloat(part.width) || 10;
+        const partH = parseFloat(part.height) || 10;
+        
+        const partX = padding + partPosX * scale;
+        const partY = padding + partPosY * scale;
+        const partWidth = partW * scale;
+        const partHeight = partH * scale;
+        
+        drawPartWithGrain(ctx, partX, partY, partWidth, partHeight, part);
+        
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 1.8;
+        ctx.strokeRect(partX, partY, partWidth, partHeight);
+        
+        drawGrainArrow(ctx, partX, partY, partWidth, partHeight, part.grain_direction);
+        
+        if (partWidth > 60) {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = `500 ${Math.max(13, 15 * scale)}px 'Inter', -apple-system, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            const partDisplayW = partW / window.unitFactors[reportUnits];
+            ctx.fillText(`${formatNumber(partDisplayW, reportPrecision)}`, partX + partWidth / 2, partY + 8);
+        }
+        
+        if (partHeight > 60) {
+            ctx.save();
+            ctx.translate(partX + 8, partY + partHeight / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = `500 ${Math.max(13, 15 * scale)}px 'Inter', -apple-system, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            const partDisplayH = partH / window.unitFactors[reportUnits];
+            ctx.fillText(`${formatNumber(partDisplayH, reportPrecision)}`, 0, 0);
+            ctx.restore();
+        }
+        
+        if (partWidth > 40 && partHeight > 30) {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = `700 ${Math.max(17, 20 * scale)}px 'Inter', -apple-system, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const labelContent = String(part.part_unique_id || part.part_number || part.instance_id || `P${partIndex + 1}`);
+            const maxChars = Math.max(6, Math.floor(partWidth / 10));
+            const displayLabel = labelContent.length > maxChars ? labelContent.slice(0, maxChars - 1) + '…' : labelContent;
+            ctx.fillText(displayLabel, partX + partWidth / 2, partY + partHeight / 2);
         }
     });
 }
