@@ -545,7 +545,7 @@ module AutoNestCut
             b = face_material.color.blue
             (r << 16) | (g << 8) | b  # Combine into 0xRRGGBB format
           else
-            0x74b9ff  # Default blue-gray color
+            0xcccccc  # Default light grey color
           end
           
           material_name = face_material ? face_material.name : nil
