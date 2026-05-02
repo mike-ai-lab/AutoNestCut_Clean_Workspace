@@ -166,7 +166,7 @@ module AutoNestCut
             }
           end
           
-          color = e.material ? (e.material.color.to_i & 0xFFFFFF) : 0x74b9ff
+          color = e.material ? (e.material.color.to_i & 0xFFFFFF) : 0xcccccc
           faces << { vertices: vertices, color: color }
           
         elsif e.is_a?(Sketchup::Group)

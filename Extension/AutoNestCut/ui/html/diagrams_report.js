@@ -2229,7 +2229,8 @@ function initReportAssemblyViewer() {
         
         // CRITICAL: Use vertex colors by default, but textures will override when loaded
         const material = new THREE.MeshStandardMaterial({ 
-            vertexColors: true,  // Enable vertex colors (will show actual face colors)
+            color: 0xcccccc,  // Fallback grey color if vertex colors fail
+            vertexColors: colors.length > 0,  // Only enable if we have color data
             metalness: 0.1,
             roughness: 0.6,
             side: THREE.DoubleSide,
