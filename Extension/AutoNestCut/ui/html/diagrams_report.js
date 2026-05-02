@@ -1746,7 +1746,7 @@ function renderAssemblyViews(assemblyData) {
                     </button>
                 </div>
             </div>
-            <div style="background: #1a1a1a; position: relative; height: 500px;">
+            <div style="background: #f0f0f0; position: relative; height: 500px;">
                 <canvas id="reportAssembly3DCanvas" style="display: none; width: 100%; height: 100%;"></canvas>
                 <div id="reportExplodeControls" style="display: none; position: absolute; right: 60px; top: 50%; transform: translateY(-50%); height: 60%; flex-direction: column; align-items: center; gap: 10px; z-index: 100; background: rgba(255, 255, 255, 0.9); padding: 15px 8px; border-radius: 30px;">
                     <span style="writing-mode: vertical-rl; font-size: 11px; font-weight: 700; color: #4a4a4a;">EXPLODE</span>
