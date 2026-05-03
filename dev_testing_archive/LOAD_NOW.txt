@@ -1,0 +1,29 @@
+============================================================
+🪑 ASSETS GENERATOR PRO - EXACT LOADING COMMAND
+============================================================
+
+✨ NEW FEATURE ADDED: Smart Door Division!
+   - Doors automatically split when width > 100cm per door
+   - 220cm cupboard = 4 doors of 55cm each
+   - Always creates even number of doors for symmetry
+
+============================================================
+
+COPY THIS ENTIRE LINE AND PASTE INTO SKETCHUP RUBY CONSOLE:
+
+load 'C:/Users/Administrator/Desktop/AUTOMATION/cutlist/AutoNestCut/AutoNestCut_Clean_Workspace/furniture_generator.rb'; CustomFurnitureGenerator.reload!
+
+============================================================
+
+THAT'S IT! JUST COPY THE LINE ABOVE AND PASTE IT!
+
+============================================================
+
+WHAT'S NEW:
+- MAX_DOOR_WIDTH = 100cm constant
+- Automatic door count calculation
+- Console shows: "📐 Cupboard width: XXXcm → Creating N doors (XXcm each)"
+
+See DOOR_DIVISION_LOGIC.md for detailed examples!
+
+============================================================

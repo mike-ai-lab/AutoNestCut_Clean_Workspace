@@ -1,0 +1,113 @@
+DEBUG: print_pdf callback STARTED - Using Ruby PDF Exporter
+================================================================================
+DEBUG: ✓ JSON parsed successfully!
+DEBUG: Report data keys: [:parts_placed, :unique_part_types, :unique_board_types, :boards, :cut_sequences, :usable_offcuts, :summary]
+DEBUG: Diagrams count: 8
+DEBUG: Diagram images count: 8
+DEBUG: Assembly data present: true
+
+================================================================================
+DEBUG: PDF EXPORT STARTING
+================================================================================
+DEBUG: Output path: C:\Users\Administrator/Downloads/AutoNestCut_Report_20260131_145837.pdf
+
+DEBUG: DATA AVAILABILITY CHECK:
+  @report_data present: true
+  @report_data keys: [:parts_placed, :unique_part_types, :unique_board_types, :boards, :cut_sequences, :usable_offcuts, :summary]
+  @diagrams_data present: true
+  @diagrams_data count: 8
+  @assembly_data present: true
+  @assembly_data keys: [:entity_name, :views, :geometry]
+  @diagram_images count: 8
+
+DEBUG: REPORT DATA DETAILS:
+  summary: true
+  unique_board_types: 4
+  unique_part_types: 10
+  parts_placed: 22
+  cut_sequences: 8
+  usable_offcuts: 8
+
+DEBUG: RENDERING PDF CONTENT...
+  → Rendering title page...
+  → Rendering overall summary (NEW PAGE)...
+  → Rendering materials section (4 materials)...
+  → Rendering unique parts section (10 parts)...
+
+🏷️  PDF RENDER - UNIQUE PARTS SECTION:
+   labels_enabled: true
+   QR_AVAILABLE: false
+   unique_part_types count: 10
+   First part label data:
+      uid: nil
+      part_code: nil
+      label_payload: nil
+   ⚠️  Using STANDARD table format (no labels)
+  → Rendering sheet inventory section...
+  → Rendering boards summary section (NEW PAGE) (8 boards)...
+  → Rendering cutting diagrams section (NEW PAGE) (8 diagrams)...
+  → Rendering cut sequences section (NEW PAGE) (8 sequences)...
+  → Rendering offcuts section (8 offcuts)...
+  → Rendering assembly section (NEW PAGE) (6 views)...
+  → Rendering parts list section (NEW PAGE) (22 parts)...
+  → Rendering cost breakdown section (4 materials)...
+  → Rendering footer...
+DEBUG: PDF CONTENT RENDERING COMPLETE
+
+================================================================================
+DEBUG: PDF EXPORT COMPLETED SUCCESSFULLY
+================================================================================
+DEBUG: ✓ PDF generated successfully at: C:\Users\Administrator/Downloads/AutoNestCut_Report_20260131_145837.pdf
+================================================================================
+DEBUG: print_pdf callback COMPLETED
+================================================================================
+DEBUG: UIDialogManager cleanup started
+DEBUG: UIDialogManager cleanup completed
+
+================================================================================
+CLEARING CACHE AND ENABLING LABELS
+================================================================================
+✅ Component cache cleared
+✅ enable_part_labels: true
+
+================================================================================
+✅ READY TO TEST
+================================================================================
+
+Now run AutoNestCut and generate a NEW cut list.
+The cache has been cleared, so it will process fresh.
+Watch the console for label generation messages.
+Loaded: C:\Users\Administrator\Desktop\AUTOMATION\cutlist\AutoNestCut\AutoNestCut_Clean_Workspace\CLEAR_CACHE_AND_TEST.rb
+Loaded: C:\Users\Administrator\Desktop\AUTOMATION\cutlist\AutoNestCut\AutoNestCut_Clean_Workspace\DIAGNOSE_QR_LABELS.rb
+
+================================================================================
+🏷️  QR LABELS QUICK FIX
+================================================================================
+
+1️⃣  Reloading extension...
+   ✓ Removed old module
+Licensing system loaded successfully
+✅ AutoNestCut Module Loaded [15:00:40] - Build: 20250119_1445
+   ✓ Extension reloaded
+   ❌ LabelGenerator still not loaded - check main.rb
+#<SystemExit: exit>
+C:/Users/Administrator/Desktop/AUTOMATION/cutlist/AutoNestCut/AutoNestCut_Clean_Workspace/QUICK_FIX_QR_LABELS.rb:24:in `exit'
+C:/Users/Administrator/Desktop/AUTOMATION/cutlist/AutoNestCut/AutoNestCut_Clean_Workspace/QUICK_FIX_QR_LABELS.rb:24:in `<top (required)>'
+C:/Users/Administrator/AppData/Roaming/SketchUp/SketchUp 2025/SketchUp/Plugins/ruby_file_loader.rb:25:in `load'
+C:/Users/Administrator/AppData/Roaming/SketchUp/SketchUp 2025/SketchUp/Plugins/ruby_file_loader.rb:25:in `browse_and_load'
+C:/Users/Administrator/AppData/Roaming/SketchUp/SketchUp 2025/SketchUp/Plugins/ruby_file_loader.rb:35:in `block in <module:RubyFileLoader>'
+
+================================================================================
+🏷️  QR LABELS SIMPLE TEST
+================================================================================
+❌ LabelGenerator NOT loaded - reloading extension...
+Licensing system loaded successfully
+✅ AutoNestCut Module Loaded [15:00:48] - Build: 20250119_1445
+❌ FAILED to load LabelGenerator
+   Check Extension/AutoNestCut/main.rb line 30
+#<SystemExit: exit>
+C:/Users/Administrator/Desktop/AUTOMATION/cutlist/AutoNestCut/AutoNestCut_Clean_Workspace/TEST_QR_LABELS_SIMPLE.rb:27:in `exit'
+C:/Users/Administrator/Desktop/AUTOMATION/cutlist/AutoNestCut/AutoNestCut_Clean_Workspace/TEST_QR_LABELS_SIMPLE.rb:27:in `<top (required)>'
+C:/Users/Administrator/AppData/Roaming/SketchUp/SketchUp 2025/SketchUp/Plugins/ruby_file_loader.rb:25:in `load'
+C:/Users/Administrator/AppData/Roaming/SketchUp/SketchUp 2025/SketchUp/Plugins/ruby_file_loader.rb:25:in `browse_and_load'
+C:/Users/Administrator/AppData/Roaming/SketchUp/SketchUp 2025/SketchUp/Plugins/ruby_file_loader.rb:35:in `block in <module:RubyFileLoader>'

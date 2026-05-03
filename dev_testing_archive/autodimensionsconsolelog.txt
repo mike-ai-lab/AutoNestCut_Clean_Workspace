@@ -1,0 +1,52 @@
+
+load 'C:/Users/Administrator/Desktop/AutoDimension/reload.rb'
+
+
+=== AutoDimension Reloaded ===
+Version: 1.3.6
+=> true
+
+=== AutoDimension v1.3.5 ===
+Settings loaded: {:offset=>200, :top=>true, :bottom=>true, :front=>true, :back=>true, :left=>true, :right=>true}
+  Face normal: [0.0, 0.0, -1.0]
+  Orientation: Bottom
+    Dimension created: 3596.0mm at offset 200.0mm, offset_vector: [0, -1, 0]
+    Dimension created: 4300.0mm at offset 200.0mm, offset_vector: [-1, 0, 0]
+  Face normal: [0.0, 1.0, -0.0]
+  Orientation: Back
+    Dimension created: 1555.0mm at offset 200.0mm, offset_vector: [0, 0, -1]
+    Dimension created: 1700.49mm at offset 200.0mm, offset_vector: [-1, 0, 0]
+  Face normal: [0.0, 1.0, 0.0]
+  Orientation: Back
+    Dimension created: 2041.0mm at offset 200.0mm, offset_vector: [0, 0, -1]
+    Dimension created: 2027.0mm at offset 200.0mm, offset_vector: [-1, 0, 0]
+  Face normal: [-1.0, -0.0, -0.0]
+  Orientation: Left
+    Dimension created: 4300.0mm at offset 200.0mm, offset_vector: [-1, 0, 0]
+    Dimension created: 2027.0mm at offset 200.0mm, offset_vector: [-1, 0, 0]
+  Face normal: [0.0, -1.0, 0.0]
+  Orientation: Front
+    Dimension created: 2041.0mm at offset 200.0mm, offset_vector: [0, 0, 1]
+    Dimension created: 2027.0mm at offset 200.0mm, offset_vector: [1, 0, 0]
+  Face normal: [0.0, 0.0, 1.0]
+  Orientation: Top
+    Dimension created: 2041.0mm at offset 200.0mm, offset_vector: [0, -1, 0]
+    Dimension created: 4300.0mm at offset 200.0mm, offset_vector: [-1, 0, 0]
+  Face normal: [1.0, -0.0, -0.0]
+  Orientation: Right
+    Dimension created: 4300.0mm at offset 200.0mm, offset_vector: [0, 0, 1]
+    Dimension created: 2027.0mm at offset 200.0mm, offset_vector: [0, 1, 0]
+  Face normal: [1.0, 0.0, 0.0]
+  Orientation: Right
+    Dimension created: 1353.73mm at offset 200.0mm, offset_vector: [0, 0, 1]
+    Dimension created: 1700.49mm at offset 200.0mm, offset_vector: [0, 1, 0]
+  Face normal: [0.0, 0.0, 1.0]
+  Orientation: Top
+    Dimension created: 1555.0mm at offset 200.0mm, offset_vector: [0, -1, 0]
+    Dimension created: 1353.73mm at offset 200.0mm, offset_vector: [-1, 0, 0]
+  Face normal: [-0.0, -1.0, -0.0]
+  Orientation: Front
+    Dimension created: 1555.0mm at offset 200.0mm, offset_vector: [0, 0, 1]
+    Dimension created: 1700.49mm at offset 200.0mm, offset_vector: [1, 0, 0]
+Preview created with 20 dimensions
+Preview cleared

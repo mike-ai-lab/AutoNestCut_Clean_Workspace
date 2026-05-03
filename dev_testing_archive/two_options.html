@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoNestCut Resizer Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --resizer-width: 8px;
+            --sidebar-initial-width: 450px;
+        }
+
+        body {
+            background-color: #f3f4f6;
+            height: 100vh;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 64px);
+            width: 100%;
+            position: relative;
+        }
+
+        /* The Left Pane (Diagrams) */
+        #diagram-section {
+            background: #ffffff;
+            min-width: 200px;
+            overflow-y: auto;
+            border-right: 1px solid #e5e7eb;
+            width: var(--sidebar-initial-width);
+        }
+
+        /* The Resizer Handle */
+        #resizer {
+            width: var(--resizer-width);
+            cursor: col-resize;
+            background: transparent;
+            transition: background 0.2s;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #resizer:hover, .resizing #resizer {
+            background: #3b82f6;
+        }
+
+        /* The Right Pane (Dashboard) */
+        #dashboard-section {
+            flex: 1;
+            background: #f9fafb;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        /* --- CASE 1: FLUID SCALING (Video 1) --- */
+        .mode-fluid .board-card {
+            width: 100%; /* Spans full width of container */
+        }
+        .mode-fluid .board-svg {
+            width: 100%;
+            height: auto; /* SVG scales proportionally to container width */
+        }
+
+        /* --- CASE 2: FIXED SCALING (Video 2) --- */
+        .mode-fixed .board-card {
+            width: 100%;
+            overflow-x: hidden; /* Clips the child if too narrow */
+        }
+        .mode-fixed .board-svg {
+            width: 400px; /* Hardcoded width, does not shrink */
+            min-width: 400px;
+        }
+
+        .board-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            background: white;
+        }
+
+        .resizing {
+            cursor: col-resize;
+            user-select: none;
+        }
+    </style>
+</head>
+<body class="mode-fluid">
+
+    <!-- Header / Toggle -->
+    <header class="h-16 bg-white border-b flex items-center justify-between px-6 shadow-sm">
+        <div class="flex items-center gap-4">
+            <h1 class="font-bold text-xl text-slate-800">AutoNestCut Simulator</h1>
+            <div class="flex bg-gray-100 p-1 rounded-lg">
+                <button id="btn-fluid" class="px-4 py-1 rounded-md bg-white shadow-sm text-sm font-medium text-blue-600 transition-all">Video 1: Fluid</button>
+                <button id="btn-fixed" class="px-4 py-1 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 transition-all">Video 2: Fixed</button>
+            </div>
+        </div>
+        <div class="text-xs text-gray-400">Drag the blue bar to test scaling</div>
+    </header>
+
+    <div class="main-container" id="container">
+        <!-- LEFT: Diagrams -->
+        <aside id="diagram-section" class="p-6">
+            <h2 class="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider">Board Layouts</h2>
+            
+            <!-- Sample Board 1 -->
+            <div class="board-card">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <div class="text-sm font-bold text-slate-800">WEN_Wood_18mm Board 1</div>
+                        <div class="text-xs text-gray-500">Size: 2440 x 1220 mm</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs font-semibold text-green-600">Waste: 60.7%</div>
+                    </div>
+                </div>
+                
+                <!-- The Visual Board -->
+                <div class="bg-gray-50 border rounded flex items-center justify-center p-2 overflow-hidden">
+                    <svg class="board-svg" viewBox="0 0 2440 1220" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Main Board Outline -->
+                        <rect x="0" y="0" width="2440" height="1220" fill="white" stroke="#94a3b8" stroke-width="10"/>
+                        <!-- Cut Parts -->
+                        <rect x="50" y="50" width="400" height="864" fill="#cbd5e1" stroke="#475569" stroke-width="5"/>
+                        <text x="250" y="482" font-size="80" text-anchor="middle" font-weight="bold">P1</text>
+                        
+                        <rect x="460" y="50" width="400" height="864" fill="#cbd5e1" stroke="#475569" stroke-width="5"/>
+                        <text x="660" y="482" font-size="80" text-anchor="middle" font-weight="bold">P2</text>
+                        
+                        <rect x="870" y="50" width="600" height="400" fill="#cbd5e1" stroke="#475569" stroke-width="5"/>
+                        <text x="1170" y="250" font-size="80" text-anchor="middle" font-weight="bold">P3</text>
+                        
+                        <rect x="1480" y="50" width="600" height="400" fill="#cbd5e1" stroke="#475569" stroke-width="5"/>
+                        <text x="1780" y="250" font-size="80" text-anchor="middle" font-weight="bold">P4</text>
+
+                        <!-- Dimension lines -->
+                        <line x1="0" y1="1100" x2="2440" y2="1100" stroke="#64748b" stroke-width="5" />
+                        <text x="1220" y="1080" font-size="60" text-anchor="middle">2440mm</text>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Sample Board 2 -->
+            <div class="board-card">
+                <div class="text-sm font-bold text-slate-800">WEN_BackPanel_5mm Board 2</div>
+                <div class="text-xs text-gray-500 mb-3">Efficiency: 16.4%</div>
+                <div class="bg-gray-50 border rounded flex items-center justify-center p-2 overflow-hidden">
+                    <svg class="board-svg" viewBox="0 0 2440 1220" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0" y="0" width="2440" height="1220" fill="white" stroke="#94a3b8" stroke-width="10"/>
+                        <rect x="20" y="20" width="564" height="1220" fill="#e2e8f0" stroke="#475569" stroke-width="5"/>
+                        <text x="300" y="610" font-size="80" text-anchor="middle">Back</text>
+                    </svg>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER: Resizer -->
+        <div id="resizer">
+            <div class="w-1 h-8 bg-gray-300 rounded-full"></div>
+        </div>
+
+        <!-- RIGHT: Dashboard -->
+        <main id="dashboard-section">
+            <div class="max-w-4xl mx-auto">
+                <div class="grid grid-cols-4 gap-4 mb-8">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border">
+                        <div class="text-xs text-gray-400 uppercase font-bold">Total Cost</div>
+                        <div class="text-xl font-bold text-slate-800">SAR 1,200.00</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border">
+                        <div class="text-xs text-gray-400 uppercase font-bold">Efficiency</div>
+                        <div class="text-xl font-bold text-blue-600">32%</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border">
+                        <div class="text-xs text-gray-400 uppercase font-bold">Sheets</div>
+                        <div class="text-xl font-bold text-slate-800">4</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border">
+                        <div class="text-xs text-gray-400 uppercase font-bold">Parts</div>
+                        <div class="text-xl font-bold text-slate-800">8</div>
+                    </div>
+                </div>
+
+                <div class="bg-white border rounded-xl overflow-hidden shadow-sm">
+                    <div class="p-4 border-b bg-gray-50 font-bold text-slate-700">Sheet Inventory Summary</div>
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+                            <tr>
+                                <th class="p-4">Material</th>
+                                <th class="p-4">Dimensions</th>
+                                <th class="p-4">Count</th>
+                                <th class="p-4">Total Area</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            <tr>
+                                <td class="p-4 font-medium">WEN_Wood_18mm</td>
+                                <td class="p-4">2440 x 1220</td>
+                                <td class="p-4 text-blue-600 font-bold">1</td>
+                                <td class="p-4">3 m²</td>
+                            </tr>
+                            <tr class="bg-gray-50/50">
+                                <td class="p-4 font-medium">WEN_BackPanel_5mm</td>
+                                <td class="p-4">2440 x 1220</td>
+                                <td class="p-4 text-blue-600 font-bold">1</td>
+                                <td class="p-4">3 m²</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const resizer = document.getElementById('resizer');
+        const sidebar = document.getElementById('diagram-section');
+        const container = document.getElementById('container');
+        const btnFluid = document.getElementById('btn-fluid');
+        const btnFixed = document.getElementById('btn-fixed');
+
+        // Resizing Logic
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.classList.add('resizing');
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            const containerRect = container.getBoundingClientRect();
+            let newWidth = e.clientX - containerRect.left;
+            
+            // Constraints
+            if (newWidth > 200 && newWidth < 800) {
+                sidebar.style.width = `${newWidth}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+            document.body.classList.remove('resizing');
+        });
+
+        // Mode Switching
+        btnFluid.addEventListener('click', () => {
+            document.body.className = 'mode-fluid';
+            updateButtons(btnFluid, btnFixed);
+        });
+
+        btnFixed.addEventListener('click', () => {
+            document.body.className = 'mode-fixed';
+            updateButtons(btnFixed, btnFluid);
+        });
+
+        function updateButtons(active, inactive) {
+            active.classList.add('bg-white', 'shadow-sm', 'text-blue-600');
+            active.classList.remove('text-gray-500');
+            inactive.classList.remove('bg-white', 'shadow-sm', 'text-blue-600');
+            inactive.classList.add('text-gray-500');
+        }
+    </script>
+</body>
+</html>

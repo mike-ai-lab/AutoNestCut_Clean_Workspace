@@ -1,0 +1,94 @@
+===========================================
+COPY THIS ENTIRE TEXT INTO SKETCHUP RUBY CONSOLE
+===========================================
+
+require 'rqrcode'
+require 'prawn'
+require 'tmpdir'
+
+output = File.join(Dir.tmpdir, "qr_fix_test_#{Time.now.to_i}.pdf")
+
+Prawn::Document.generate(output, page_size: 'A4') do |pdf|
+  pdf.text "QR Code Fix Test - COMPACT FORMAT", size: 20, style: :bold
+  pdf.move_down 20
+  
+  # Test 1: Simple data
+  pdf.text "TEST 1: Simple QR", size: 14, style: :bold
+  pdf.move_down 5
+  simple_data = "HELLO123"
+  qr1 = RQRCode::QRCode.new(simple_data, level: :l)
+  pdf.text "Expected: #{simple_data}", size: 10
+  pdf.move_down 10
+  
+  x1, y1, size1 = 50, pdf.cursor, 100
+  module_size1 = size1 / qr1.modules.size.to_f
+  pdf.fill_color '000000'
+  qr1.modules.each_with_index do |row, ri|
+    row.each_with_index do |col, ci|
+      if col
+        pdf.fill_rectangle [x1 + (ci * module_size1), y1 - (ri * module_size1)], module_size1, module_size1
+      end
+    end
+  end
+  
+  pdf.move_down 120
+  
+  # Test 2: Compact part data
+  pdf.text "TEST 2: Compact Part Data", size: 14, style: :bold
+  pdf.move_down 5
+  part_data = "ID:TEST-001\nCabinet Panel\n600x800x18mm\nPlywood\nB1"
+  qr2 = RQRCode::QRCode.new(part_data, level: :l)
+  pdf.text "Expected:", size: 10
+  part_data.split("\n").each { |line| pdf.text "  #{line}", size: 9 }
+  pdf.move_down 10
+  
+  x2, y2, size2 = 50, pdf.cursor, 100
+  module_size2 = size2 / qr2.modules.size.to_f
+  pdf.fill_color '000000'
+  qr2.modules.each_with_index do |row, ri|
+    row.each_with_index do |col, ci|
+      if col
+        pdf.fill_rectangle [x2 + (ci * module_size2), y2 - (ri * module_size2)], module_size2, module_size2
+      end
+    end
+  end
+  
+  pdf.move_down 120
+  
+  # Test 3: Full part data (realistic)
+  pdf.text "TEST 3: Full Part Data", size: 14, style: :bold
+  pdf.move_down 5
+  full_data = "ID:ANC-001-A\nCabinet Side Panel\n600x800x18mm\nPlywood 18mm\nB1"
+  qr3 = RQRCode::QRCode.new(full_data, level: :l)
+  pdf.text "Expected:", size: 10
+  full_data.split("\n").each { |line| pdf.text "  #{line}", size: 9 }
+  pdf.move_down 10
+  
+  x3, y3, size3 = 50, pdf.cursor, 100
+  module_size3 = size3 / qr3.modules.size.to_f
+  pdf.fill_color '000000'
+  qr3.modules.each_with_index do |row, ri|
+    row.each_with_index do |col, ci|
+      if col
+        pdf.fill_rectangle [x3 + (ci * module_size3), y3 - (ri * module_size3)], module_size3, module_size3
+      end
+    end
+  end
+end
+
+puts "\n" + "="*60
+puts "✓ TEST PDF GENERATED"
+puts "="*60
+puts "\nPDF Location:"
+puts "  #{output}"
+puts "\n📱 SCAN INSTRUCTIONS:"
+puts "  1. Open the PDF above"
+puts "  2. Scan TEST 1 - should show: HELLO123"
+puts "  3. Scan TEST 2 - should show compact part data"
+puts "  4. Scan TEST 3 - should show full part data"
+puts "\nIf all 3 QR codes scan successfully, the fix is working!"
+puts "="*60
+
+===========================================
+END OF CODE - PRESS ENTER TO RUN
+===========================================

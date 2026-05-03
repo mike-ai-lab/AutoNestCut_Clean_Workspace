@@ -1,0 +1,10 @@
+===========================================
+COPY AND PASTE THIS INTO SKETCHUP RUBY CONSOLE:
+===========================================
+
+load 'C:/Users/Administrator/Desktop/AUTOMATION/cutlist/AutoNestCut/AutoNestCut_Clean_Workspace/test_new_label_design.rb'
+
+===========================================
+This will generate: test_label_new_design.svg
+Open it in your browser to see the new design!
+===========================================

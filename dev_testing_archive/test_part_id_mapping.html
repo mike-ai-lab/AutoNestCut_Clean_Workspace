@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Part ID Mapping Unit Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-case {
+            margin: 15px 0;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+        }
+        .pass {
+            border-left-color: #27ae60;
+            background: #d4edda;
+        }
+        .fail {
+            border-left-color: #e74c3c;
+            background: #f8d7da;
+        }
+        .test-result {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .pass .test-result {
+            color: #27ae60;
+        }
+        .fail .test-result {
+            color: #e74c3c;
+        }
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .summary {
+            background: #3498db;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            font-size: 18px;
+        }
+        .summary.pass {
+            background: #27ae60;
+        }
+        .summary.fail {
+            background: #e74c3c;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .data-table th {
+            background: #3498db;
+            color: white;
+        }
+        .data-table tr:nth-child(even) {
+            background: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Part ID Mapping Unit Test</h1>
+    <p>Testing the unique ID mapping system for 3D viewer ↔ Diagram part matching</p>
+    
+    <div id="testResults"></div>
+    <div id="summary"></div>
+
+    <script>
+        // Test data simulating 4 identical doors
+        const mockDiagramParts = [
+            { id: 'P27', name: 'Panel', material: 'Kitchen_new_Front', width: 578, height: 798, thickness: 18, boardNumber: 1 },
+            { id: 'P28', name: 'Panel', material: 'Kitchen_new_Front', width: 578, height: 798, thickness: 18, boardNumber: 1 },
+            { id: 'P29', name: 'Panel', material: 'Kitchen_new_Front', width: 578, height: 798, thickness: 18, boardNumber: 2 },
+            { id: 'P30', name: 'Panel', material: 'Kitchen_new_Front', width: 578, height: 798, thickness: 18, boardNumber: 2 }
+        ];
+
+        const mock3DViewerParts = [
+            { viewerUniqueId: '3D_1', partName: 'Panel', materialName: 'Kitchen_new_Front', width: 578, height: 798, thickness: 18 },
+            { viewerUniqueId: '3D_2', partName: 'Panel', materialName: 'Kitchen_new_Front', width: 578, height: 798, thickness: 18 },
+            { viewerUniqueId: '3D_3', partName: 'Panel', materialName: 'Kitchen_new_Front', width: 578, height: 798, thickness: 18 },
+            { viewerUniqueId: '3D_4', partName: 'Panel', materialName: 'Kitchen_new_Front', width: 578, height: 798, thickness: 18 }
+        ];
+
+        // Simulate the ID mapping function
+        function createPartIdMapping(viewerParts, diagramParts) {
+            console.log('🔗 Creating ID mapping...');
+            const usedDiagramIds = new Set();
+            const mappings = [];
+            
+            viewerParts.forEach((viewerPart, index) => {
+                const viewerName = viewerPart.partName;
+                const viewerMaterial = viewerPart.materialName;
+                const viewerDims = [viewerPart.width, viewerPart.height, viewerPart.thickness].sort((a, b) => b - a);
+                
+                console.log(`\n🔍 Matching 3D part ${index + 1}: ${viewerName} | ${viewerMaterial} | ${viewerDims.join('×')}mm`);
+                
+                // Find matching diagram part (that hasn't been used yet)
+                for (const diagramPart of diagramParts) {
+                    // Skip if already matched
+                    if (usedDiagramIds.has(diagramPart.id)) {
+                        console.log(`  ⏭️  Skipping ${diagramPart.id} (already used)`);
+                        continue;
+                    }
+                    
+                    // Match by name + material + dimensions
+                    const nameMatch = diagramPart.name === viewerName;
+                    const materialMatch = diagramPart.material === viewerMaterial;
+                    
+                    const diagramDims = [diagramPart.width, diagramPart.height, diagramPart.thickness].sort((a, b) => b - a);
+                    const tolerance = 1.0;
+                    const dimsMatch = Math.abs(viewerDims[0] - diagramDims[0]) < tolerance &&
+                                    Math.abs(viewerDims[1] - diagramDims[1]) < tolerance &&
+                                    Math.abs(viewerDims[2] - diagramDims[2]) < tolerance;
+                    
+                    if (nameMatch && materialMatch && dimsMatch) {
+                        // MATCH FOUND!
+                        viewerPart.uniqueId = diagramPart.id;
+                        usedDiagramIds.add(diagramPart.id);
+                        mappings.push({
+                            viewerId: viewerPart.viewerUniqueId,
+                            diagramId: diagramPart.id,
+                            name: viewerName,
+                            boardNumber: diagramPart.boardNumber
+                        });
+                        console.log(`  ✅ MATCHED to diagram part: ${diagramPart.id} (Board ${diagramPart.boardNumber})`);
+                        break;
+                    }
+                }
+                
+                if (!viewerPart.uniqueId) {
+                    console.warn(`  ❌ No match found for 3D part ${index + 1}`);
+                }
+            });
+            
+            return mappings;
+        }
+
+        // Run tests
+        function runTests() {
+            const results = [];
+            let passCount = 0;
+            let failCount = 0;
+
+            // Test 1: Verify all parts get mapped
+            console.log('\n=== TEST 1: All Parts Mapped ===');
+            const mappings = createPartIdMapping([...mock3DViewerParts], [...mockDiagramParts]);
+            const test1Pass = mappings.length === 4;
+            results.push({
+                name: 'Test 1: All 4 parts get mapped',
+                expected: '4 mappings',
+                actual: `${mappings.length} mappings`,
+                pass: test1Pass,
+                details: mappings
+            });
+            if (test1Pass) passCount++; else failCount++;
+
+            // Test 2: Verify one-to-one mapping (no duplicates)
+            console.log('\n=== TEST 2: One-to-One Mapping ===');
+            const diagramIds = mappings.map(m => m.diagramId);
+            const uniqueIds = new Set(diagramIds);
+            const test2Pass = uniqueIds.size === diagramIds.length;
+            results.push({
+                name: 'Test 2: No duplicate diagram IDs (one-to-one mapping)',
+                expected: '4 unique IDs',
+                actual: `${uniqueIds.size} unique IDs`,
+                pass: test2Pass,
+                details: diagramIds
+            });
+            if (test2Pass) passCount++; else failCount++;
+
+            // Test 3: Verify correct order (3D_1→P27, 3D_2→P28, 3D_3→P29, 3D_4→P30)
+            console.log('\n=== TEST 3: Correct Order ===');
+            const expectedMappings = [
+                { viewerId: '3D_1', diagramId: 'P27' },
+                { viewerId: '3D_2', diagramId: 'P28' },
+                { viewerId: '3D_3', diagramId: 'P29' },
+                { viewerId: '3D_4', diagramId: 'P30' }
+            ];
+            let orderCorrect = true;
+            const orderDetails = [];
+            expectedMappings.forEach((expected, i) => {
+                const actual = mappings[i];
+                const match = actual && actual.viewerId === expected.viewerId && actual.diagramId === expected.diagramId;
+                orderDetails.push({
+                    expected: `${expected.viewerId} → ${expected.diagramId}`,
+                    actual: actual ? `${actual.viewerId} → ${actual.diagramId}` : 'MISSING',
+                    match: match
+                });
+                if (!match) orderCorrect = false;
+            });
+            results.push({
+                name: 'Test 3: Correct sequential mapping',
+                expected: '3D_1→P27, 3D_2→P28, 3D_3→P29, 3D_4→P30',
+                actual: mappings.map(m => `${m.viewerId}→${m.diagramId}`).join(', '),
+                pass: orderCorrect,
+                details: orderDetails
+            });
+            if (orderCorrect) passCount++; else failCount++;
+
+            // Test 4: Simulate clicking P29 (should find 3D_3)
+            console.log('\n=== TEST 4: Diagram → 3D Matching ===');
+            const clickedDiagramId = 'P29';
+            const found3DPart = mock3DViewerParts.find(p => p.uniqueId === clickedDiagramId);
+            const test4Pass = found3DPart && found3DPart.viewerUniqueId === '3D_3';
+            results.push({
+                name: 'Test 4: Click P29 in diagram → Find 3D_3 in viewer',
+                expected: '3D_3',
+                actual: found3DPart ? found3DPart.viewerUniqueId : 'NOT FOUND',
+                pass: test4Pass,
+                details: { clickedId: clickedDiagramId, foundPart: found3DPart }
+            });
+            if (test4Pass) passCount++; else failCount++;
+
+            // Test 5: Simulate clicking 3D_4 (should find P30)
+            console.log('\n=== TEST 5: 3D → Diagram Matching ===');
+            const clicked3DPart = mock3DViewerParts.find(p => p.viewerUniqueId === '3D_4');
+            const foundDiagramId = clicked3DPart ? clicked3DPart.uniqueId : null;
+            const test5Pass = foundDiagramId === 'P30';
+            results.push({
+                name: 'Test 5: Click 3D_4 in viewer → Find P30 in diagram',
+                expected: 'P30',
+                actual: foundDiagramId || 'NOT FOUND',
+                pass: test5Pass,
+                details: { clicked3DId: '3D_4', foundDiagramId: foundDiagramId }
+            });
+            if (test5Pass) passCount++; else failCount++;
+
+            // Test 6: Verify no ID is skipped
+            console.log('\n=== TEST 6: No Skipped IDs ===');
+            const expectedDiagramIds = ['P27', 'P28', 'P29', 'P30'];
+            const mappedDiagramIds = mappings.map(m => m.diagramId).sort();
+            const test6Pass = JSON.stringify(mappedDiagramIds) === JSON.stringify(expectedDiagramIds);
+            results.push({
+                name: 'Test 6: All diagram IDs used (P27, P28, P29, P30)',
+                expected: expectedDiagramIds.join(', '),
+                actual: mappedDiagramIds.join(', '),
+                pass: test6Pass,
+                details: { expected: expectedDiagramIds, actual: mappedDiagramIds }
+            });
+            if (test6Pass) passCount++; else failCount++;
+
+            return { results, passCount, failCount, totalTests: results.length };
+        }
+
+        // Display results
+        function displayResults() {
+            const { results, passCount, failCount, totalTests } = runTests();
+            const resultsDiv = document.getElementById('testResults');
+            const summaryDiv = document.getElementById('summary');
+
+            // Display test data
+            let html = '<div class="test-section"><h2>📊 Test Data</h2>';
+            html += '<h3>Diagram Parts (from boards)</h3>';
+            html += '<table class="data-table"><tr><th>ID</th><th>Name</th><th>Material</th><th>Dimensions</th><th>Board</th></tr>';
+            mockDiagramParts.forEach(p => {
+                html += `<tr><td><strong>${p.id}</strong></td><td>${p.name}</td><td>${p.material}</td><td>${p.width}×${p.height}×${p.thickness}mm</td><td>${p.boardNumber}</td></tr>`;
+            });
+            html += '</table>';
+
+            html += '<h3>3D Viewer Parts</h3>';
+            html += '<table class="data-table"><tr><th>Viewer ID</th><th>Name</th><th>Material</th><th>Dimensions</th></tr>';
+            mock3DViewerParts.forEach(p => {
+                html += `<tr><td><strong>${p.viewerUniqueId}</strong></td><td>${p.partName}</td><td>${p.materialName}</td><td>${p.width}×${p.height}×${p.thickness}mm</td></tr>`;
+            });
+            html += '</table></div>';
+
+            // Display test results
+            results.forEach((result, index) => {
+                const passClass = result.pass ? 'pass' : 'fail';
+                const icon = result.pass ? '✅' : '❌';
+                html += `<div class="test-case ${passClass}">`;
+                html += `<h3>${icon} ${result.name}</h3>`;
+                html += `<p><strong>Expected:</strong> ${result.expected}</p>`;
+                html += `<p><strong>Actual:</strong> ${result.actual}</p>`;
+                if (result.details) {
+                    html += `<details><summary>Details</summary><pre>${JSON.stringify(result.details, null, 2)}</pre></details>`;
+                }
+                html += `<div class="test-result">${result.pass ? 'PASS' : 'FAIL'}</div>`;
+                html += `</div>`;
+            });
+
+            resultsDiv.innerHTML = html;
+
+            // Display summary
+            const allPass = failCount === 0;
+            const summaryClass = allPass ? 'pass' : 'fail';
+            const summaryIcon = allPass ? '🎉' : '⚠️';
+            summaryDiv.innerHTML = `
+                <div class="summary ${summaryClass}">
+                    <h2>${summaryIcon} Test Summary</h2>
+                    <p><strong>Total Tests:</strong> ${totalTests}</p>
+                    <p><strong>Passed:</strong> ${passCount}</p>
+                    <p><strong>Failed:</strong> ${failCount}</p>
+                    <p><strong>Success Rate:</strong> ${((passCount / totalTests) * 100).toFixed(1)}%</p>
+                    <p style="margin-top: 20px; font-size: 24px;">${allPass ? '✅ ALL TESTS PASSED!' : '❌ SOME TESTS FAILED'}</p>
+                </div>
+            `;
+        }
+
+        // Run tests on page load
+        window.addEventListener('DOMContentLoaded', displayResults);
+    </script>
+</body>
+</html>

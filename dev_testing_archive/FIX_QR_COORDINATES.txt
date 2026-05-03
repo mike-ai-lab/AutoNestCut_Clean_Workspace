@@ -1,0 +1,72 @@
+===========================================
+FIXED QR CODE WITH CORRECT COORDINATES
+COPY THIS INTO SKETCHUP RUBY CONSOLE
+===========================================
+
+require 'rqrcode'
+require 'prawn'
+require 'tmpdir'
+
+output = File.join(Dir.tmpdir, "qr_fixed_coords_#{Time.now.to_i}.pdf")
+
+Prawn::Document.generate(output, page_size: 'A4') do |pdf|
+  pdf.text "QR Code - Fixed Coordinates", size: 20, style: :bold
+  pdf.move_down 20
+  
+  # Simple test data
+  data = "HELLO"
+  qr = RQRCode::QRCode.new(data, level: :l)
+  
+  pdf.text "Scan this (should show: #{data})", size: 12
+  pdf.move_down 10
+  
+  # Draw QR code with CORRECTED coordinate system
+  qr_size_pt = 200  # 200 points = about 70mm
+  x_start = 50
+  y_start = pdf.cursor
+  
+  module_count = qr.modules.size
+  module_size_pt = qr_size_pt.to_f / module_count
+  
+  puts "\nQR Info:"
+  puts "  Data: #{data}"
+  puts "  Modules: #{module_count}x#{module_count}"
+  puts "  QR size: #{qr_size_pt}pt"
+  puts "  Module size: #{module_size_pt}pt"
+  
+  # Draw white background first
+  pdf.fill_color 'FFFFFF'
+  pdf.fill_rectangle [x_start, y_start], qr_size_pt, qr_size_pt
+  
+  # Draw black modules
+  pdf.fill_color '000000'
+  qr.modules.each_with_index do |row, row_idx|
+    row.each_with_index do |is_black, col_idx|
+      if is_black
+        x = x_start + (col_idx * module_size_pt)
+        # CRITICAL: Prawn Y coordinates go DOWN from top
+        # So we SUBTRACT row_idx to go down
+        y = y_start - (row_idx * module_size_pt)
+        
+        pdf.fill_rectangle [x, y], module_size_pt, module_size_pt
+      end
+    end
+  end
+  
+  # Draw border for reference
+  pdf.stroke_color '000000'
+  pdf.line_width 1
+  pdf.stroke_rectangle [x_start, y_start], qr_size_pt, qr_size_pt
+  
+  pdf.move_down qr_size_pt + 20
+  pdf.text "Expected: #{data}", size: 10
+end
+
+puts "\n✓ PDF generated: #{output}"
+puts "\n📱 SCAN THIS QR CODE"
+puts "If this doesn't work, try:"
+puts "  1. Different QR scanner app"
+puts "  2. Better lighting"
+puts "  3. Hold phone 10-15cm away"
+
+===========================================

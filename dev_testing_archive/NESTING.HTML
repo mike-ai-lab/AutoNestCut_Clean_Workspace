@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cutting List Optimizer Mockup</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --text-color: #333;
+            --accent-color: #007bff;
+            --header-height: 60px;
+            /* Simulate a standard 2440mm x 1220mm sheet scaled down */
+            --sheet-width: 800px; 
+            --sheet-height: 400px;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        /* Header & Nav */
+        header {
+            height: var(--header-height);
+            background: white;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        h1 { font-size: 1.2rem; margin: 0; }
+
+        .download-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: background-color 0.2s;
+        }
+        .download-btn:hover { background-color: #218838; }
+
+        /* Main Content */
+        main {
+            margin-top: var(--header-height);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .action-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0 5px;
+        }
+        .action-btn:hover { background-color: #0056b3; }
+
+        /* The Diagram Area */
+        .diagram-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: auto;
+        }
+
+        .stock-sheet-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        /* The Stock Sheet (The drop zone) */
+        #stock-sheet {
+            width: var(--sheet-width);
+            height: var(--sheet-height);
+            background-color: #fff;
+            border: 3px solid #555;
+            position: relative;
+            /* A pattern to look like wood/material */
+            background-image: linear-gradient(45deg, #fdfdfd 25%, transparent 25%), linear-gradient(-45deg, #fdfdfd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #fdfdfd 75%), linear-gradient(-45deg, transparent 75%, #fdfdfd 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        /* The draggable parts */
+        .part {
+            position: absolute;
+            border: 1px solid rgba(0,0,0,0.3);
+            box-sizing: border-box;
+            cursor: grab;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.8rem;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            transition: box-shadow 0.2s;
+            /* Ensure parts don't capture drop events meant for the sheet */
+            pointer-events: auto; 
+        }
+
+        .part:active {
+            cursor: grabbing;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 10; /* Pop to front when dragging */
+        }
+
+        .part.dragging {
+            opacity: 0.6;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Cutting Diagram Optimizer Mockup</h1>
+        <button class="download-btn" id="downloadSourceBtn">⭳ Download Tool Source Code</button>
+    </header>
+
+    <main>
+        <div class="controls">
+            <p>Drag parts to manually rearrange. Click shuffle to simulate a new nesting optimization result.</p>
+            <button class="action-btn" id="shuffleBtn">Shuffle Optimization Layout</button>
+        </div>
+
+        <div class="diagram-container">
+            <span class="stock-sheet-label">Stock Sheet 1 (2440mm x 1220mm) - Simulated View</span>
+            <div id="stock-sheet">
+                </div>
+        </div>
+    </main>
+
+    <script>
+        // ===========================
+        // MOCK DATA & CONFIGURATION
+        // ===========================
+        const SHEET_WIDTH = 800; // Matches CSS
+        const SHEET_HEIGHT = 400; // Matches CSS
+
+        // Mockup parts list defined by width, height, color, and label
+        let partsData = [
+            { w: 200, h: 100, color: '#e74c3c', id: 'P1' },
+            { w: 200, h: 100, color: '#e74c3c', id: 'P2' },
+            { w: 150, h: 300, color: '#3498db', id: 'P3' },
+            { w: 150, h: 150, color: '#3498db', id: 'P4' },
+            { w: 400, h: 80,  color: '#2ecc71', id: 'P5' },
+            { w: 100, h: 80,  color: '#2ecc71', id: 'P6' },
+            { w: 100, h: 80,  color: '#2ecc71', id: 'P7' },
+            { w: 250, h: 250, color: '#f1c40f', id: 'P8' },
+            { w: 50,  h: 50,  color: '#9b59b6', id: 'P9' },
+            { w: 50,  h: 50,  color: '#9b59b6', id: 'P10' }
+        ];
+
+        const stockSheet = document.getElementById('stock-sheet');
+
+        // ===========================
+        // CORE FUNCTIONS
+        // ===========================
+
+        // Function to render parts onto the sheet based on current data state
+        function renderParts() {
+            stockSheet.innerHTML = ''; // Clear current sheet
+            
+            partsData.forEach((partData, index) => {
+                const part = document.createElement('div');
+                part.classList.add('part');
+                part.id = partData.id;
+                part.style.width = partData.w + 'px';
+                part.style.height = partData.h + 'px';
+                part.style.backgroundColor = partData.color;
+                part.innerText = partData.id;
+
+                // Set initial positions if defined, otherwise they will stack at 0,0
+                if(partData.x !== undefined && partData.y !== undefined) {
+                     part.style.left = partData.x + 'px';
+                     part.style.top = partData.y + 'px';
+                }
+
+                // Enable draggable behavior
+                part.setAttribute('draggable', 'true');
+                setupDraggableEvents(part);
+                
+                stockSheet.appendChild(part);
+            });
+        }
+
+        // Simulate an optimization algorithm (A simple "Next Fit" layout simulation)
+        function runMockOptimizer() {
+            let currentX = 0;
+            let currentY = 0;
+            let rowHeight = 0;
+
+            // Shuffle array order first for randomness
+            partsData.sort(() => Math.random() - 0.5);
+
+            partsData.forEach(part => {
+                // If part doesn't fit in current row width, move to next row
+                if (currentX + part.w > SHEET_WIDTH) {
+                    currentX = 0;
+                    currentY += rowHeight + 2; // +2 for gap
+                    rowHeight = 0; // Reset row height for new row
+                }
+
+                // If part doesn't fit on sheet height, just dump it at 0,0 (mockup limitation)
+                if (currentY + part.h > SHEET_HEIGHT) {
+                    part.x = 0;
+                    part.y = 0;
+                } else {
+                    // Place part
+                    part.x = currentX;
+                    part.y = currentY;
+                    
+                    // Update current X position
+                    currentX += part.w + 2; // +2 for small gap
+                    // Update max height of current row
+                    if (part.h > rowHeight) {
+                        rowHeight = part.h;
+                    }
+                }
+            });
+            renderParts();
+        }
+
+        // ===========================
+        // DRAG AND DROP IMPLEMENTATION
+        // ===========================
+        let draggedItem = null;
+        let initialX, initialY;
+
+        function setupDraggableEvents(item) {
+            item.addEventListener('dragstart', function(e) {
+                draggedItem = this;
+                // Calculate offset of click relative to the part's top-left corner
+                const rect = this.getBoundingClientRect();
+                initialX = e.clientX - rect.left;
+                initialY = e.clientY - rect.top;
+                
+                setTimeout(() => this.classList.add('dragging'), 0);
+            });
+
+            item.addEventListener('dragend', function() {
+                this.classList.remove('dragging');
+                draggedItem = null;
+            });
+        }
+
+        // Set up the Drop Zone (the stock sheet background)
+        stockSheet.addEventListener('dragover', function(e) {
+            e.preventDefault(); // Necessary to allow dropping
+        });
+
+        stockSheet.addEventListener('drop', function(e) {
+            e.preventDefault();
+            if(!draggedItem) return;
+
+            // Calculate new position relative to the stockSheet container
+            const sheetRect = stockSheet.getBoundingClientRect();
+            let newX = e.clientX - sheetRect.left - initialX;
+            let newY = e.clientY - sheetRect.top - initialY;
+
+            // Basic boundary constraints (keep inside sheet)
+            const partWidth = parseInt(draggedItem.style.width);
+            const partHeight = parseInt(draggedItem.style.height);
+
+            newX = Math.max(0, Math.min(newX, SHEET_WIDTH - partWidth));
+            newY = Math.max(0, Math.min(newY, SHEET_HEIGHT - partHeight));
+
+            // Apply new positions visually
+            draggedItem.style.left = newX + 'px';
+            draggedItem.style.top = newY + 'px';
+
+            // Update the backing data model with new coordinates
+            const partId = draggedItem.id;
+            const partDatum = partsData.find(p => p.id === partId);
+            if(partDatum) {
+                partDatum.x = newX;
+                partDatum.y = newY;
+            }
+        });
+
+
+        // ===========================
+        // CRUCIAL: DOWNLOAD SELF FUNCTION
+        // ===========================
+        document.getElementById('downloadSourceBtn').addEventListener('click', function() {
+            // We get the entire outerHTML of the document element
+            const htmlContent = document.documentElement.outerHTML;
+            // Add the DOCTYPE back which outerHTML misses
+            const fullSource = '<!DOCTYPE html>\n' + htmlContent;
+
+            // Create a Blob containing the source code
+            const blob = new Blob([fullSource], { type: 'text/html' });
+
+            // Create a temporary download link
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'cutting-layout-tool.html'; // The filename for download
+            document.body.appendChild(a);
+            a.click(); // Trigger the click
+
+            // Cleanup
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+
+        // ===========================
+        // INITIALIZATION
+        // ===========================
+        document.getElementById('shuffleBtn').addEventListener('click', runMockOptimizer);
+
+        // Run initial layout on load
+        runMockOptimizer();
+
+    </script>
+</body>
+</html>

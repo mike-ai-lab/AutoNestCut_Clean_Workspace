@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoNestCut - Material Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            /* Your Modern Palette */
+            --brand-orange: #E46D3A;
+            --brand-blue: #8FD5FF;
+            --brand-green: #ADEDC5;
+            --bg-off-white: #FAFAFA;
+            --bg-light-gray: #F2F2F2;
+            
+            /* UI Mapping */
+            --bg-main: var(--bg-light-gray);
+            --bg-card: var(--bg-off-white);
+            --text-main: #2D3748;
+            --text-muted: #718096;
+            --primary: var(--brand-orange);
+            --accent-blue: var(--brand-blue);
+            --accent-blue-soft: rgba(143, 213, 255, 0.2);
+            --accent-green: var(--brand-green);
+            --border: #E2E8F0;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            transition: all 0.4s ease;
+        }
+
+        .glass-header {
+            background-color: #1A202C; /* Deep Slate for contrast in Manager */
+            color: white;
+        }
+
+        .action-bar {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .input-field {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.875rem;
+            background: white;
+            transition: border-color 0.2s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px var(--accent-blue-soft);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            filter: brightness(110%);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            border: 1px solid var(--border);
+            background: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+        }
+        .btn-outline:hover {
+            background: var(--bg-light-gray);
+        }
+
+        .data-row {
+            transition: background-color 0.2s;
+        }
+        .data-row:hover {
+            background-color: rgba(143, 213, 255, 0.05);
+        }
+
+        .auto-tag {
+            background-color: var(--accent-blue-soft);
+            color: #2B6CB0;
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        /* Palette Switcher Styles */
+        #palette-control {
+            background: #1A202C;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E0; border-radius: 10px; }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <!-- Header Area -->
+    <header class="glass-header px-8 py-4 shadow-lg">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="w-8 h-8 rounded bg-white/10 flex items-center justify-center">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 7v10c0 2.21 4.48 4 10 4s10-1.79 10-4V7M4 7c0 2.21 4.48 4 10 4s10-1.79 10-4M4 7c0-2.21 4.48-4 10-4s10 1.79 10 4m0 5c0 2.21-4.48 4-10 4s-10-1.79-10-4"/></svg>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">Material Database Manager</h1>
+                    <div class="flex gap-4 text-[10px] font-bold opacity-60 uppercase tracking-widest mt-0.5">
+                        <span>Total: 52</span>
+                        <span>Auto: 8</span>
+                        <span>Flagged: 0</span>
+                        <span>Sync: 1h ago</span>
+                    </div>
+                </div>
+            </div>
+            <button class="p-2 hover:bg-white/10 rounded-full transition"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+        </div>
+    </header>
+
+    <!-- Action Bar -->
+    <div class="action-bar px-8 py-4 flex flex-wrap gap-3 items-center">
+        <button class="btn-primary">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+            Add Material
+        </button>
+        <button class="btn-outline">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+            Save Changes
+        </button>
+        <div class="h-6 w-px bg-slate-200 mx-2"></div>
+        <button class="btn-outline">Export</button>
+        <button class="btn-outline" style="background: rgba(99, 102, 241, 0.05); color: #4F46E5; border-color: rgba(99, 102, 241, 0.2);">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            Import CSV
+        </button>
+        <button class="btn-outline">Load Defaults</button>
+        
+        <div class="flex-grow"></div>
+        
+        <div class="relative">
+            <input type="text" placeholder="Search materials..." class="input-field pl-10 w-64" />
+            <svg class="absolute left-3 top-2.5 text-slate-400" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </div>
+        <select class="input-field font-semibold text-slate-600">
+            <option>Filter: All</option>
+            <option>Auto Only</option>
+        </select>
+        <select class="input-field font-semibold text-slate-600">
+            <option>Sort: A-Z</option>
+            <option>Newest</option>
+        </select>
+    </div>
+
+    <!-- Table Container -->
+    <div class="flex-grow overflow-auto p-8">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="text-[11px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-200">
+                        <th class="p-4 w-12"><input type="checkbox" class="rounded border-slate-300"></th>
+                        <th class="p-4">Material Name</th>
+                        <th class="p-4">Width (mm)</th>
+                        <th class="p-4">Height (mm)</th>
+                        <th class="p-4">Thickness (mm)</th>
+                        <th class="p-4">Price</th>
+                        <th class="p-4">Currency</th>
+                        <th class="p-4 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    <!-- Row 1 -->
+                    <tr class="data-row border-b border-slate-100">
+                        <td class="p-4"><input type="checkbox" class="rounded border-slate-300"></td>
+                        <td class="p-4">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-slate-700">A05_Cherry_Blazedsads</span>
+                            </div>
+                        </td>
+                        <td class="p-4"><input type="text" value="2440" class="input-field w-24 font-mono font-bold"></td>
+                        <td class="p-4"><input type="text" value="1220" class="input-field w-24 font-mono font-bold"></td>
+                        <td class="p-4"><input type="text" value="18" class="input-field w-20 font-mono font-bold"></td>
+                        <td class="p-4"><input type="text" value="0" class="input-field w-24 font-mono font-bold"></td>
+                        <td class="p-4"><input type="text" value="USD" class="input-field w-24 text-slate-400 font-bold"></td>
+                        <td class="p-4 text-center">
+                            <button class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                        </td>
+                    </tr>
+                    <!-- Row 2 -->
+                    <tr class="data-row border-b border-slate-100">
+                        <td class="p-4"><input type="checkbox" class="rounded border-slate-300" checked></td>
+                        <td class="p-4">
+                            <div class="flex flex-col gap-1 items-start">
+                                <span class="font-bold text-slate-700">Auto_user_W264xH314xTH18_</span>
+                                <span class="auto-tag">Auto</span>
+                            </div>
+                        </td>
+                        <td class="p-4"><input type="text" value="264" class="input-field w-24 font-mono font-bold"></td>
+                        <td class="p-4"><input type="text" value="314" class="input-field w-24 font-mono font-bold"></td>
+                        <td class="p-4"><input type="text" value="18" class="input-field w-20 font-mono font-bold"></td>
+                        <td class="p-4"><input type="text" value="29.17" class="input-field w-24 font-mono font-bold"></td>
+                        <td class="p-4"><input type="text" value="USD" class="input-field w-24 text-slate-400 font-bold"></td>
+                        <td class="p-4 text-center">
+                            <button class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                        </td>
+                    </tr>
+                    <!-- Row 3 -->
+                    <tr class="data-row border-b border-slate-100">
+                        <td class="p-4"><input type="checkbox" class="rounded border-slate-300"></td>
+                        <td class="p-4">
+                            <div class="flex flex-col gap-1 items-start">
+                                <span class="font-bold text-slate-700">Auto_user_W282xH314xTH18_</span>
+                                <span class="auto-tag">Auto</span>
+                            </div>
+                        </td>
+                        <td class="p-4"><input type="text" value="282" class="input-field w-24 font-mono font-bold"></td>
+                        <td class="p-4"><input type="text" value="314" class="input-field w-24 font-mono font-bold"></td>
+                        <td class="p-4"><input type="text" value="18" class="input-field w-20 font-mono font-bold"></td>
+                        <td class="p-4"><input type="text" value="31.16" class="input-field w-24 font-mono font-bold"></td>
+                        <td class="p-4"><input type="text" value="USD" class="input-field w-24 text-slate-400 font-bold"></td>
+                        <td class="p-4 text-center">
+                            <button class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PALETTE CONTROLLER -->
+    <div id="palette-control" class="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-6 px-8 py-4 rounded-2xl shadow-2xl">
+        <div class="flex flex-col">
+            <span class="text-[9px] uppercase font-black tracking-widest text-slate-500">Theme Explorer</span>
+            <span id="palette-name" class="font-bold text-sm text-white">Sleek Modern</span>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button onclick="prevPalette()" class="p-2 hover:bg-white/10 rounded-lg transition">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <button onclick="nextPalette()" class="p-2 hover:bg-white/10 rounded-lg transition">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+        </div>
+
+        <button onclick="copyPalette()" class="flex items-center gap-2 px-6 py-2 bg-white text-slate-900 rounded-xl font-bold text-xs hover:bg-slate-100 transition">
+            COPY CSS
+        </button>
+    </div>
+
+    <script>
+        const palettes = [
+            {
+                name: "Sleek Modern",
+                colors: {
+                    "--brand-orange": "#E46D3A",
+                    "--brand-blue": "#8FD5FF",
+                    "--brand-green": "#ADEDC5",
+                    "--bg-off-white": "#FAFAFA",
+                    "--bg-light-gray": "#F2F2F2",
+                    "--border": "#E2E8F0"
+                }
+            },
+            {
+                name: "Coastal Earth",
+                colors: {
+                    "--brand-orange": "#E47B3A",
+                    "--brand-blue": "#87ADC4",
+                    "--brand-green": "#A2D7B6",
+                    "--bg-off-white": "#ffffff",
+                    "--bg-light-gray": "#D6EBE8",
+                    "--border": "#cadce0"
+                }
+            }
+        ];
+
+        let currentIndex = 0;
+
+        function applyPalette() {
+            const palette = palettes[currentIndex];
+            const root = document.documentElement;
+            document.getElementById('palette-name').innerText = palette.name;
+            for (const [key, value] of Object.entries(palette.colors)) {
+                root.style.setProperty(key, value);
+            }
+        }
+
+        function nextPalette() { currentIndex = (currentIndex + 1) % palettes.length; applyPalette(); }
+        function prevPalette() { currentIndex = (currentIndex - 1 + palettes.length) % palettes.length; applyPalette(); }
+
+        function copyPalette() {
+            const palette = palettes[currentIndex];
+            let s = `/* ${palette.name} */\n`;
+            for (const [k, v] of Object.entries(palette.colors)) s += `${k}: ${v};\n`;
+            const el = document.createElement('textarea');
+            el.value = s; document.body.appendChild(el); el.select();
+            document.execCommand('copy'); document.body.removeChild(el);
+        }
+
+        window.onload = applyPalette;
+    </script>
+</body>
+</html>

@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoNestCut | Advanced AI Optimization</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <style>
+        /* 🎨 Advanced Dark Mode Styles */
+        :root {
+            --color-bg-primary: #1e2124; /* Dark Background */
+            --color-bg-secondary: #282b30; /* Lighter Dark for cards/sections */
+            --color-bg-tertiary: #36393f; /* Darker accents */
+            --color-accent-primary: #4e80ee; /* M.Shkeir's Primary Blue/AI Blue */
+            --color-accent-secondary: #4caf50; /* Green Success */
+            --color-text-light: #f7f7f7;
+            --color-text-muted: #a0a4a8;
+            --border-radius-base: 6px;
+            --spacing-unit: 10px;
+        }
+
+        body {
+            font-family: 'Roboto', 'Tahoma', Arial, sans-serif; /* Roboto for modern feel, Tahoma/Arial for Arabic fallback */
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-light);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .header {
+            background-color: var(--color-bg-secondary);
+            padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--color-accent-primary);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .header-content h1 {
+            font-size: 1.6rem;
+            margin: 0;
+            font-weight: 700;
+            color: var(--color-accent-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-unit);
+        }
+        .header-content .developer-credit {
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            margin: 0;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-unit);
+        }
+
+        /* ------------------ Button Styling ------------------ */
+        .tab-button, .icon-btn, .material-icon-btn, button {
+            padding: calc(var(--spacing-unit) * 0.8) calc(var(--spacing-unit) * 1.5);
+            border: none;
+            border-radius: var(--border-radius-base);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            text-transform: uppercase;
+        }
+
+        /* Primary Action Buttons (Generate Cut List, Refresh) */
+        .action-buttons .tab-button {
+            background-color: var(--color-accent-primary);
+            color: var(--color-text-light);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .action-buttons .tab-button:hover {
+            background-color: #3e66c9;
+        }
+        
+        /* Secondary Action Buttons (Cancel) */
+        #cancelButton {
+            background-color: var(--color-bg-tertiary);
+            color: var(--color-text-light);
+        }
+        #cancelButton:hover {
+            background-color: #4e525a;
+        }
+
+        /* Icon Buttons */
+        .icon-btn, .material-icon-btn {
+            background-color: var(--color-bg-tertiary);
+            color: var(--color-text-light);
+            padding: 8px;
+            border: 1px solid var(--color-bg-primary);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .icon-btn:hover, .material-icon-btn:hover {
+            background-color: var(--color-accent-primary);
+            border-color: var(--color-accent-primary);
+        }
+
+        /* Tab Controls */
+        .tabs {
+            display: flex;
+            gap: 1px;
+            margin-left: calc(var(--spacing-unit) * 2);
+        }
+        .tabs .tab-button {
+            background-color: var(--color-bg-tertiary);
+            color: var(--color-text-muted);
+            border-radius: var(--border-radius-base) var(--border-radius-base) 0 0;
+            padding: calc(var(--spacing-unit) * 0.6) calc(var(--spacing-unit) * 1.5);
+        }
+        .tabs .tab-button.active {
+            background-color: var(--color-bg-primary); /* Matches main content BG */
+            color: var(--color-text-light);
+            border-bottom: 2px solid var(--color-accent-primary);
+        }
+        .tabs .tab-button:not(.active):hover {
+            background-color: var(--color-bg-secondary);
+        }
+        .tabs .tab-button[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ------------------ Content/Layout ------------------ */
+        .tab-content {
+            padding: calc(var(--spacing-unit) * 2);
+            flex-grow: 1;
+        }
+        .config-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: calc(var(--spacing-unit) * 3);
+        }
+        .section {
+            background-color: var(--color-bg-secondary);
+            padding: calc(var(--spacing-unit) * 2);
+            border-radius: var(--border-radius-base);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--color-bg-tertiary);
+        }
+        .section h2 {
+            border-left: 4px solid var(--color-accent-primary);
+            padding-left: var(--spacing-unit);
+            margin-top: 0;
+            margin-bottom: calc(var(--spacing-unit) * 2);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--color-text-light); /* Ensure section titles are bright */
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section h3 {
+             color: var(--color-accent-primary);
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: var(--spacing-unit);
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--color-text-light);
+        }
+        input[type="number"], select, .sort-select {
+            width: 100%;
+            padding: calc(var(--spacing-unit) * 0.8);
+            background-color: var(--color-bg-tertiary);
+            border: 1px solid #4e525a;
+            color: var(--color-text-light);
+            border-radius: var(--border-radius-base);
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        input[type="checkbox"] {
+            margin-right: 5px;
+        }
+
+        /* Materials List & Controls */
+        .materials-controls-single-row {
+            display: flex;
+            gap: var(--spacing-unit);
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: calc(var(--spacing-unit) * 1.5);
+            padding-bottom: var(--spacing-unit);
+            border-bottom: 1px solid var(--color-bg-tertiary);
+        }
+        .materials-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr 1fr;
+            gap: var(--spacing-unit);
+            font-weight: 700;
+            padding: calc(var(--spacing-unit) * 0.8);
+            background-color: var(--color-bg-tertiary);
+            border-radius: var(--border-radius-base) var(--border-radius-base) 0 0;
+            font-size: 0.9rem;
+            color: var(--color-accent-primary);
+            text-transform: uppercase;
+        }
+        .materials-list {
+            min-height: 200px;
+            border: 1px solid var(--color-bg-tertiary);
+            border-top: none;
+            border-radius: 0 0 var(--border-radius-base) var(--border-radius-base);
+            padding: var(--spacing-unit);
+            color: var(--color-text-muted);
+        }
+        
+        /* Parts Preview - Conceptual Styling */
+        #parts_preview {
+            min-height: 300px;
+            background-color: var(--color-bg-tertiary);
+            border-radius: var(--border-radius-base);
+            padding: var(--spacing-unit);
+            color: var(--color-text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border: 2px dashed #4e525a;
+        }
+
+        /* Added currency conversion styling from original for completion */
+        .currency-conversion {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 15px;
+            border: 1px solid var(--color-bg-tertiary);
+            border-radius: var(--border-radius-base);
+            background: var(--color-bg-tertiary);
+            margin-top: 20px;
+        }
+        .currency-conversion button {
+            background: var(--color-accent-primary);
+            color: var(--color-text-light);
+            text-transform: none;
+        }
+        .currency-conversion button:hover {
+            background: #3e66c9;
+        }
+
+        /* ------------------ Report Tab Styling ------------------ */
+        #reportTabContent {
+             display: none; /* Controlled by JS */
+             flex-direction: column; /* Allows internal containers to control layout */
+        }
+        #reportTabContent .container {
+            display: flex;
+            gap: calc(var(--spacing-unit) * 2);
+        }
+        #diagramsContainer {
+            width: 40%; 
+            background-color: var(--color-bg-secondary);
+            padding: calc(var(--spacing-unit) * 2);
+            border-radius: var(--border-radius-base);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            flex-shrink: 0;
+            min-width: 300px;
+        }
+        #reportContainer {
+            flex-grow: 1;
+            padding: 0;
+        }
+        .diagrams-container h2 {
+            border-left: 4px solid var(--color-accent-secondary);
+            padding-left: var(--spacing-unit);
+            margin-top: 0;
+            margin-bottom: calc(var(--spacing-unit) * 2);
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        #diagramsContainer p {
+            color: var(--color-text-muted);
+            font-style: italic;
+        }
+
+        /* Report Tables */
+        #reportContainer h2 {
+            border-bottom: 1px solid var(--color-bg-tertiary);
+            padding-bottom: var(--spacing-unit);
+            margin-bottom: var(--spacing-unit);
+            margin-top: calc(var(--spacing-unit) * 3);
+            position: relative;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: calc(var(--spacing-unit) * 2);
+            background-color: var(--color-bg-secondary);
+            border-radius: var(--border-radius-base);
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        th, td {
+            padding: calc(var(--spacing-unit) * 1);
+            text-align: left;
+            border-bottom: 1px solid var(--color-bg-tertiary);
+            font-size: 0.9rem;
+        }
+        th {
+            background-color: var(--color-accent-primary);
+            color: var(--color-text-light);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        tr:hover {
+            background-color: #3e4247;
+        }
+        .section-separator {
+            height: 1px;
+            background-color: var(--color-bg-tertiary);
+            margin: calc(var(--spacing-unit) * 3) 0;
+        }
+        
+        /* Tree Structure Controls */
+        .tree-controls {
+            display: flex;
+            gap: var(--spacing-unit);
+            margin-top: calc(var(--spacing-unit) * 2);
+            flex-wrap: wrap;
+        }
+        .tree-controls button {
+            background-color: var(--color-bg-tertiary);
+            color: var(--color-text-light);
+            text-transform: none;
+            padding: 8px 12px;
+        }
+        .tree-controls button:hover {
+            background-color: #4e525a;
+        }
+        .tree-search {
+            display: flex;
+            gap: var(--spacing-unit);
+            flex-grow: 1;
+        }
+        .tree-search input {
+            flex-grow: 1;
+        }
+        .tree-structure {
+             background-color: var(--color-bg-secondary); 
+             padding: 10px; 
+             border-radius: var(--border-radius-base); 
+             margin-top: 10px; 
+             border: 1px solid #4e525a;
+             min-height: 50px;
+        }
+
+        /* Modal Overhaul */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.85); 
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: var(--color-bg-secondary);
+            color: var(--color-text-light);
+            border: 2px solid var(--color-accent-primary);
+            border-radius: var(--border-radius-base);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+            margin: auto;
+            padding: 20px;
+            width: 80%;
+            max-width: 600px;
+            position: relative;
+        }
+        .close {
+            color: var(--color-accent-primary);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover, .close:focus {
+            color: var(--color-text-light);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .modal-content h3 {
+             color: var(--color-accent-primary);
+             border-bottom: 1px solid var(--color-bg-tertiary);
+             padding-bottom: 10px;
+             margin-top: 0;
+        }
+        .modal-controls button {
+            background-color: var(--color-bg-tertiary);
+            color: var(--color-text-light);
+        }
+
+        /* Global Table Controls Panel (Fixed Sidebar) */
+        #globalTableControls {
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-accent-primary);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            color: var(--color-text-light);
+            font-size: 0.8rem;
+            position:fixed;top:60px;right:20px;width:280px;border-radius:var(--border-radius-base);padding:12px;z-index:999;
+            display: none; /* Hidden by default */
+        }
+        #globalTableControls h4 {
+            color: var(--color-accent-primary);
+            margin:0 0 10px 0;font-size:13px;
+        }
+        #globalTableControls select, #globalTableControls input[type="color"] {
+            background-color: var(--color-bg-tertiary);
+            color: var(--color-text-light);
+            border-color: #4e525a;
+        }
+        #globalTableControls button {
+            background-color: var(--color-bg-tertiary);
+            color: var(--color-text-light);
+            padding: 4px 8px;
+            border: 1px solid #4e525a;
+            text-transform: none;
+        }
+        #globalTableControls button:hover {
+            background-color: var(--color-accent-primary);
+            color: white;
+        }
+        #globalTableControls button[onclick="applyAllGlobalSettings()"] {
+            background-color: var(--color-accent-primary);
+            color: white;
+            font-weight: bold;
+        }
+        #globalTableControls button[onclick="saveCurrentGlobalTemplate()"] {
+            background-color: var(--color-accent-secondary);
+            color: white;
+        }
+        
+        /* Currency Conversion original styles merge */
+        .currency-conversion label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--color-text-light);
+        }
+
+    </style>
+    <script src="languages.js"></script>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1 data-translate="app_title"><i class="fas fa-microchip"></i> AutoNestCut <span style="font-size:0.9rem; font-weight: 300; color: var(--color-text-muted);">v2.7.0 - Updated UI (2024-05-18)</span></h1>
+            <p class="developer-credit" data-translate="developer_credit">Developed by: Int. Arch. M.Shkeir</p>
+        </div>
+        <div class="header-controls">
+            <button class="settings-btn icon-btn" onclick="openSettings()" title="Settings">
+                <i class="fas fa-cog"></i>
+            </button>
+            <button class="settings-btn icon-btn report-action-btn" id="globalTableSettingsBtn" onclick="toggleGlobalTableSettings()" title="Global Table Settings" style="display: none;">
+                <i class="fas fa-table"></i>
+            </button>
+            <div class="action-buttons">
+                <button class="tab-button" id="generateCutListButton" onclick="processNesting()" data-translate="generate_cut_list"><i class="fas fa-play-circle"></i> Generate Cut List</button>
+                <button class="tab-button" id="refreshSelectionButton" onclick="refreshConfiguration()" data-translate="refresh_selection"><i class="fas fa-sync-alt"></i> Refresh Selection</button>
+                <button class="tab-button" id="cancelButton" onclick="window.close()" data-translate="cancel"><i class="fas fa-times-circle"></i> Cancel</button>
+
+                <button class="tab-button icon-btn report-action-btn" id="refreshReportButton" onclick="refreshReportWithFeedback()" data-translate="refresh_report" style="display: none;" title="Refresh Report">
+                    <i class="fas fa-redo"></i>
+                </button>
+                <button class="tab-button icon-btn report-action-btn" id="printButton" data-translate="print_save_pdf" style="display: none;" title="Print / Save PDF">
+                    <i class="fas fa-print"></i>
+                </button>
+                <button class="tab-button icon-btn report-action-btn" id="exportCsvButton" data-translate="export_csv_report" style="display: none;" title="Export CSV Report">
+                    <i class="fas fa-file-csv"></i>
+                </button>
+                <button class="tab-button icon-btn report-action-btn" id="exportHtmlButton" data-translate="export_interactive_html" style="display: none;" title="Export Interactive HTML">
+                    <i class="fas fa-code"></i>
+                </button>
+                <button class="tab-button icon-btn report-action-btn" id="copyMarkdownButton" data-translate="copy_markdown_report" style="display: none;" title="Copy Markdown Report">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+            <div class="tabs">
+                <button class="tab-button active" onclick="showTab('config')" data-translate="configuration"><i class="fas fa-sliders-h"></i> Configuration</button>
+                <button class="tab-button" id="reportTab" onclick="showTab('report')" disabled data-translate="report"><i class="fas fa-chart-bar"></i> Report</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="configTab" class="tab-content active">
+        <div class="config-container">
+            <div style="display: flex; flex-direction: column; gap: calc(var(--spacing-unit) * 3);">
+                <div class="section">
+                    <h2 data-translate="general_settings"><i class="fas fa-cogs"></i> General Settings</h2>
+                    <div class="form-group">
+                        <label for="kerf_width" data-translate="kerf_width">Kerf Width (mm):</label>
+                        <input type="number" id="kerf_width" name="kerf_width" step="0.1" min="0" max="10" placeholder="e.g., 3.2">
+                    </div>
+                    <div class="form-group">
+                        <label for="allow_rotation" style="display: inline-flex; align-items: center;">
+                            <input type="checkbox" id="allow_rotation" name="allow_rotation"> <span data-translate="allow_rotation">Allow part rotation (AI Optimization)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 data-translate="stock_materials_pricing"><i class="fas fa-warehouse"></i> Stock Materials & Pricing</h2>
+                    <div class="materials-controls-single-row">
+                        <button type="button" onclick="addMaterial()" class="material-icon-btn" title="Add Material"><i class="fas fa-plus"></i></button>
+                        <button type="button" onclick="loadDefaults()" class="material-icon-btn" title="Load Defaults"><i class="fas fa-sync"></i></button>
+                        <button type="button" onclick="importCSV()" class="material-icon-btn" title="Import CSV"><i class="fas fa-file-import"></i></button>
+                        <button type="button" onclick="exportDatabase()" class="material-icon-btn" title="Export Database"><i class="fas fa-file-export"></i></button>
+                        <button type="button" id="foldToggle" onclick="toggleFold()" class="material-icon-btn" title="Toggle Used Materials Only"><i class="fas fa-filter"></i></button>
+                        <button type="button" onclick="clearHighlight()" class="material-icon-btn" title="Clear Highlight"><i class="fas fa-eraser"></i></button>
+                        <select id="sortBy" onchange="displayMaterials()" class="sort-select" style="flex-grow: 1; min-width: 120px;">
+                            <option value="alphabetical">Sort: A-Z</option>
+                            <option value="usage">Sort: Used First</option>
+                            <option value="mostUsed">Sort: Most Used</option>
+                        </select>
+                    </div>
+                    <div class="materials-header">
+                        <span data-translate="material_name">Material Name</span>
+                        <span data-translate="width_mm">W (mm)</span>
+                        <span data-translate="height_mm">H (mm)</span>
+                        <span data-translate="thickness_mm">T (mm)</span>
+                        <span data-translate="price">Price</span>
+                        <span data-translate="actions">Actions</span>
+                        <span data-translate="status">Status</span>
+                    </div>
+                    <div id="materials_list" class="materials-list">
+                         <p style="text-align: center;">Material data will load here.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: calc(var(--spacing-unit) * 3);">
+                <div class="section">
+                    <h2 data-translate="parts_preview"><i class="fas fa-puzzle-piece"></i> Dynamic Parts Preview (3D/2D)</h2>
+                    <div id="parts_preview">
+                        
+                        <p style="margin-top: 15px;">**Interactive Visualizer:** Select parts from your project to preview 3D assembly and cutting face details here.</p>
+                    </div>
+                </div>
+
+                <div class="section currency-conversion-section">
+                    <h3 style="border: none; margin: 0 0 10px 0; font-size: 1rem;"><i class="fas fa-money-bill-wave"></i> Real-Time Currency Conversion</h3>
+                    <div class="currency-conversion">
+                        <label>Convert From:</label>
+                        <select id="currency_from" style="width: 100%;">
+                            <option value="USD" selected>USD ($)</option>
+                            <option value="SAR">SAR (ر.س)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="AED">AED (د.إ)</option>
+                            <option value="GBP">GBP (£)</option>
+                        </select>
+                        <label>Convert To:</label>
+                        <select id="currency_to" style="width: 100%;">
+                            <option value="SAR" selected>SAR (ر.س)</option>
+                            <option value="USD">USD ($)</option>
+                        </select>
+                        <label>Amount:</label>
+                        <input type="number" id="currency_amount" value="1000" min="0">
+                        <button onclick="convertCurrency()"><i class="fas fa-exchange-alt"></i> Calculate Conversion</button>
+                        <p id="conversion_result" style="color: var(--color-accent-secondary); font-weight: bold;">Result: ---</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="reportTabContent" class="tab-content" style="display: none;">
+        <div class="container">
+            <div id="diagramsContainer" class="diagrams-container">
+                <h2 data-translate="diagrams"><i class="fas fa-cut"></i> Nesting Diagrams</h2>
+                <p>Generate a report to view interactive **AI-Optimized** cut layouts and sheet utilization diagrams...</p>
+                
+            </div>
+
+            <div class="resizer" id="resizer"></div>
+            
+            <div id="reportContainer" class="report-container">
+                <div class="report-title">
+                    <h2 data-translate="report_details">Detailed Cost & Resource Analysis</h2>
+                </div>
+
+                <div id="globalTableControls" class="global-table-controls">
+                    <h4 style="margin:0 0 10px 0;font-size:13px">Global Table Settings</h4>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+                        <div><label style="font-size:11px">Font:</label><select id="globalFontSize" onchange="applyGlobalTableSetting('fontSize', this.value)" style="width:100%;font-size:11px;padding:2px"><option value="12px">Small</option><option value="14px" selected>Normal</option><option value="16px">Large</option></select></div>
+                        <div><label style="font-size:11px">Padding:</label><select id="globalCellPadding" onchange="applyGlobalTableSetting('cellPadding', this.value)" style="width:100%;font-size:11px;padding:2px"><option value="4px 8px">Compact</option><option value="8px 12px" selected>Normal</option><option value="12px 16px">Spacious</option></select></div>
+                        <div><label style="font-size:11px">Header BG:</label><input type="color" id="globalHeaderBg" value="#4e80ee" onchange="applyGlobalTableSetting('headerBg', this.value)" style="width:100%;height:24px;padding:0;border:1px solid #ccc"></div>
+                        <div><label style="font-size:11px">Header Text:</label><input type="color" id="globalHeaderColor" value="#ffffff" onchange="applyGlobalTableSetting('headerColor', this.value)" style="width:100%;height:24px;padding:0;border:1px solid #ccc"></div>
+                        <div><label style="font-size:11px">Row Hover:</label><input type="color" id="globalRowHover" value="#3e4247" onchange="applyGlobalTableSetting('rowHover', this.value)" style="width:100%;height:24px;padding:0;border:1px solid #ccc"></div>
+                        <div><label style="font-size:11px">Text Align:</label><select id="globalTextAlign" onchange="applyGlobalTableSetting('textAlign', this.value)" style="width:100%;font-size:11px;padding:2px"><option value="left" selected>Left</option><option value="center">Center</option><option value="right">Right</option></select></div>
+                        <div><label style="font-size:11px">Border:</label><select id="globalBorderWidth" onchange="applyGlobalTableSetting('borderWidth', this.value)" style="width:100%;font-size:11px;padding:2px"><option value="0px">None</option><option value="1px" selected>Light</option><option value="2px">Medium</option></select></div>
+                        <div><label style="font-size:11px">Border Color:</label><input type="color" id="globalBorderColor" value="#36393f" onchange="applyGlobalTableSetting('borderColor', this.value)" style="width:100%;height:24px;padding:0;border:1px solid #ccc"></div>
+                    </div>
+                    <select id="globalVerticalAlign" onchange="applyGlobalTableSetting('verticalAlign', this.value)" style="display:none"><option value="middle" selected>Middle</option></select>
+                    <select id="globalTextWrap" onchange="applyGlobalTableSetting('textWrap', this.value)" style="display:none"><option value="normal" selected>Wrap</option></select>
+                    <select id="templateSelector" onchange="loadSelectedTemplate()" style="width:100%;font-size:11px;padding:2px;margin-bottom:8px"><option value="">Select Template...</option></select>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">
+                        <button onclick="applyAllGlobalSettings()" style="flex:1;font-size:11px;padding:4px 8px">Apply</button>
+                        <button onclick="saveCurrentGlobalTemplate()" style="flex:1;font-size:11px;padding:4px 8px">Save</button>
+                        <button onclick="resetAllTableSettings()" style="flex:1;font-size:11px;padding:4px 8px">Reset</button>
+                    </div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap">
+                        <button onclick="undoLastChange()" style="flex:1;font-size:11px;padding:4px 8px;background:#ffc107;color:#000;border-color:#ffc107" title="Undo last change">↶ Undo</button>
+                        <button onclick="toggleGlobalTableSettings()" style="flex:1;font-size:11px;padding:4px 8px">Close</button>
+                    </div>
+                </div>
+
+                <div class="section-separator"></div>
+                <div style="position:relative">
+                    <h2 data-translate="materials_used"><i class="fas fa-clipboard-list"></i> Materials Used & Cost Breakdown</h2>
+                    <div style="position:absolute;top:6px;right:0;display:flex;gap:2px">
+                        <button class="icon-btn" onclick="copyTableAsMarkdown('materialsUsedTable')" title="Copy" style="width:20px;height:20px;min-width:20px;padding:2px"><i class="fas fa-copy" style="font-size: 12px;"></i></button>
+                        <button class="icon-btn" onclick="openTableCustomization('materialsUsedTable')" title="Style" style="width:20px;height:20px;min-width:20px;padding:2px"><i class="fas fa-paint-brush" style="font-size: 12px;"></i></button>
+                    </div>
+                </div>
+                <table id="materialsUsedTable"></table>
+
+                <div class="section-separator"></div>
+                <div style="position:relative">
+                    <h2 data-translate="overall_summary"><i class="fas fa-tachometer-alt"></i> Overall Summary</h2>
+                    <div style="position:absolute;top:6px;right:0;display:flex;gap:2px">
+                        <button class="icon-btn" onclick="copyTableAsMarkdown('summaryTable')" title="Copy" style="width:20px;height:20px;min-width:20px;padding:2px"><i class="fas fa-copy" style="font-size: 12px;"></i></button>
+                        <button class="icon-btn" onclick="openTableCustomization('summaryTable')" title="Style" style="width:20px;height:20px;min-width:20px;padding:2px"><i class="fas fa-paint-brush" style="font-size: 12px;"></i></button>
+                    </div>
+                </div>
+                <table id="summaryTable"></table>
+
+                <div class="section-separator"></div>
+                <div style="position:relative">
+                    <h2 data-translate="unique_part_types"><i class="fas fa-cubes"></i> Unique Part Types</h2>
+                    <div style="position:absolute;top:6px;right:0;display:flex;gap:2px">
+                        <button class="icon-btn" onclick="copyTableAsMarkdown('uniquePartTypesTable')" title="Copy" style="width:20px;height:20px;min-width:20px;padding:2px"><i class="fas fa-copy" style="font-size: 12px;"></i></button>
+                        <button class="icon-btn" onclick="openTableCustomization('uniquePartTypesTable')" title="Style" style="width:20px;height:20px;min-width:20px;padding:2px"><i class="fas fa-paint-brush" style="font-size: 12px;"></i></button>
+                    </div>
+                </div>
+                <table id="uniquePartTypesTable"></table>
+
+                <div class="section-separator"></div>
+                <div style="position:relative">
+                    <h2><i class="fas fa-boxes"></i> Sheet Inventory Summary</h2>
+                    <div style="position:absolute;top:6px;right:0;display:flex;gap:2px">
+                        <button class="icon-btn" onclick="copyTableAsMarkdown('sheetInventoryTable')" title="Copy" style="width:20px;height:20px;min-width:20px;padding:2px"><i class="fas fa-copy" style="font-size: 12px;"></i></button>
+                        <button class="icon-btn" onclick="openTableCustomization('sheetInventoryTable')" title="Style" style="width:20px;height:20px;min-width:20px;padding:2px"><i class="fas fa-paint-brush" style="font-size: 12px;"></i></button>
+                    </div>
+                </div>
+                <table id="sheetInventoryTable"></table>
+                
+                <div class="section-separator"></div>
+                <div class="tree-controls">
+                    <button type="button" id="treeToggle" onclick="toggleTreeView()" data-translate="show_tree_structure"><i class="fas fa-sitemap"></i> Show Tree Structure</button>
+                    <div class="tree-search" id="treeSearchContainer" style="display: none;">
+                        <input type="text" id="treeSearch" data-translate="search_components" placeholder="Search components..." oninput="filterTree()">
+                        <button type="button" onclick="clearTreeSearch()" data-translate="clear">Clear</button>
+                        <button type="button" onclick="expandAll()">Expand All</button>
+                        <button type="button" onclick="collapseAll()">Collapse All</button>
+                    </div>
+                </div>
+                <div id="treeStructure" class="tree-structure" style="display: none;">
+                    <p style="color: var(--color-text-muted);">Hierarchical view of cabinets and components...</p>
+                </div>
+                <div class="section-separator"></div>
+                <div style="position:relative">
+                    <h2 data-translate="parts_placed_detailed"><i class="fas fa-th-list"></i> Cut List & Part Details</h2>
+                    <div style="position:absolute;top:6px;right:0;display:flex;gap:2px">
+                        <button class="icon-btn" onclick="copyTableAsMarkdown('partsTable')" title="Copy" style="width:20px;height:20px;min-width:20px;padding:2px"><i class="fas fa-copy" style="font-size: 12px;"></i></button>
+                        <button class="icon-btn" onclick="openTableCustomization('partsTable')" title="Style" style="width:20px;height:20px;min-width:20px;padding:2px"><i class="fas fa-paint-brush" style="font-size: 12px;"></i></button>
+                    </div>
+                </div>
+                <table id="partsTable"></table>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSettings()">&times;</span>
+            <h3 style="margin-top: 0;"><i class="fas fa-wrench"></i> Application Settings</h3>
+
+            <div class="settings-section">
+                <h4>Units</h4>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <select id="settingsUnits" class="sort-select">
+                        <option value="mm">Millimeters (mm)</option>
+                        <option value="cm">Centimeters (cm)</option>
+                        <option value="m">Meters (m)</option>
+                        <option value="in">Inches (in)</option>
+                        <option value="ft">Feet (ft)</option>
+                    </select>
+                    <button onclick="updateUnits()" class="icon-btn" title="Update Units"><i class="fas fa-redo"></i></button>
+                </div>
+            </div>
+            <div class="settings-section" style="margin-top: 15px;">
+                <h4>Precision</h4>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <select id="settingsPrecision" class="sort-select">
+                        <option value="0">0</option>
+                        <option value="1">0.0</option>
+                        <option value="2">0.00</option>
+                        <option value="3">0.000</option>
+                    </select>
+                    <button onclick="updatePrecision()" class="icon-btn" title="Update Precision"><i class="fas fa-redo"></i></button>
+                </div>
+            </div>
+            <div class="settings-section" style="margin-top: 15px;">
+                <h4>Area Units</h4>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <select id="settingsAreaUnits" class="sort-select">
+                        <option value="mm2">Square Millimeters (mm²)</option>
+                        <option value="cm2">Square Centimeters (cm²)</option>
+                        <option value="m2">Square Meters (m²)</option>
+                        <option value="in2">Square Inches (in²)</option>
+                        <option value="ft2">Square Feet (ft²)</option>
+                    </select>
+                    <button onclick="updateAreaUnits()" class="icon-btn" title="Update Area Units"><i class="fas fa-redo"></i></button>
+                </div>
+            </div>
+            <div class="settings-section" style="margin-top: 15px;">
+                <h4>Default Currency</h4>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <select id="settingsCurrency" class="sort-select">
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="SAR">SAR (ر.س)</option>
+                        <option value="AED">AED (د.إ)</option>
+                        <option value="GBP">GBP (£)</option>
+                    </select>
+                    <button onclick="updateCurrency()" class="icon-btn" title="Update Currency"><i class="fas fa-redo"></i></button>
+                </div>
+            </div>
+            <div class="settings-buttons" style="margin-top: 20px;">
+                <button onclick="closeSettings()" class="tab-button primary" style="background-color: var(--color-accent-primary); width: 100%;">Close Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="partModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('partModal').style.display='none'">&times;</span>
+            <h3>Part Visualization</h3>
+            <div class="modal-controls">
+                <button id="projectionToggle">Orthographic</button>
+            </div>
+            <canvas id="modalCanvas" width="500" height="400" style="background-color: #36393f; border: 1px solid #4e80ee; margin-top: 10px;"></canvas>
+            <div id="modalInfo" style="margin-top: 15px;">Detailed part information will display here.</div>
+        </div>
+    </div>
+
+    <div id="tableCustomizationPanel" class="table-customization-panel" style="position:fixed;top:0;right:-300px;width:280px;height:100vh;background:#282b30;border-left:1px solid #4e80ee;padding:12px;box-shadow:-2px 0 8px rgba(0,0,0,0.15);z-index:1000;transition:right 0.3s;overflow-y:auto;font-size:12px">
+        <h4 id="panelTitle" style="color: var(--color-accent-primary); margin:0 0 10px 0;font-size:13px">Table Settings (Placeholder)</h4>
+        <p style="color: var(--color-text-muted);">Content matching Global Table Controls will be here when active.</p>
+        </div>
+    
+    <script src="app.js"></script><script src="diagrams_report.js"></script><script src="table_customization.js"></script><script src="inline_script.js"></script>
+</body>
+</html>

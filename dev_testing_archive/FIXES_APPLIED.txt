@@ -1,0 +1,38 @@
+HIGHLIGHTING & PDF FIXES - APPLIED
+===================================
+
+FILES MODIFIED:
+1. Extension/AutoNestCut/ui/html/diagrams_report.js
+2. Extension/AutoNestCut/ui/html/svg_diagram_generator.js
+
+FIXES:
+------
+
+1. HIGHLIGHTING ACCUMULATION - FIXED
+   - Added comprehensive highlight clearing in all click handlers
+   - SVG clicks now clear canvas + 3D highlights
+   - Canvas clicks now clear SVG + 3D highlights  
+   - 3D clicks now clear SVG + canvas highlights
+   - Result: Only ONE part highlighted at a time
+
+2. PDF DIAGRAMS WITH HIGHLIGHTS - FIXED
+   - captureDiagramImages() now clears ALL highlights BEFORE capture
+   - Clears SVG highlights via clearAllSVGHighlights()
+   - Clears canvas highlights via clearPieceHighlight()
+   - Clears 3D highlights by resetting materials
+   - Result: PDF shows clean diagrams without highlights
+
+3. SVG DIAGRAMS IN PDF - FIXED
+   - captureDiagramImages() now captures BOTH canvas AND SVG
+   - SVG converted to PNG at 3x resolution for quality
+   - Both types sent to Ruby for PDF embedding
+   - Result: All diagrams appear in PDF
+
+TESTING:
+--------
+1. Click different parts - only one should highlight
+2. Click same part twice - highlight should toggle off
+3. Export PDF - diagrams should be clean (no highlights)
+4. Check PDF has all diagrams (SVG + canvas)
+
+The fixes are in place. Test in SketchUp to verify.

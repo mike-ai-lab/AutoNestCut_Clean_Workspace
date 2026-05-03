@@ -1,0 +1,64 @@
+===========================================
+COPY THIS INTO SKETCHUP RUBY CONSOLE
+===========================================
+
+require 'rqrcode'
+require 'prawn'
+require 'tmpdir'
+
+output = File.join(Dir.tmpdir, "ultra_simple_qr_#{Time.now.to_i}.pdf")
+
+Prawn::Document.generate(output, page_size: 'A4') do |pdf|
+  pdf.text "Ultra Simple QR Test", size: 24, style: :bold
+  pdf.move_down 30
+  
+  # TEST 1: Just "HELLO"
+  pdf.text "TEST 1: Scan this (should show: HELLO)", size: 14
+  pdf.move_down 10
+  
+  qr1 = RQRCode::QRCode.new("HELLO", level: :l)
+  x1, y1, size1 = 50, pdf.cursor, 200
+  module_size1 = size1 / qr1.modules.size.to_f
+  
+  pdf.fill_color '000000'
+  qr1.modules.each_with_index do |row, ri|
+    row.each_with_index do |col, ci|
+      if col
+        pdf.fill_rectangle [x1 + (ci * module_size1), y1 - (ri * module_size1)], module_size1, module_size1
+      end
+    end
+  end
+  
+  pdf.move_down 220
+  
+  # TEST 2: Just numbers
+  pdf.text "TEST 2: Scan this (should show: 12345)", size: 14
+  pdf.move_down 10
+  
+  qr2 = RQRCode::QRCode.new("12345", level: :l)
+  x2, y2, size2 = 50, pdf.cursor, 200
+  module_size2 = size2 / qr2.modules.size.to_f
+  
+  pdf.fill_color '000000'
+  qr2.modules.each_with_index do |row, ri|
+    row.each_with_index do |col, ci|
+      if col
+        pdf.fill_rectangle [x2 + (ci * module_size2), y2 - (ri * module_size2)], module_size2, module_size2
+      end
+    end
+  end
+end
+
+puts "\n" + "="*60
+puts "PDF GENERATED: #{output}"
+puts "="*60
+puts "\nOPEN THIS PDF AND SCAN THE QR CODES"
+puts "\nTEST 1 should show: HELLO"
+puts "TEST 2 should show: 12345"
+puts "\nIf these don't scan, there's a fundamental issue with:"
+puts "  1. The QR code generation itself"
+puts "  2. Your QR scanner app"
+puts "  3. The PDF rendering"
+puts "="*60
+
+===========================================

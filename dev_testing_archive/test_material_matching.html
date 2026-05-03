@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Matching Logic - Unit Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #00A5E3;
+            border-bottom: 3px solid #00A5E3;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-case {
+            margin: 15px 0;
+            padding: 15px;
+            border-left: 4px solid #ddd;
+            background: #f9f9f9;
+        }
+        .test-case.pass {
+            border-left-color: #4CAF50;
+            background: #f1f8f4;
+        }
+        .test-case.fail {
+            border-left-color: #f44336;
+            background: #fef1f0;
+        }
+        .test-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .test-details {
+            font-size: 13px;
+            color: #666;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .result {
+            margin-top: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .result.pass {
+            background: #4CAF50;
+            color: white;
+        }
+        .result.fail {
+            background: #f44336;
+            color: white;
+        }
+        .summary {
+            background: #00A5E3;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 18px;
+            margin-top: 30px;
+        }
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Material Matching Logic - Unit Test</h1>
+    
+    <div class="test-section">
+        <h2>Implementation Under Test</h2>
+        <div class="code-block" id="implementation"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="summary" id="summary"></div>
+
+    <script>
+        // ============================================================
+        // IMPLEMENTATION UNDER TEST (from diagrams_report.js)
+        // ============================================================
+        
+        function extractBaseMaterial(mat) {
+            // Remove content in parentheses like "(#123)" or "(unique_id)"
+            return mat.replace(/\s*\([^)]*\)\s*/g, '').trim();
+        }
+
+        function checkMaterialMatch(partMaterial, groupMaterial) {
+            const partMaterialStr = String(partMaterial || '').trim();
+            const groupMaterialStr = String(groupMaterial || '').trim();
+            
+            let materialMatches = false; // Default to no match
+            
+            // SAFETY CHECK: Both materials must have content
+            if (!partMaterialStr || !groupMaterialStr) {
+                materialMatches = false; // Empty materials should never match
+            } else {
+                // Normalize materials for comparison
+                const partMaterialNormalized = partMaterialStr.toLowerCase().trim();
+                const groupMaterialNormalized = groupMaterialStr.toLowerCase().trim();
+                
+                const partMaterialBase = extractBaseMaterial(partMaterialNormalized);
+                const groupMaterialBase = extractBaseMaterial(groupMaterialNormalized);
+                
+                // Try exact match first, then base material match
+                materialMatches = (partMaterialNormalized === groupMaterialNormalized) || 
+                                 (partMaterialBase === groupMaterialBase && partMaterialBase.length > 0);
+            }
+            
+            return {
+                matches: materialMatches,
+                partNormalized: partMaterialStr.toLowerCase().trim(),
+                groupNormalized: groupMaterialStr.toLowerCase().trim(),
+                partBase: partMaterialStr ? extractBaseMaterial(partMaterialStr.toLowerCase().trim()) : '',
+                groupBase: groupMaterialStr ? extractBaseMaterial(groupMaterialStr.toLowerCase().trim()) : ''
+            };
+        }
+
+        // ============================================================
+        // TEST CASES
+        // ============================================================
+        
+        const testCases = [
+            // SHOULD MATCH - Exact matches
+            {
+                name: "Exact match - same material",
+                partMaterial: "White",
+                groupMaterial: "White",
+                shouldMatch: true,
+                reason: "Identical material names should match"
+            },
+            {
+                name: "Exact match - case insensitive",
+                partMaterial: "WHITE",
+                groupMaterial: "white",
+                shouldMatch: true,
+                reason: "Case should be ignored"
+            },
+            {
+                name: "Exact match - with whitespace",
+                partMaterial: "  White  ",
+                groupMaterial: "White",
+                shouldMatch: true,
+                reason: "Whitespace should be trimmed"
+            },
+            
+            // SHOULD MATCH - Base material matches (ignoring unique IDs)
+            {
+                name: "Base match - with unique ID in part",
+                partMaterial: "Wood (#123)",
+                groupMaterial: "Wood",
+                shouldMatch: true,
+                reason: "Should match base material ignoring unique ID"
+            },
+            {
+                name: "Base match - with unique ID in group",
+                partMaterial: "Wood",
+                groupMaterial: "Wood (#456)",
+                shouldMatch: true,
+                reason: "Should match base material ignoring unique ID"
+            },
+            {
+                name: "Base match - both have unique IDs",
+                partMaterial: "Wood (#123)",
+                groupMaterial: "Wood (#456)",
+                shouldMatch: true,
+                reason: "Should match base material ignoring different unique IDs"
+            },
+            {
+                name: "Base match - complex material name",
+                partMaterial: "Maple Plywood 18mm (#abc)",
+                groupMaterial: "Maple Plywood 18mm (#xyz)",
+                shouldMatch: true,
+                reason: "Should match complex base material names"
+            },
+            
+            // SHOULD NOT MATCH - Different materials
+            {
+                name: "Different materials - simple",
+                partMaterial: "White",
+                groupMaterial: "Wood",
+                shouldMatch: false,
+                reason: "Different materials should NOT match"
+            },
+            {
+                name: "Different materials - with unique IDs",
+                partMaterial: "White (#123)",
+                groupMaterial: "Wood (#123)",
+                shouldMatch: false,
+                reason: "Different base materials should NOT match even with same ID"
+            },
+            {
+                name: "Different materials - similar names",
+                partMaterial: "Oak Wood",
+                groupMaterial: "Oak Veneer",
+                shouldMatch: false,
+                reason: "Similar but different materials should NOT match"
+            },
+            {
+                name: "Different materials - substring",
+                partMaterial: "Wood",
+                groupMaterial: "Plywood",
+                shouldMatch: false,
+                reason: "Substring materials should NOT match"
+            },
+            
+            // EDGE CASES
+            {
+                name: "Empty strings",
+                partMaterial: "",
+                groupMaterial: "",
+                shouldMatch: false,
+                reason: "Empty strings should NOT match (safety check)"
+            },
+            {
+                name: "One empty, one filled",
+                partMaterial: "Wood",
+                groupMaterial: "",
+                shouldMatch: false,
+                reason: "Empty vs filled should NOT match"
+            },
+            {
+                name: "Null/undefined handling",
+                partMaterial: null,
+                groupMaterial: undefined,
+                shouldMatch: false,
+                reason: "Null/undefined should be handled gracefully"
+            },
+            {
+                name: "Multiple parentheses",
+                partMaterial: "Wood (Type A) (Batch #5)",
+                groupMaterial: "Wood",
+                shouldMatch: true,
+                reason: "Should strip all parenthetical content"
+            },
+            {
+                name: "RGB color values",
+                partMaterial: "240,240,240",
+                groupMaterial: "240,240,240",
+                shouldMatch: true,
+                reason: "RGB color values should match exactly"
+            },
+            {
+                name: "Different RGB color values",
+                partMaterial: "240,240,240",
+                groupMaterial: "171,171,171",
+                shouldMatch: false,
+                reason: "Different RGB values should NOT match"
+            }
+        ];
+
+        // ============================================================
+        // RUN TESTS
+        // ============================================================
+        
+        function runTests() {
+            const resultsContainer = document.getElementById('test-results');
+            let passed = 0;
+            let failed = 0;
+            
+            testCases.forEach((testCase, index) => {
+                const result = checkMaterialMatch(testCase.partMaterial, testCase.groupMaterial);
+                const testPassed = result.matches === testCase.shouldMatch;
+                
+                if (testPassed) {
+                    passed++;
+                } else {
+                    failed++;
+                }
+                
+                const testDiv = document.createElement('div');
+                testDiv.className = `test-case ${testPassed ? 'pass' : 'fail'}`;
+                testDiv.innerHTML = `
+                    <div class="test-title">Test ${index + 1}: ${testCase.name}</div>
+                    <div class="test-details">Part Material: "${testCase.partMaterial}"</div>
+                    <div class="test-details">Group Material: "${testCase.groupMaterial}"</div>
+                    <div class="test-details">Part Normalized: "${result.partNormalized}" → Base: "${result.partBase}"</div>
+                    <div class="test-details">Group Normalized: "${result.groupNormalized}" → Base: "${result.groupBase}"</div>
+                    <div class="test-details">Expected: ${testCase.shouldMatch ? 'MATCH' : 'NO MATCH'}</div>
+                    <div class="test-details">Actual: ${result.matches ? 'MATCH' : 'NO MATCH'}</div>
+                    <div class="test-details" style="color: #666; font-style: italic; margin-top: 5px;">Reason: ${testCase.reason}</div>
+                    <div class="result ${testPassed ? 'pass' : 'fail'}">
+                        ${testPassed ? '✅ PASS' : '❌ FAIL'}
+                    </div>
+                `;
+                resultsContainer.appendChild(testDiv);
+            });
+            
+            // Display summary
+            const summaryDiv = document.getElementById('summary');
+            const totalTests = testCases.length;
+            const passRate = ((passed / totalTests) * 100).toFixed(1);
+            
+            summaryDiv.innerHTML = `
+                <div style="font-size: 24px; margin-bottom: 10px;">
+                    ${failed === 0 ? '🎉 ALL TESTS PASSED!' : '⚠️ SOME TESTS FAILED'}
+                </div>
+                <div>
+                    Passed: ${passed} / ${totalTests} (${passRate}%)
+                </div>
+                <div>
+                    Failed: ${failed}
+                </div>
+            `;
+            
+            summaryDiv.style.background = failed === 0 ? '#4CAF50' : '#f44336';
+        }
+
+        // Display implementation code
+        document.getElementById('implementation').textContent = `
+function extractBaseMaterial(mat) {
+    // Remove content in parentheses like "(#123)" or "(unique_id)"
+    return mat.replace(/\\s*\\([^)]*\\)\\s*/g, '').trim();
+}
+
+function checkMaterialMatch(partMaterial, groupMaterial) {
+    const partMaterialStr = String(partMaterial || '').trim();
+    const groupMaterialStr = String(groupMaterial || '').trim();
+    
+    let materialMatches = false; // Default to no match
+    
+    // SAFETY CHECK: Both materials must have content
+    if (!partMaterialStr || !groupMaterialStr) {
+        materialMatches = false; // Empty materials should never match
+    } else {
+        const partMaterialNormalized = partMaterialStr.toLowerCase().trim();
+        const groupMaterialNormalized = groupMaterialStr.toLowerCase().trim();
+        
+        const partMaterialBase = extractBaseMaterial(partMaterialNormalized);
+        const groupMaterialBase = extractBaseMaterial(groupMaterialNormalized);
+        
+        // Try exact match first, then base material match
+        materialMatches = (partMaterialNormalized === groupMaterialNormalized) || 
+                         (partMaterialBase === groupMaterialBase && partMaterialBase.length > 0);
+    }
+    
+    return materialMatches;
+}
+        `.trim();
+
+        // Run tests on page load
+        window.addEventListener('DOMContentLoaded', runTests);
+    </script>
+</body>
+</html>

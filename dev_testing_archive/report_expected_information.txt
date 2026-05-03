@@ -1,0 +1,106 @@
+Materials Used
+Hide Component Tree
+ Cherry_Panel_21x36 Cherry Wood
+ Cherry_Panel_24x36 Cherry Wood
+ Maple_Panel_24x30 Maple Wood
+ White_Panel_21x24 White Melamine
+ Maple_Panel_18x30 Maple Wood
+ Maple_Panel_21x30 Maple Wood
+ White_Panel_18x24 White Melamine
+ White_Panel_24x24 White Melamine
+Search components...
+Clear
+Expand All
+Collapse All
+
+Material	Price per Sheet
+Cherry Wood	SAR455.00
+Maple Wood	SAR144.00
+White Melamine	SAR200.00
+Overall Summary
+
+Metric	Value
+Total Parts Instances	8
+Total Unique Part Types	8
+Total Boards	3
+Overall Efficiency	36%
+Total Project Weight	37.03 kg
+Total Project Cost	SAR799.00
+Unique Part Types
+
+Name	W (mm)	H (mm)	Thick (mm)	Material	Grain	Edge Banding	Total Qty	Total Area (m²)	Weight (kg)
+Cherry_Panel_21x36	533	914	19	Cherry Wood	Any	None	1	0	5.57
+Cherry_Panel_24x36	610	914	19	Cherry Wood	Any	None	1	1	6.37
+Maple_Panel_18x30	457	762	19	Maple Wood	Any	None	1	0	3.98
+Maple_Panel_21x30	533	762	19	Maple Wood	Any	None	1	0	4.65
+Maple_Panel_24x30	610	762	19	Maple Wood	Any	None	1	0	5.31
+White_Panel_18x24	457	610	19	White Melamine	Any	None	1	0	3.19
+White_Panel_21x24	533	610	19	White Melamine	Any	None	1	0	3.72
+White_Panel_24x24	610	610	19	White Melamine	Any	None	1	0	4.25
+Sheet Inventory Summary
+
+Material	Dimensions (mm)	Count	Total Area (m²)	Price/Sheet	Total Cost
+Cherry Wood	2440 × 1220	1	3	SAR455.00	SAR455.00
+Maple Wood	2440 × 1220	1	3	SAR144.00	SAR144.00
+White Melamine	2440 × 1220	1	3	SAR200.00	SAR200.00
+Cut Sequences
+
+Sheet 1: Cherry Wood
+Stock Size: 2440 x 1220 mm
+
+Step	Operation	Description	Measurement
+1	Setup	Prepare stock material	2440 x 1220 mm
+2	Cut	Cut Cherry_Panel_24x36 - Length	610 mm
+3	Cut	Cut Cherry_Panel_24x36 - Width	914 mm
+4	Edge Band	Apply edge banding to Cherry_Panel_24x36	None ()
+5	Cut	Cut Cherry_Panel_21x36 - Length	533 mm
+6	Cut	Cut Cherry_Panel_21x36 - Width	914 mm
+7	Edge Band	Apply edge banding to Cherry_Panel_21x36	None ()
+
+Sheet 2: Maple Wood
+Stock Size: 2440 x 1220 mm
+
+Step	Operation	Description	Measurement
+1	Setup	Prepare stock material	2440 x 1220 mm
+2	Cut	Cut Maple_Panel_24x30 - Length	610 mm
+3	Cut	Cut Maple_Panel_24x30 - Width	762 mm
+4	Edge Band	Apply edge banding to Maple_Panel_24x30	None ()
+5	Cut	Cut Maple_Panel_21x30 - Length	533 mm
+6	Cut	Cut Maple_Panel_21x30 - Width	762 mm
+7	Edge Band	Apply edge banding to Maple_Panel_21x30	None ()
+8	Cut	Cut Maple_Panel_18x30 - Length	457 mm
+9	Cut	Cut Maple_Panel_18x30 - Width	762 mm
+10	Edge Band	Apply edge banding to Maple_Panel_18x30	None ()
+
+Sheet 3: White Melamine
+Stock Size: 2440 x 1220 mm
+
+Step	Operation	Description	Measurement
+1	Setup	Prepare stock material	2440 x 1220 mm
+2	Cut	Cut White_Panel_24x24 - Length	610 mm
+3	Cut	Cut White_Panel_24x24 - Width	610 mm
+4	Edge Band	Apply edge banding to White_Panel_24x24	None ()
+5	Cut	Cut White_Panel_21x24 - Length	533 mm
+6	Cut	Cut White_Panel_21x24 - Width	610 mm
+7	Edge Band	Apply edge banding to White_Panel_21x24	None ()
+8	Cut	Cut White_Panel_18x24 - Length	457 mm
+9	Cut	Cut White_Panel_18x24 - Width	610 mm
+10	Edge Band	Apply edge banding to White_Panel_18x24	None ()
+Usable Offcuts
+
+Sheet #	Material	Estimated Size	Area (m²)
+1	Cherry Wood	1952 x 990mm	1.932
+2	Maple Wood	1952 x 900mm	1.757
+3	White Melamine	1952 x 1025mm	2.001
+Cut List & Part Details
+
+ID	Name	Dimensions (mm)	Material	Grain	Edge Banding	Board#	Cost	Level
+P1	Cherry_Panel_24x36	610 × 914	Cherry Wood	Any	None	1	SAR85.20	High
+P2	Cherry_Panel_21x36	533 × 914	Cherry Wood	Any	None	1	SAR74.55	High
+P3	Maple_Panel_24x30	610 × 762	Maple Wood	Any	None	2	SAR22.47	Low
+P4	Maple_Panel_21x30	533 × 762	Maple Wood	Any	None	2	SAR19.66	Low
+P5	Maple_Panel_18x30	457 × 762	Maple Wood	Any	None	2	SAR16.85	Low
+P6	White_Panel_24x24	610 × 610	White Melamine	Any	None	3	SAR24.97	Low
+P7	White_Panel_21x24	533 × 610	White Melamine	Any	None	3	SAR21.85	Low
+P8	White_Panel_18x24	457 × 610	White Melamine	Any	None	3	SAR18.73	Low
+Total Parts Cost:	SAR284.28	

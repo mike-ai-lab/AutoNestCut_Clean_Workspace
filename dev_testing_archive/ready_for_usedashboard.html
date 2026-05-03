@@ -1,0 +1,418 @@
+/**
+ * AutoNestCut Dashboard Renderer
+ * * Usage:
+ * 1. Ensure Tailwind CSS and Apache ECharts are loaded in your HTML.
+ * 2. Call AutoNestDashboard.render('dashboardContent', yourDataObj);
+ */
+
+const AutoNestDashboard = {
+    // Store data internally for interactive elements like modals
+    currentData: null,
+    charts: [],
+
+    /**
+     * Main entry point to render the dashboard
+     * @param {string} containerId - The ID of the div to render into (e.g., 'dashboardContent')
+     * @param {object} data - The full report data object
+     */
+    render: function(containerId, data) {
+        this.currentData = data;
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.error(`Container #${containerId} not found.`);
+            return;
+        }
+
+        // 1. Inject Custom Styles
+        this.injectStyles();
+
+        // 2. Build HTML Structure
+        container.innerHTML = this.buildHTML(data);
+
+        // 3. Initialize Charts (must happen after HTML is in DOM)
+        // We use a slight timeout to ensure DOM reflow is complete
+        setTimeout(() => {
+            this.initCharts(data);
+            this.renderBoardGallery(data.boards);
+        }, 0);
+
+        // 4. Window Resize Handler
+        window.addEventListener('resize', () => {
+            this.charts.forEach(chart => chart && chart.resize());
+        });
+    },
+
+    injectStyles: function() {
+        const styleId = 'autonest-dashboard-styles';
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
+                .glass-panel { 
+                    background: white; 
+                    border: 1px solid #e2e8f0; 
+                    border-radius: 0.75rem; 
+                    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+                    position: relative;
+                    overflow: hidden;
+                }
+                .glass-panel:hover {
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                    border-color: #cbd5e1;
+                }
+                .an-modal-backdrop {
+                    transition: opacity 0.3s ease-in-out;
+                    background-color: rgba(0,0,0,0.6);
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    },
+
+    buildHTML: function(data) {
+        return `
+            <div class="bg-slate-50 text-slate-900 pb-20 font-sans">
+                <!-- Header -->
+                <div class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm mb-8">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-blue-600 p-2 rounded-lg shadow-sm">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                            </div>
+                            <div>
+                                <h1 class="text-lg font-bold text-slate-800 leading-tight">AutoNestCut</h1>
+                                <p class="text-xs text-slate-500">Project Report • ${data.date || new Date().toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="window.print()" class="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg border border-transparent hover:border-slate-200 transition-colors">Print</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+                    
+                    <!-- 1. Hero Stats Row -->
+                    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        ${this.buildStatCard('Total Cost', data.currency + ' ' + data.totalCost, 'text-blue-600', 'bg-blue-50', 
+                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>')}
+                        
+                        ${this.buildStatCard('Materials', data.materialCount, 'text-indigo-600', 'bg-indigo-50', 
+                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>', 'Types')}
+                        
+                        ${this.buildStatCard('Boards', data.boardCount, 'text-teal-600', 'bg-teal-50', 
+                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>', 'Sheets')}
+                        
+                        ${this.buildStatCard('Yield', data.efficiency + '%', 'text-orange-500', 'bg-orange-50', 
+                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>', data.efficiency < 30 ? 'Low' : 'Good', data.efficiency < 30 ? 'text-red-500' : 'text-green-500')}
+                        
+                        ${this.buildStatCard('Parts', data.totalParts, 'text-purple-600', 'bg-purple-50', 
+                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>', data.totalWeight)}
+                    </section>
+
+                    <!-- 2. Cost & Waste -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 glass-panel p-6">
+                            <div class="mb-4">
+                                <h2 class="text-lg font-bold text-slate-800">Cost Analysis</h2>
+                                <p class="text-sm text-slate-500">Breakdown by Material Type (${data.currency})</p>
+                            </div>
+                            <div id="costChart" class="h-64 w-full"></div>
+                        </div>
+                        <div class="glass-panel p-6 flex flex-col justify-between">
+                            <div class="mb-4">
+                                <h2 class="text-lg font-bold text-slate-800">Material Waste</h2>
+                                <p class="text-sm text-slate-500">Utilization vs Scrap</p>
+                            </div>
+                            <div id="wasteChart" class="h-48 w-full"></div>
+                             ${data.wasteWarning ? `
+                            <div class="mt-4 p-3 bg-red-50 rounded-lg border border-red-100 flex gap-3 items-start">
+                                <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                <div>
+                                    <p class="text-xs font-bold text-red-800">High Waste Alert</p>
+                                    <p class="text-xs text-red-700 mt-1 leading-relaxed">${data.wasteWarning}</p>
+                                </div>
+                            </div>` : ''}
+                        </div>
+                    </div>
+
+                    <!-- 3. Workflow -->
+                    <section class="glass-panel p-6">
+                        <div class="mb-4 border-b border-slate-100 pb-4 flex justify-between items-center">
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-800">Production Process Map</h2>
+                                <p class="text-sm text-slate-500">Hierarchical View: Job &rarr; Boards &rarr; Operations</p>
+                            </div>
+                        </div>
+                        <div id="workflowChart" class="h-[600px] w-full bg-slate-50/50 rounded-xl border border-slate-100"></div>
+                    </section>
+
+                    <!-- 4. Board Efficiency -->
+                    <section class="glass-panel p-6">
+                        <div class="mb-6">
+                            <h2 class="text-lg font-bold text-slate-800">Board Efficiency Ranking</h2>
+                            <p class="text-sm text-slate-500">Yield comparison per sheet</p>
+                        </div>
+                        <div id="boardEfficiencyChart" class="h-64 w-full"></div>
+                    </section>
+
+                    <!-- 5. Parts Treemap -->
+                    <section class="glass-panel p-6">
+                        <div class="mb-6">
+                            <h2 class="text-lg font-bold text-slate-800">Parts Inventory Map</h2>
+                            <p class="text-sm text-slate-500">Visualizing parts by Area Size (m²)</p>
+                        </div>
+                        <div id="partsTreemap" class="h-96 w-full rounded-xl overflow-hidden"></div>
+                    </section>
+
+                    <!-- 6. Board Gallery -->
+                    <section>
+                        <div class="mb-6">
+                            <h2 class="text-lg font-bold text-slate-800">Board Diagrams</h2>
+                            <p class="text-sm text-slate-500">Interactive preview of cutting layouts</p>
+                        </div>
+                        <div id="boardGallery" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+                    </section>
+                </div>
+
+                <!-- Modal -->
+                <div id="boardModal" class="hidden fixed inset-0 z-50 items-center justify-center p-4 an-modal-backdrop" onclick="AutoNestDashboard.closeModal()">
+                    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onclick="event.stopPropagation()">
+                        <div class="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
+                            <h3 id="modalTitle" class="text-xl font-bold text-slate-800">Board Details</h3>
+                            <button onclick="AutoNestDashboard.closeModal()" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                        <div id="modalContent" class="p-6 space-y-6"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    buildStatCard: function(title, value, iconColor, iconBg, iconPath, subtext = '', subtextColor = 'text-slate-400') {
+        return `
+        <div class="glass-panel p-6 transition-all duration-200">
+            <div class="pr-12">
+                <p class="text-sm font-medium text-slate-500">${title}</p>
+                <h3 class="text-2xl font-bold text-slate-800 mt-1">${value}</h3>
+                ${subtext ? `<p class="text-xs ${subtextColor} mt-1">${subtext}</p>` : ''}
+            </div>
+            <div class="absolute top-5 right-5 p-2.5 rounded-lg ${iconBg} ${iconColor}">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${iconPath}</svg>
+            </div>
+        </div>`;
+    },
+
+    initCharts: function(data) {
+        // Dispose existing charts if re-rendering
+        this.charts.forEach(c => c && c.dispose());
+        this.charts = [];
+
+        // 1. Cost Chart
+        const costDom = document.getElementById('costChart');
+        if (costDom) {
+            const costChart = echarts.init(costDom);
+            costChart.setOption({
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+                xAxis: { type: 'value', name: data.currency, splitLine: { lineStyle: { type: 'dashed' } } },
+                yAxis: { type: 'category', data: data.materialCosts.map(m => m.name), axisLine: { show: false }, axisTick: { show: false } },
+                series: [{
+                    name: 'Cost',
+                    type: 'bar',
+                    data: data.materialCosts.map(m => ({ value: m.value, itemStyle: { color: m.color, borderRadius: [0, 4, 4, 0] } })),
+                    label: { show: true, position: 'right', formatter: `${data.currency} {c}`, fontWeight: 'bold' },
+                    barWidth: '40%'
+                }]
+            });
+            this.charts.push(costChart);
+        }
+
+        // 2. Waste Chart
+        const wasteDom = document.getElementById('wasteChart');
+        if (wasteDom) {
+            const wasteChart = echarts.init(wasteDom);
+            wasteChart.setOption({
+                tooltip: { trigger: 'item' },
+                series: [{
+                    name: 'Efficiency',
+                    type: 'pie',
+                    radius: ['60%', '90%'],
+                    center: ['50%', '50%'],
+                    avoidLabelOverlap: false,
+                    label: { show: true, position: 'center', formatter: '{d}% \nWaste', fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
+                    labelLine: { show: false },
+                    data: [
+                        { value: (100 - data.efficiency).toFixed(1), name: 'Waste', itemStyle: { color: '#f1f5f9' } },
+                        { value: data.efficiency, name: 'Used', itemStyle: { color: '#3b82f6' } },
+                    ]
+                }]
+            });
+            this.charts.push(wasteChart);
+        }
+
+        // 3. Workflow Tree
+        const workDom = document.getElementById('workflowChart');
+        if (workDom) {
+            const workflowChart = echarts.init(workDom);
+            // Transform linear timeline steps into tree
+            const treeChildren = [];
+            const grouped = {};
+            data.timelineSteps.forEach(s => {
+                if(!grouped[s.board]) grouped[s.board] = [];
+                grouped[s.board].push(s);
+            });
+            Object.keys(grouped).forEach(boardName => {
+                treeChildren.push({
+                    name: boardName,
+                    itemStyle: { color: '#3b82f6', borderColor: '#2563eb' },
+                    label: { position: 'top', verticalAlign: 'middle', align: 'center', fontSize: 13, fontWeight: 'bold' },
+                    children: grouped[boardName].map(step => ({
+                        name: step.action,
+                        itemStyle: { color: step.type === 'setup' ? '#cbd5e1' : '#10b981', borderColor: 'transparent' },
+                        label: { position: 'right', verticalAlign: 'middle', align: 'left', fontSize: 12, color: '#475569' }
+                    }))
+                });
+            });
+            workflowChart.setOption({
+                tooltip: { trigger: 'item', triggerOn: 'mousemove' },
+                series: [{
+                    type: 'tree',
+                    data: [{
+                        name: "Job Root",
+                        itemStyle: { color: '#1e293b', borderColor: '#0f172a' },
+                        label: { position: 'left', verticalAlign: 'middle', align: 'right', fontSize: 16, fontWeight: 'bold' },
+                        children: treeChildren
+                    }],
+                    top: '5%', bottom: '5%', left: '10%', right: '25%',
+                    symbolSize: 14,
+                    symbol: 'circle',
+                    itemStyle: { borderWidth: 2 },
+                    lineStyle: { color: '#cbd5e1', curveness: 0.5 },
+                    expandAndCollapse: true,
+                    initialTreeDepth: 2
+                }]
+            });
+            this.charts.push(workflowChart);
+        }
+
+        // 4. Board Efficiency
+        const boardEffDom = document.getElementById('boardEfficiencyChart');
+        if (boardEffDom) {
+            const boardChart = echarts.init(boardEffDom);
+            boardChart.setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: data.boards.map(b => 'B' + b.id), axisLine: { show: false }, axisTick: { show: false } },
+                yAxis: { type: 'value', name: 'Efficiency %', max: 100, splitLine: { lineStyle: { type: 'dashed' } } },
+                series: [{
+                    data: data.boards.map(b => ({
+                        value: b.efficiency,
+                        itemStyle: { color: b.efficiency < 20 ? '#ef4444' : (b.efficiency > 50 ? '#10b981' : '#f59e0b'), borderRadius: [4, 4, 0, 0] }
+                    })),
+                    type: 'bar',
+                    barWidth: '50%',
+                    label: { show: true, position: 'top', formatter: '{c}%' }
+                }]
+            });
+            this.charts.push(boardChart);
+        }
+
+        // 5. Parts Treemap
+        const partDom = document.getElementById('partsTreemap');
+        if (partDom) {
+            const partsChart = echarts.init(partDom);
+            partsChart.setOption({
+                tooltip: { formatter: '{b}: {c} m²' },
+                series: [{
+                    type: 'treemap',
+                    data: data.partsTreemapData,
+                    breadcrumb: { show: false },
+                    roam: false,
+                    nodeClick: false,
+                    label: { show: true, formatter: '{b}\n{c} m²' },
+                    itemStyle: { borderColor: '#fff', borderWidth: 3, gapWidth: 2 }
+                }]
+            });
+            this.charts.push(partsChart);
+        }
+    },
+
+    renderBoardGallery: function(boards) {
+        const container = document.getElementById('boardGallery');
+        if (!container) return;
+        
+        container.innerHTML = boards.map(board => `
+            <div onclick="AutoNestDashboard.openModal(${board.id})" class="bg-white border border-slate-200 rounded-xl p-4 cursor-pointer hover:border-blue-400 hover:shadow-lg transition-all group relative overflow-hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 tracking-wide">BOARD ${board.id}</span>
+                    <svg class="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                </div>
+                <div class="aspect-[2/1] bg-slate-50 rounded border border-slate-100 relative mb-3 overflow-hidden flex items-center justify-center">
+                    <div class="absolute inset-2 border-2 border-dashed border-slate-300 rounded flex flex-wrap content-start gap-1 p-1">
+                        ${Array(board.parts).fill('<div class="bg-blue-200/50 border border-blue-300 w-1/4 h-1/3 rounded-sm"></div>').join('')}
+                    </div>
+                </div>
+                <h4 class="text-sm font-semibold text-slate-800 truncate" title="${board.material}">${board.material.split('_')[0]}</h4>
+                <p class="text-xs text-slate-500 mb-3 truncate">${board.material.split('_').slice(1).join(' ')}</p>
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <div class="${board.efficiency > 50 ? 'bg-emerald-500' : (board.efficiency < 20 ? 'bg-red-500' : 'bg-amber-500')} h-full rounded-full" style="width: ${board.efficiency}%"></div>
+                    </div>
+                    <span class="text-xs font-bold ${board.efficiency < 20 ? 'text-red-500' : 'text-slate-600'}">${board.efficiency}%</span>
+                </div>
+            </div>
+        `).join('');
+    },
+
+    openModal: function(boardId) {
+        if (!this.currentData) return;
+        const board = this.currentData.boards.find(b => b.id === boardId);
+        if (!board) return;
+
+        document.getElementById('modalTitle').innerText = `Board #${board.id} Details`;
+        document.getElementById('modalContent').innerHTML = `
+            <div class="grid grid-cols-2 gap-4">
+               <div class="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Material</p>
+                 <p class="font-semibold text-slate-800 text-sm break-words">${board.material}</p>
+               </div>
+               <div class="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Size</p>
+                 <p class="font-semibold text-slate-800 text-sm">${board.size}</p>
+               </div>
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 mb-3">Cut List</h4>
+              <div class="bg-slate-50 rounded-lg border border-slate-100 overflow-hidden">
+                  <ul class="divide-y divide-slate-100">
+                    ${board.items.map(item => `
+                      <li class="flex items-center gap-3 p-3 hover:bg-white transition-colors">
+                        <div class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                            <span class="text-green-600 text-xs">✓</span>
+                        </div>
+                        <span class="text-slate-700 text-sm font-medium">${item}</span>
+                      </li>
+                    `).join('')}
+                  </ul>
+              </div>
+            </div>
+            <div class="p-4 ${board.efficiency < 30 ? 'bg-amber-50 text-amber-900 border-amber-100' : 'bg-green-50 text-green-900 border-green-100'} border rounded-lg text-sm flex gap-3">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>${board.efficiency < 30 ? 'Low efficiency detected. Consider checking stock for offcuts before cutting this new sheet.' : 'Excellent utilization. Proceed with cut.'}</span>
+            </div>
+        `;
+        
+        const modal = document.getElementById('boardModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    },
+
+    closeModal: function() {
+        const modal = document.getElementById('boardModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+};

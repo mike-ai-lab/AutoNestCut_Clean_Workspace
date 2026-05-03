@@ -1,0 +1,44 @@
+============================================================
+COPY THIS COMMAND INTO SKETCHUP RUBY CONSOLE
+============================================================
+
+STEP 1: Replace the path below with YOUR actual file path
+STEP 2: Copy the ENTIRE line
+STEP 3: Paste into SketchUp Ruby Console
+STEP 4: Press Enter
+
+------------------------------------------------------------
+COMMAND (EDIT THE PATH FIRST!):
+------------------------------------------------------------
+
+load 'C:/Users/YourName/Documents/furniture_generator.rb'; CustomFurnitureGenerator.reload!
+
+------------------------------------------------------------
+
+EXAMPLE PATHS:
+- Windows: load 'C:/Users/John/Desktop/furniture_generator.rb'; CustomFurnitureGenerator.reload!
+- Windows: load 'D:/Projects/SketchUp/furniture_generator.rb'; CustomFurnitureGenerator.reload!
+
+IMPORTANT: Use forward slashes (/) not backslashes (\) in the path!
+
+============================================================
+WHAT YOU'LL SEE AFTER LOADING:
+============================================================
+
+🔄 Reloading 🪑 Assets Generator Pro v1.0.0
+✓ Cleared existing toolbar
+✓ Reset menu state
+✓ Reloaded script file
+✓ Added menu item: 🪑 Assets Generator Pro
+✓ Loaded toolbar icons (or warning if icons not found)
+✓ Toolbar created and shown
+✅ Reload complete! Menu: Plugins → 🪑 Assets Generator Pro
+
+============================================================
+WHERE TO FIND THE TOOL:
+============================================================
+
+MENU: Plugins → 🪑 Assets Generator Pro
+TOOLBAR: Look for toolbar named "🪑 Assets Generator Pro"
+
+============================================================

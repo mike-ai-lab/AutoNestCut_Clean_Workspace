@@ -23,6 +23,11 @@ module AutoNestCut
     COLOR_BORDER = 'E5E7EB'          # Gray-200
     COLOR_SECTION_NUMBER = '9CA3AF'  # Gray-400
     
+    # --- INDUSTRIAL LABEL DESIGN CONSTANTS ---
+    COLOR_ORANGE = 'E65100'          # Orange accent
+    COLOR_METAL = 'D0D0D0'           # Metallic gray
+    LABEL_BORDER_WIDTH = 1.5         # Border width in points
+    
     FONT_SIZE_H1 = 28
     FONT_SIZE_H2 = 18
     FONT_SIZE_H3 = 14
@@ -620,12 +625,56 @@ module AutoNestCut
     def render_detailed_cut_list(pdf)
       render_section_header(pdf, @section_counter, "Detailed Cut List")
       
-      table_data = [["ID", "Name", "Dimensions (mm)", "Material", "Sheet", "Grain", "Edge Band"]]
+      # FIXED: Added Board#, Cost, and Level columns to match UI
+      # FIXED: Using instance_id (P1, P2, etc.) instead of part_unique_id (entity IDs)
+      table_data = [["ID", "Name", "Dimensions", "Material", "Grain", "Edge Band", "Board#", "Cost", "Level"]]
+      
+      # Calculate costs for level categorization
+      costs = []
+      @report_data[:parts_placed].each do |part|
+        w = (part[:width] || 0) / 1000.0  # Convert to meters
+        h = (part[:height] || 0) / 1000.0
+        area_m2 = w * h
+        
+        # Find material price
+        material_name = part[:material] || ''
+        board_type = @report_data[:unique_board_types]&.find { |bt| bt[:material] == material_name }
+        price_per_sheet = board_type ? (board_type[:price_per_sheet] || 0) : 0
+        stock_area_m2 = board_type ? ((board_type[:stock_width] || 2440) * (board_type[:stock_height] || 1220) / 1_000_000.0) : 3.0
+        
+        part_cost = stock_area_m2 > 0 ? (area_m2 / stock_area_m2) * price_per_sheet : 0
+        costs << part_cost if part_cost > 0
+      end
+      
+      # Calculate cost levels (low/avg/high)
+      avg_cost = costs.length > 0 ? costs.sum / costs.length : 0
+      low_threshold = avg_cost * 0.7
+      high_threshold = avg_cost * 1.3
+      
+      currency = @report_data[:summary]&.[](:currency) || 'USD'
       
       @report_data[:parts_placed].each_with_index do |part, idx|
-        part_id = part[:part_unique_id] || "P#{idx + 1}"
+        # FIXED: Use instance_id (P1, P2, etc.) instead of part_unique_id
+        part_id = part[:instance_id] || "P#{idx + 1}"
         w = (part[:width] || 0).round(1)
         h = (part[:height] || 0).round(1)
+        
+        # Calculate part cost
+        area_m2 = (w / 1000.0) * (h / 1000.0)
+        material_name = part[:material] || ''
+        board_type = @report_data[:unique_board_types]&.find { |bt| bt[:material] == material_name }
+        price_per_sheet = board_type ? (board_type[:price_per_sheet] || 0) : 0
+        stock_area_m2 = board_type ? ((board_type[:stock_width] || 2440) * (board_type[:stock_height] || 1220) / 1_000_000.0) : 3.0
+        part_cost = stock_area_m2 > 0 ? (area_m2 / stock_area_m2) * price_per_sheet : 0
+        
+        # Determine cost level
+        cost_level = if part_cost <= low_threshold
+          'Budget'
+        elsif part_cost >= high_threshold
+          'Premium'
+        else
+          'Standard'
+        end
         
         edge_band = part[:edge_banding]
         if edge_band.is_a?(Hash)
@@ -637,11 +686,13 @@ module AutoNestCut
         table_data << [
           part_id,
           part[:name] || '',
-          "#{w} × #{h}",
+          "#{w}×#{h}",  # Removed space to save width
           part[:material] || '',
-          part[:board_number].to_s,
           part[:grain_direction] || 'Any',
-          edge_band
+          edge_band,
+          part[:board_number].to_s,
+          "#{currency} #{part_cost.round(2)}",
+          cost_level
         ]
       end
       
@@ -659,13 +710,13 @@ module AutoNestCut
       
       pdf.move_down 30
       
-      # Label format configuration - 3 columns x 4 rows for balanced layout
+      # FIXED: Modern industrial label format - 3x3 grid = 9 labels per page (not 12)
       label_width_mm = 65
-      label_height_mm = 35
+      label_height_mm = 65  # Square format for modern design
       cols = 3
-      rows = 4  # Reduced to 4 for better balance and padding
+      rows = 3  # FIXED: Changed from 4 to 3 rows = 9 labels per page max
       spacing_h_mm = 5
-      spacing_v_mm = 8  # Increased vertical spacing for better balance
+      spacing_v_mm = 8
       
       # Calculate total width needed for labels
       total_width_needed_mm = (cols * label_width_mm) + ((cols - 1) * spacing_h_mm)
@@ -677,7 +728,7 @@ module AutoNestCut
       # Calculate left margin to center labels
       margin_left_mm = (available_width_mm - total_width_needed_mm) / 2
       
-      labels_per_page = cols * rows  # 12 labels per page
+      labels_per_page = cols * rows  # 9 labels per page
       
       # Starting Y position from current cursor
       start_y_pt = pdf.cursor
@@ -690,7 +741,7 @@ module AutoNestCut
         quantity = part_type[:total_quantity] || 1
         
         quantity.times do |i|
-          # Start new page if needed
+          # Start new page if needed (every 9 labels)
           if label_index > 0 && label_index % labels_per_page == 0
             pdf.start_new_page
             render_section_header(pdf, @section_counter, "Part Labels (continued)")
@@ -713,12 +764,13 @@ module AutoNestCut
           
           # Render label at calculated position
           render_label(pdf, {
-            part_id: "P#{part_counter}",
+            part_id: "#{part_counter}",
             name: part_type[:name] || "Part",
             width: part_type[:width] || 0,
             height: part_type[:height] || 0,
             thickness: part_type[:thickness] || 0,
-            material: part_type[:material] || "Unknown"
+            material: part_type[:material] || "Unknown",
+            board_number: 1  # Default board number for unique types
           }, x_pos, y_pos, label_width_mm, label_height_mm)
           
           part_counter += 1
@@ -731,102 +783,181 @@ module AutoNestCut
       pdf.move_cursor_to(start_y_pt - mm_to_pt((last_row + 1) * (label_height_mm + spacing_v_mm)) - 20)
     end
     
-    # Render a single label with QR code
+    # Render a single label with QR code - MODERN INDUSTRIAL DESIGN
     def render_label(pdf, part_data, x, y, width_mm, height_mm)
       width_pt = mm_to_pt(width_mm)
       height_pt = mm_to_pt(height_mm)
       
-      # Draw label border
-      pdf.stroke_color COLOR_BORDER
+      # Layout Calculations
+      top_h = height_pt * 0.32
+      left_w = width_pt * 0.38
+      metal_size = top_h
+      
+      pdf.line_width LABEL_BORDER_WIDTH
+      
+      # === 1. BACKGROUND ZONES ===
+      
+      # Top Banner (White)
+      pdf.fill_color 'FFFFFF'
+      pdf.fill_rectangle [x, y], width_pt, top_h
+      
+      # Left Column (Orange)
+      pdf.fill_color COLOR_ORANGE
+      pdf.fill_rectangle [x, y - top_h], left_w, (height_pt - top_h)
+      
+      # Right Column (White)
+      pdf.fill_color 'FFFFFF'
+      pdf.fill_rectangle [x + left_w, y - top_h], (width_pt - left_w), (height_pt - top_h)
+      
+      # === 2. DIAGONAL HATCHING (Top of Orange Section) ===
+      pdf.stroke_color '000000'
       pdf.line_width 0.5
+      hatch_h = (height_pt - top_h) * 0.45
+      
+      # Draw diagonal lines
+      (0..40).each do |i|
+        offset = i * 3
+        x1 = x
+        y1 = y - top_h - offset
+        x2 = x + offset
+        y2 = y - top_h
+        
+        # Only draw if within bounds
+        if x2 <= x + left_w && y1 >= y - top_h - hatch_h
+          pdf.stroke_line [x1, y1], [x2, y2]
+        end
+      end
+      
+      # === 3. METALLIC CORNER (Gradient Effect) ===
+      # Create gradient effect with overlapping rectangles
+      pdf.fill_color 'FFFFFF'
+      pdf.fill_rectangle [x + width_pt - metal_size, y], metal_size, metal_size
+      
+      pdf.fill_color COLOR_METAL
+      pdf.fill_rectangle [x + width_pt - metal_size + 5, y - 5], metal_size - 10, metal_size - 10
+      
+      pdf.fill_color 'A0A0A0'
+      pdf.fill_rectangle [x + width_pt - metal_size + 10, y - 10], metal_size - 20, metal_size - 20
+      
+      # === 4. DIVIDING LINES ===
+      pdf.stroke_color '000000'
+      pdf.line_width LABEL_BORDER_WIDTH
+      
+      # Horizontal divider
+      pdf.stroke_horizontal_line x, x + width_pt, at: y - top_h
+      
+      # Vertical divider (orange/white)
+      pdf.stroke_vertical_line y - top_h, y - height_pt, at: x + left_w
+      
+      # Vertical divider (banner/metal)
+      pdf.stroke_vertical_line y, y - top_h, at: x + width_pt - metal_size
+      
+      # Outer border
       pdf.stroke_rectangle [x, y], width_pt, height_pt
       
-      # Create QR code data
+      # === 5. TEXT CONTENT ===
+      
+      # Extract data
+      part_id = (part_data[:part_id] || "N/A").to_s
+      board = part_data[:board_number] || 1
+      w_dim = (part_data[:width] || 0).to_f.round(1)
+      h_dim = (part_data[:height] || 0).to_f.round(1)
+      t_dim = (part_data[:thickness] || 0).to_f.round(1)
+      
+      # Format dimensions with .0 for whole numbers
+      w_str = (w_dim % 1 == 0 ? "#{w_dim.to_i}.0" : w_dim.to_s)
+      h_str = (h_dim % 1 == 0 ? "#{h_dim.to_i}.0" : h_dim.to_s)
+      t_str = (t_dim % 1 == 0 ? "#{t_dim.to_i}.0" : t_dim.to_s)
+      
+      # Header - "Part 4" (FIXED: removed underscore)
+      pdf.fill_color '000000'
+      pdf.font_size(top_h * 0.4) do
+        pdf.draw_text "Part #{part_id}", 
+          at: [x + 5, y - (top_h/2) + 6], 
+          style: :bold
+      end
+      
+      # Right Column - Dimensions
+      dim_x = x + left_w + 5
+      dim_y = y - top_h - 10
+      
+      pdf.font_size(7) do
+        pdf.fill_color '888888'
+        pdf.draw_text "Dimensions (mm)", at: [dim_x, dim_y]
+      end
+      
+      # Large dimension values with labels
+      pdf.font_size(5) do
+        pdf.fill_color '888888'
+        # W label
+        pdf.draw_text "W", at: [dim_x, dim_y - 15], style: :bold
+        # H label
+        pdf.draw_text "H", at: [dim_x, dim_y - 27], style: :bold
+        # TH label
+        pdf.draw_text "TH", at: [dim_x, dim_y - 39], style: :bold
+      end
+      
+      pdf.font_size(11) do
+        pdf.fill_color '000000'
+        # Width value
+        pdf.draw_text w_str, at: [dim_x + 12, dim_y - 15], style: :bold
+        # Height value
+        pdf.draw_text h_str, at: [dim_x + 12, dim_y - 27], style: :bold
+        # Thickness value
+        pdf.draw_text t_str, at: [dim_x + 12, dim_y - 39], style: :bold
+      end
+      
+      # Footer section - FIXED: Line positioned above text to avoid overlap
+      footer_text_y = y - height_pt + 12
+      footer_line_y = footer_text_y + 8  # Line is 8pt above the text
+      
+      # Footer line (positioned ABOVE the text)
+      pdf.stroke_color '000000'
+      pdf.line_width 0.5
+      pdf.stroke_horizontal_line dim_x, x + width_pt - 5, at: footer_line_y
+      
+      # Footer text (below the line)
+      pdf.font_size(7) do
+        pdf.fill_color '000000'
+        pdf.draw_text "ID: P#{part_id}", at: [dim_x, footer_text_y], style: :bold
+        
+        # Board number (right aligned)
+        board_text = "B##{board}"
+        board_width = pdf.width_of(board_text, size: 7, style: :bold)
+        pdf.draw_text board_text, 
+          at: [x + width_pt - 5 - board_width, footer_text_y], 
+          style: :bold
+      end
+      
+      # === 6. QR CODE (In solid orange area) ===
       qr_data = format_qr_data(part_data)
       
       begin
         require 'rqrcode'
-        qrcode = RQRCode::QRCode.new(qr_data, level: :m)
+        qrcode = RQRCode::QRCode.new(qr_data, level: :l)
         
-        # QR code size and position (left side)
-        qr_size_pt = mm_to_pt(25)
-        qr_x = x + mm_to_pt(3)
-        qr_y = y - mm_to_pt(3)
+        # QR code size and position
+        qr_size = left_w * 0.7
+        qr_x = x + (left_w - qr_size) / 2
+        
+        # Center vertically in solid orange section (below hatching)
+        qr_available_height = (height_pt - top_h) - hatch_h
+        qr_y = y - top_h - hatch_h - (qr_available_height - qr_size) / 2
         
         # Draw QR code
-        render_qr_code(pdf, qrcode, qr_x, qr_y, qr_size_pt)
+        render_qr_code(pdf, qrcode, qr_x, qr_y, qr_size)
         
       rescue LoadError
-        # If rqrcode not available, show placeholder
         pdf.font_size(8) do
-          pdf.draw_text "QR N/A", at: [x + mm_to_pt(10), y - mm_to_pt(15)], color: COLOR_TEXT_SECONDARY
+          pdf.fill_color '000000'
+          pdf.draw_text "QR N/A", at: [x + left_w/2 - 10, y - height_pt/2], style: :bold
         end
       rescue => e
-        puts "WARNING: Could not generate QR code for part #{part_data[:part_id]}: #{e.message}"
+        puts "WARNING: Could not generate QR code for part #{part_id}: #{e.message}"
         pdf.font_size(8) do
-          pdf.draw_text "QR Error", at: [x + mm_to_pt(10), y - mm_to_pt(15)], color: 'FF0000'
+          pdf.fill_color 'FF0000'
+          pdf.draw_text "QR Error", at: [x + left_w/2 - 15, y - height_pt/2], style: :bold
         end
-      end
-      
-      # Text area (right side)
-      text_x = x + mm_to_pt(31)  # After QR code + spacing
-      text_y = y - mm_to_pt(6)
-      text_width = width_pt - mm_to_pt(34)
-      
-      # Part name (bold, larger)
-      pdf.font_size(10) do
-        name = truncate_text(pdf, part_data[:name], text_width, 10)
-        pdf.draw_text name, 
-          at: [text_x, text_y], 
-          style: :bold,
-          color: COLOR_TEXT_MAIN
-      end
-      
-      # Dimensions label
-      text_y -= mm_to_pt(6)
-      pdf.font_size(7) do
-        pdf.draw_text "Dimensions:", 
-          at: [text_x, text_y],
-          color: COLOR_TEXT_SECONDARY
-      end
-      
-      # Dimensions (W × H only, no thickness)
-      text_y -= mm_to_pt(5)
-      w = part_data[:width].round(1)
-      h = part_data[:height].round(1)
-      pdf.font_size(9) do
-        pdf.draw_text "#{w} × #{h} mm", 
-          at: [text_x, text_y],
-          style: :bold,
-          color: COLOR_TEXT_MAIN
-      end
-      
-      # Thickness (moved to placeholder location)
-      text_y -= mm_to_pt(5)
-      t = part_data[:thickness].round(1)
-      pdf.font_size(8) do
-        pdf.draw_text "Thickness: #{t} mm", 
-          at: [text_x, text_y],
-          color: COLOR_TEXT_SECONDARY
-      end
-      
-      # Bottom section - Part ID and Material
-      bottom_y = y - height_pt + mm_to_pt(6)
-      
-      # Part ID (left)
-      pdf.font_size(7) do
-        pdf.draw_text "ID: #{part_data[:part_id]}", 
-          at: [text_x, bottom_y],
-          color: COLOR_TEXT_SECONDARY
-      end
-      
-      # Material (right aligned)
-      pdf.font_size(7) do
-        material = truncate_text(pdf, part_data[:material], text_width * 0.5, 7)
-        material_width = pdf.width_of(material, size: 7)
-        pdf.draw_text material, 
-          at: [x + width_pt - mm_to_pt(3) - material_width, bottom_y],
-          color: COLOR_TEXT_SECONDARY
       end
     end
     
@@ -941,41 +1072,68 @@ module AutoNestCut
         return max_widths
       end
       
-      # Otherwise, scale proportionally but keep minimum widths
-      min_width = 60  # Minimum column width
+      # FIXED: Optimize column widths for tables with many columns
+      # Identify column types: ID, short text, medium text, long text
+      col_widths = Array.new(num_cols, 0)
       
-      # Identify which columns need minimum width (short content like IDs)
+      # Define minimum and maximum widths for different column types
+      min_id_width = 40      # For ID columns (P1, P2, etc.)
+      min_short_width = 50   # For Board#, Grain, etc.
+      min_medium_width = 70  # For Cost, Level, Edge Band
+      min_long_width = 90    # For Name, Material, Dimensions
+      
+      # Categorize columns based on header names (first row)
+      headers = data.first
       short_cols = []
+      medium_cols = []
       long_cols = []
+      id_cols = []
       
-      max_widths.each_with_index do |width, idx|
-        if width < 100
+      headers.each_with_index do |header, idx|
+        header_str = header.to_s.downcase
+        if header_str == 'id'
+          id_cols << idx
+        elsif ['board#', 'sheet', 'grain', 'qty', 'count'].include?(header_str)
           short_cols << idx
+        elsif ['cost', 'level', 'edge band', 'edge banding', 'price/sheet'].include?(header_str)
+          medium_cols << idx
         else
           long_cols << idx
         end
       end
       
-      # Allocate minimum width to short columns
-      reserved_width = short_cols.length * min_width
+      # Allocate fixed widths to ID and short columns
+      reserved_width = (id_cols.length * min_id_width) + 
+                       (short_cols.length * min_short_width) + 
+                       (medium_cols.length * min_medium_width)
       remaining_width = available_width - reserved_width
       
-      # Distribute remaining width proportionally to long columns
+      # Distribute remaining width to long columns
       long_cols_total = long_cols.sum { |idx| max_widths[idx] }
       
-      col_widths = Array.new(num_cols, 0)
-      
       max_widths.each_with_index do |width, idx|
-        if short_cols.include?(idx)
-          col_widths[idx] = [width, min_width].max
+        if id_cols.include?(idx)
+          col_widths[idx] = [width, min_id_width].min.clamp(min_id_width, min_id_width + 10)
+        elsif short_cols.include?(idx)
+          col_widths[idx] = [width, min_short_width].min.clamp(min_short_width, min_short_width + 15)
+        elsif medium_cols.include?(idx)
+          col_widths[idx] = [width, min_medium_width].min.clamp(min_medium_width, min_medium_width + 20)
         else
-          if long_cols_total > 0
+          # Long columns get proportional share of remaining width
+          if long_cols_total > 0 && remaining_width > 0
             proportion = width.to_f / long_cols_total
-            col_widths[idx] = remaining_width * proportion
+            col_widths[idx] = [remaining_width * proportion, min_long_width].max
           else
-            col_widths[idx] = remaining_width / long_cols.length
+            col_widths[idx] = min_long_width
           end
         end
+      end
+      
+      # Final adjustment: if still too wide, scale down proportionally
+      total_width = col_widths.sum
+      if total_width > available_width
+        scale_factor = available_width / total_width
+        col_widths.map! { |w| w * scale_factor }
       end
       
       col_widths

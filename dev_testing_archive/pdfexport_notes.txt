@@ -1,0 +1,42 @@
+PDF Export Implementation Summary
+Active Implementation (Currently Used):
+
+File: dialog_manager.rb
+
+Callback: print_pdf (line ~257)
+
+Method: generate_simple_printable_html (line ~308)
+
+Flow: JavaScript calls callRuby('print_pdf', data) → Ruby generates HTML → Opens in UI::HtmlDialog → User clicks "Print to PDF"
+
+Inactive Implementation (NOT Used):
+
+File: pdf_generator.rb
+
+Status: Contains professional PDF code but never called by the application
+
+Reason: The export_to_pdf callback in dialog_manager.rb references it but JavaScript never triggers this callback
+
+Total Implementations: 2 (only 1 active)
+
+For Future Development:
+
+Modify generate_simple_printable_html method in dialog_manager.rb for PDF changes
+
+The method receives: report data, diagrams, assembly data, diagram images
+
+Returns: Complete HTML string with embedded CSS
+
+CSS uses @page rules and page-break-before on h2 elements for pagination
+
+Key Point: All PDF functionality goes through dialog_manager.rb → generate_simple_printable_html. Ignore pdf_generator.rb.
+
+
+
+@Pin Context
+
+Rules
+
+Claude Sonnet 4.5
+
+Claude Sonnet 4.5

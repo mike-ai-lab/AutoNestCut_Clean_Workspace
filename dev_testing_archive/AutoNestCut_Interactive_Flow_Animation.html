@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoNestCut Interactive Flow Animation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
+            min-height: 100vh; 
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        header { text-align: center; color: white; margin-bottom: 30px; }
+        h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .subtitle { font-size: 1.1em; opacity: 0.9; }
+        
+        .canvas-area {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            min-height: 600px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        
+        .flow-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            height: 500px;
+            padding: 20px;
+        }
+        
+        .stage {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            position: relative;
+        }
+        
+        .stage-box {
+            width: 140px;
+            height: 140px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 3px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stage-box:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .stage-box.active {
+            border-color: #fff;
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+        
+        .stage-1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .stage-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+        .stage-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; }
+        .stage-4 { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; }
+        .stage-5 { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; }
+        
+        .stage-label {
+            font-size: 0.85em;
+            margin-top: 10px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .animation-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #ddd;
+            min-height: 120px;
+            z-index: 20;
+        }
+        
+        .animation-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .animation-content {
+            color: #555;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+        
+        .data-box {
+            background: white;
+            border-left: 4px solid #667eea;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            color: #333;
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        
+        .arrow-connector {
+            position: absolute;
+            top: 50%;
+            width: 40px;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #999, transparent);
+            transform: translateY(-50%);
+        }
+        
+        .pulse {
+            animation: pulse-animation 1.5s infinite;
+        }
+        
+        @keyframes pulse-animation {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .flow-line {
+            stroke: #999;
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 5,5;
+        }
+        
+        .flow-arrow {
+            stroke: #667eea;
+            stroke-width: 3;
+            fill: none;
+            marker-end: url(#arrowhead);
+            animation: flow-animation 2s infinite;
+        }
+        
+        @keyframes flow-animation {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -20; }
+        }
+        
+        .controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            margin: 0 10px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 1em;
+        }
+        
+        button:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .info-box {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .step-indicator {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 AutoNestCut Interactive Flow Animation</h1>
+            <p class="subtitle">Click on any stage to see the animated data flow</p>
+        </header>
+
+        <div class="info-box">
+            <p>👆 Click on a stage box to start the animation and watch how data flows through the system</p>
+        </div>
+
+        <div class="canvas-area">
+            <svg id="flowSvg" style="z-index: 5;"></svg>
+            
+            <div class="flow-container">
+                <div class="stage">
+                    <div class="stage-box stage-1" onclick="startAnimation(1)">
+                        <div>📦<br>Components</div>
+                    </div>
+                    <div class="stage-label">Stage 1<br>Input</div>
+                </div>
+
+                <div class="stage">
+                    <div class="stage-box stage-2" onclick="startAnimation(2)">
+                        <div>🔍<br>Analysis</div>
+                    </div>
+                    <div class="stage-label">Stage 2<br>ModelAnalyzer</div>
+                </div>
+
+                <div class="stage">
+                    <div class="stage-box stage-3" onclick="startAnimation(3)">
+                        <div>✅<br>Validation</div>
+                    </div>
+                    <div class="stage-label">Stage 3<br>Validator</div>
+                </div>
+
+                <div class="stage">
+                    <div class="stage-box stage-4" onclick="startAnimation(4)">
+                        <div>🎲<br>Nesting</div>
+                    </div>
+                    <div class="stage-label">Stage 4<br>Optimizer</div>
+                </div>
+
+                <div class="stage">
+                    <div class="stage-box stage-5" onclick="startAnimation(5)">
+                        <div>📊<br>Report</div>
+                    </div>
+                    <div class="stage-label">Stage 5<br>Output</div>
+                </div>
+            </div>
+
+            <div class="animation-panel">
+                <div class="animation-title" id="panelTitle">Click on a stage to begin</div>
+                <div class="animation-content" id="panelContent">
+                    Select any stage above to see the animated flow and data transformation
+                </div>
+                <div id="dataDisplay"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="resetAnimation()">🔄 Reset</button>
+            <button onclick="playFullFlow()">▶️ Play Full Flow</button>
+        </div>
+    </div>
+
+    <svg style="display: none;">
+        <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#667eea" />
+            </marker>
+        </defs>
+    </svg>
+
+    <script>
+        const stages = [
+            {
+                title: "📦 Stage 1: Component Input",
+                description: "User selects components in SketchUp model. Each component has dimensions, material, and quantity.",
+                data: `Component: "Glass Shelf"
+Dimensions: 232 x 348 x 8mm
+Material: "BLUE"
+Quantity: 8`,
+                details: "ModelAnalyzer extracts all component data from the SketchUp model"
+            },
+            {
+                title: "🔍 Stage 2: Component Analysis",
+                description: "ModelAnalyzer processes all components and groups them by material. Dimensions are extracted and quantities calculated.",
+                data: `parts_by_material = {
+  "BLUE" => [
+    Glass Shelf: 232x348x8 (qty: 8),
+    Divider: 232x2332x18 (qty: 1)
+  ],
+  "GREEN" => [...]
+}`,
+                details: "All components are now organized by material type for validation"
+            },
+            {
+                title: "✅ Stage 3: Validation & Auto-Material Creation",
+                description: "ComponentValidator checks if materials exist in database. If not, auto-creates materials with exact component dimensions.",
+                data: `Validation Results:
+✓ 6 materials, 6 parts
+✓ 0 errors, 5 warnings
+✓ 5 auto-materials created
+
+Auto_user_W232xH348xTH8_(BLUE)
+Auto_user_W232xH2332xTH18_(BLUE)
+...`,
+                details: "Auto-materials are created with exact component dimensions (no padding). Old auto-materials are cleaned up first."
+            },
+            {
+                title: "🎲 Stage 4: Nesting Optimization",
+                description: "Nester places parts on sheets using free rectangles algorithm. Largest parts first, kerf spacing applied.",
+                data: `Nesting Progress:
+Board #1: 1/8 parts placed
+Board #2: 2/8 parts placed
+Board #3: 3/8 parts placed
+...
+Board #8: 8/8 parts placed
+
+Total: 14 boards created`,
+                details: "Parts are placed to minimize waste. Exact-fit parts (dimensions matching board) placed without kerf spacing."
+            },
+            {
+                title: "📊 Stage 5: Report Generation",
+                description: "Final report generated with cut lists, diagrams, efficiency metrics, and material breakdown.",
+                data: `Report Summary:
+✓ 14 boards total
+✓ 13 parts placed
+✓ Total waste: 2.5%
+✓ Efficiency: 97.5%
+
+Materials:
+- Auto_user_W232xH348xTH8_(BLUE): 8 parts
+- Auto_user_W232xH2332xTH18_(BLUE): 1 part
+...`,
+                details: "Complete cut list ready for production with optimized material usage"
+            }
+        ];
+
+        let currentStage = 0;
+        let isAnimating = false;
+
+        function startAnimation(stage) {
+            if (isAnimating) return;
+            isAnimating = true;
+            currentStage = stage;
+            
+            animateFlow(stage);
+        }
+
+        function animateFlow(stage) {
+            const stageData = stages[stage - 1];
+            const boxes = document.querySelectorAll('.stage-box');
+            
+            // Reset all boxes
+            boxes.forEach(box => box.classList.remove('active', 'pulse'));
+            
+            // Animate from stage 1 to selected stage
+            let delay = 0;
+            for (let i = 1; i <= stage; i++) {
+                setTimeout(() => {
+                    boxes[i - 1].classList.add('pulse');
+                    
+                    if (i === stage) {
+                        updatePanel(stageData);
+                        boxes[i - 1].classList.add('active');
+                        isAnimating = false;
+                    }
+                }, delay);
+                delay += 400;
+            }
+        }
+
+        function updatePanel(stageData) {
+            const title = document.getElementById('panelTitle');
+            const content = document.getElementById('panelContent');
+            const dataDisplay = document.getElementById('dataDisplay');
+            
+            title.textContent = stageData.title;
+            content.innerHTML = `
+                <p>${stageData.description}</p>
+                <p style="margin-top: 10px; font-size: 0.9em; color: #666;">${stageData.details}</p>
+            `;
+            
+            dataDisplay.innerHTML = `<div class="data-box">${stageData.data}</div>`;
+        }
+
+        function playFullFlow() {
+            if (isAnimating) return;
+            isAnimating = true;
+            
+            let stage = 1;
+            const interval = setInterval(() => {
+                if (stage <= 5) {
+                    animateFlow(stage);
+                    stage++;
+                } else {
+                    clearInterval(interval);
+                    isAnimating = false;
+                }
+            }, 1500);
+        }
+
+        function resetAnimation() {
+            isAnimating = false;
+            currentStage = 0;
+            document.querySelectorAll('.stage-box').forEach(box => {
+                box.classList.remove('active', 'pulse');
+            });
+            document.getElementById('panelTitle').textContent = 'Click on a stage to begin';
+            document.getElementById('panelContent').textContent = 'Select any stage above to see the animated flow and data transformation';
+            document.getElementById('dataDisplay').innerHTML = '';
+        }
+
+        // Draw connecting lines
+        function drawConnectors() {
+            const svg = document.getElementById('flowSvg');
+            const boxes = document.querySelectorAll('.stage-box');
+            
+            boxes.forEach((box, index) => {
+                if (index < boxes.length - 1) {
+                    const rect1 = box.getBoundingClientRect();
+                    const rect2 = boxes[index + 1].getBoundingClientRect();
+                    const svgRect = svg.getBoundingClientRect();
+                    
+                    const x1 = rect1.right - svgRect.left;
+                    const y1 = rect1.top - svgRect.top + rect1.height / 2;
+                    const x2 = rect2.left - svgRect.left;
+                    const y2 = rect2.top - svgRect.top + rect2.height / 2;
+                    
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', x1);
+                    line.setAttribute('y1', y1);
+                    line.setAttribute('x2', x2);
+                    line.setAttribute('y2', y2);
+                    line.setAttribute('class', 'flow-line');
+                    svg.appendChild(line);
+                }
+            });
+        }
+
+        window.addEventListener('load', drawConnectors);
+        window.addEventListener('resize', () => {
+            document.getElementById('flowSvg').innerHTML = '';
+            drawConnectors();
+        });
+    </script>
+</body>
+</html>

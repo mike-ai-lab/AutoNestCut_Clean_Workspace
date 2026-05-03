@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Nesting Optimizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .panel-piece {
+            cursor: grab;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.3s;
+            user-select: none;
+        }
+        .panel-piece:active { cursor: grabbing; }
+        
+        .is-dragging { 
+            filter: brightness(1.2) drop-shadow(0 10px 15px rgba(0,0,0,0.4));
+            transform: scale(1.05);
+            z-index: 100;
+        }
+
+        .drop-highlight { 
+            stroke: #3b82f6 !important; 
+            stroke-width: 12 !important;
+            fill-opacity: 0.5;
+        }
+
+        .panel-label { 
+            font-size: 42px; 
+            font-weight: 900; 
+            pointer-events: none; 
+            fill: #000;
+        }
+        
+        .sub-label {
+            font-size: 20px;
+            font-weight: 600;
+            fill: #333;
+            pointer-events: none;
+        }
+
+        .empty-slot {
+            fill: #f1f5f9;
+            stroke: #cbd5e1;
+            stroke-dasharray: 10,10;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 p-4 md:p-8 flex flex-col items-center min-h-screen font-sans">
+
+    <div class="bg-white p-6 md:p-10 rounded-3xl shadow-2xl border border-slate-200 w-full max-w-6xl">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-6 border-b pb-6">
+            <div class="text-center md:text-left">
+                <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">Nesting Workspace</h2>
+                <p class="text-slate-500 font-medium">Muhamad: Drag pieces between the Board and the Storage Bin below.</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="resetBoard()" class="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-700 transition-all active:scale-95">Reset All</button>
+            </div>
+        </div>
+
+        <!-- MAIN BOARD -->
+        <div class="mb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Main Sheet (2440 x 1220 mm)</div>
+        <div id="board-container" class="relative w-full border-[8px] border-slate-900 rounded-xl shadow-lg bg-slate-50 aspect-[2/1] overflow-hidden">
+            <!-- Rendered via JS -->
+        </div>
+
+        <!-- STORAGE BIN -->
+        <div class="mt-10">
+            <div class="mb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Storage Bin (Removed Pieces)</div>
+            <div id="storage-container" class="w-full min-h-[200px] bg-slate-200 rounded-2xl border-4 border-dashed border-slate-300 p-6 flex flex-wrap gap-4 items-center justify-center">
+                <!-- Pieces removed from the board appear here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pieceData = [
+            { id: 0, name: 'A1', desc: '610x1220', color: '#FFD700' },
+            { id: 1, name: 'A2', desc: '610x1220', color: '#FFA500' },
+            { id: 2, name: 'B1', desc: '1220x305', color: '#98FB98' },
+            { id: 3, name: 'B2', desc: '1220x305', color: '#3CB371' },
+            { id: 4, name: 'C1', desc: '305x305',  color: '#87CEEB' },
+            { id: 5, name: 'C2', desc: '305x305',  color: '#00BFFF' },
+            { id: 6, name: 'C3', desc: '305x305',  color: '#F08080' },
+            { id: 7, name: 'C4', desc: '305x305',  color: '#FF6347' },
+            { id: 8, name: 'D1', desc: '610x305',  color: '#DDA0DD' },
+            { id: 9, name: 'D2', desc: '610x305',  color: '#BA55D3' }
+        ];
+
+        const slots = [
+            { x: 0,    y: 0,    w: 610,  h: 1220 },
+            { x: 610,  y: 0,    w: 610,  h: 1220 },
+            { x: 1220, y: 0,    w: 1220, h: 305 },
+            { x: 1220, y: 305,  w: 1220, h: 305 },
+            { x: 1220, y: 610,  w: 305,  h: 305 },
+            { x: 1525, y: 610,  w: 305,  h: 305 },
+            { x: 1830, y: 610,  w: 305,  h: 305 },
+            { x: 2135, y: 610,  w: 305,  h: 305 },
+            { x: 1220, y: 915,  w: 610,  h: 305 },
+            { x: 1830, y: 915,  w: 610,  h: 305 }
+        ];
+
+        // State: mapping[slotIndex] = pieceIndex (or null if empty)
+        let boardMapping = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let storageItems = []; // Indices of pieces in storage
+        let activePieceIdx = null;
+        let sourceContainer = null; // 'board' or 'storage'
+
+        const boardEl = document.getElementById('board-container');
+        const storageEl = document.getElementById('storage-container');
+
+        function renderAll() {
+            renderBoard();
+            renderStorage();
+        }
+
+        function renderBoard() {
+            boardEl.innerHTML = '';
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("viewBox", "0 0 2440 1220");
+            svg.setAttribute("class", "w-full h-full");
+
+            slots.forEach((slot, slotIdx) => {
+                const pieceIdx = boardMapping[slotIdx];
+                
+                // Draw Slot Background
+                const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                bg.setAttribute("x", slot.x);
+                bg.setAttribute("y", slot.y);
+                bg.setAttribute("width", slot.w);
+                bg.setAttribute("height", slot.h);
+                bg.setAttribute("class", "empty-slot");
+                
+                // Enable dropping on empty slots
+                bg.onmouseup = () => handleDropOnBoard(slotIdx);
+                bg.onmouseenter = () => { if(activePieceIdx !== null) bg.classList.add('drop-highlight'); };
+                bg.onmouseleave = () => bg.classList.remove('drop-highlight');
+                
+                svg.appendChild(bg);
+
+                if (pieceIdx !== null) {
+                    const piece = pieceData[pieceIdx];
+                    const g = createPieceElement(piece, slot, 'board', slotIdx);
+                    svg.appendChild(g);
+                }
+            });
+            boardEl.appendChild(svg);
+        }
+
+        function renderStorage() {
+            storageEl.innerHTML = '';
+            storageItems.forEach((pieceIdx) => {
+                const piece = pieceData[pieceIdx];
+                const item = document.createElement('div');
+                item.className = 'w-32 h-20 rounded-lg shadow-md flex flex-col items-center justify-center cursor-grab active:cursor-grabbing font-bold border-2 border-black';
+                item.style.backgroundColor = piece.color;
+                item.innerHTML = `<div>${piece.name}</div><div class="text-[10px] opacity-70">${piece.desc}</div>`;
+                
+                item.onmousedown = () => {
+                    activePieceIdx = pieceIdx;
+                    sourceContainer = 'storage';
+                    item.style.opacity = '0.5';
+                };
+                storageEl.appendChild(item);
+            });
+        }
+
+        function createPieceElement(piece, slot, source, index) {
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            g.setAttribute("class", "panel-piece");
+            
+            const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            rect.setAttribute("x", slot.x);
+            rect.setAttribute("y", slot.y);
+            rect.setAttribute("width", slot.w);
+            rect.setAttribute("height", slot.h);
+            rect.setAttribute("fill", piece.color);
+            rect.setAttribute("stroke", "#000");
+            rect.setAttribute("stroke-width", "6");
+
+            const t1 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            t1.setAttribute("x", slot.x + slot.w/2); t1.setAttribute("y", slot.y + slot.h/2 - 5);
+            t1.setAttribute("text-anchor", "middle"); t1.setAttribute("class", "panel-label");
+            t1.textContent = piece.name;
+
+            g.appendChild(rect);
+            g.appendChild(t1);
+
+            g.onmousedown = () => {
+                activePieceIdx = piece.id;
+                sourceContainer = 'board';
+                g.classList.add('is-dragging');
+            };
+
+            // If we release mouse over another piece on board, we swap
+            g.onmouseup = (e) => {
+                e.stopPropagation();
+                handleDropOnBoard(index);
+            };
+
+            return g;
+        }
+
+        function handleDropOnBoard(targetSlotIdx) {
+            if (activePieceIdx === null) return;
+
+            if (sourceContainer === 'board') {
+                // Find where the active piece was
+                const oldSlotIdx = boardMapping.indexOf(activePieceIdx);
+                // Swap the contents
+                const targetContent = boardMapping[targetSlotIdx];
+                boardMapping[targetSlotIdx] = activePieceIdx;
+                boardMapping[oldSlotIdx] = targetContent;
+            } else {
+                // Moving from storage to board
+                const targetContent = boardMapping[targetSlotIdx];
+                boardMapping[targetSlotIdx] = activePieceIdx;
+                // Remove from storage
+                storageItems = storageItems.filter(id => id !== activePieceIdx);
+                // If the slot had a piece, move it to storage
+                if (targetContent !== null) storageItems.push(targetContent);
+            }
+            cleanupAndRender();
+        }
+
+        // Drop in storage bin
+        storageEl.onmouseup = () => {
+            if (activePieceIdx !== null && sourceContainer === 'board') {
+                const oldSlotIdx = boardMapping.indexOf(activePieceIdx);
+                boardMapping[oldSlotIdx] = null;
+                storageItems.push(activePieceIdx);
+                cleanupAndRender();
+            }
+        };
+
+        function cleanupAndRender() {
+            activePieceIdx = null;
+            sourceContainer = null;
+            renderAll();
+        }
+
+        function resetBoard() {
+            boardMapping = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+            storageItems = [];
+            cleanupAndRender();
+        }
+
+        // Catch accidental drops outside targets
+        window.onmouseup = (e) => {
+            // If drop is not inside board or storage, just reset
+            if (!boardEl.contains(e.target) && !storageEl.contains(e.target)) {
+                cleanupAndRender();
+            }
+        };
+
+        window.onload = renderAll;
+    </script>
+</body>
+</html>

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoNestCut Process Visualization</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header { text-align: center; color: white; margin-bottom: 30px; }
+        h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .subtitle { font-size: 1.1em; opacity: 0.9; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn { padding: 12px 24px; background: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s; }
+        .tab-btn.active { background: #667eea; color: white; }
+        .tab-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .content { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .hidden { display: none; }
+        .flow-diagram { display: flex; flex-direction: column; gap: 20px; }
+        .flow-step { display: flex; align-items: center; gap: 15px; }
+        .step-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; flex: 1; min-width: 200px; }
+        .step-number { background: white; color: #667eea; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
+        .arrow { font-size: 24px; color: #667eea; }
+        .edge-case { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0; border-radius: 4px; }
+        .edge-case-title { font-weight: bold; color: #856404; margin-bottom: 8px; }
+        .success { background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 15px 0; border-radius: 4px; }
+        .error { background: #f8d7da; border-left: 4px solid #dc3545; padding: 15px; margin: 15px 0; border-radius: 4px; }
+        .diagram-box { background: #f8f9fa; border: 2px solid #667eea; border-radius: 8px; padding: 20px; margin: 15px 0; }
+        .code-block { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 8px; overflow-x: auto; font-family: 'Courier New', monospace; font-size: 0.9em; margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #667eea; color: white; }
+        tr:hover { background: #f5f5f5; }
+        .legend { display: flex; gap: 20px; flex-wrap: wrap; margin: 20px 0; }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .legend-color { width: 20px; height: 20px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 AutoNestCut Process Visualization</h1>
+            <p class="subtitle">Understanding the complete workflow from component analysis to nesting optimization</p>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('overview')">Overview</button>
+            <button class="tab-btn" onclick="showTab('validation')">Validation</button>
+            <button class="tab-btn" onclick="showTab('nesting')">Nesting</button>
+            <button class="tab-btn" onclick="showTab('edge-cases')">Edge Cases</button>
+            <button class="tab-btn" onclick="showTab('data-flow')">Data Flow</button>
+        </div>
+
+        <div class="content">
+            <!-- OVERVIEW TAB -->
+            <div id="overview" class="tab-content">
+                <h2>🔄 Complete AutoNestCut Workflow</h2>
+                <div class="flow-diagram">
+                    <div class="flow-step">
+                        <div class="step-number">1</div>
+                        <div class="step-box">
+                            <strong>User Selects Components</strong><br>
+                            SketchUp model with components marked with materials
+                        </div>
+                        <div class="arrow">→</div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="step-number">2</div>
+                        <div class="step-box">
+                            <strong>ModelAnalyzer Extracts Data</strong><br>
+                            Dimensions, materials, quantities analyzed
+                        </div>
+                        <div class="arrow">→</div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="step-number">3</div>
+                        <div class="step-box">
+                            <strong>ComponentValidator Validates</strong><br>
+                            Checks dimensions, creates auto-materials
+                        </div>
+                        <div class="arrow">→</div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="step-number">4</div>
+                        <div class="step-box">
+                            <strong>Nester Optimizes Layout</strong><br>
+                            Places parts on sheets, minimizes waste
+                        </div>
+                        <div class="arrow">→</div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="step-number">5</div>
+                        <div class="step-box">
+                            <strong>Report Generated</strong><br>
+                            Cut lists, diagrams, efficiency metrics
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VALIDATION TAB -->
+            <div id="validation" class="tab-content hidden">
+                <h2>✅ Component Validation Process</h2>
+                <p>The validation stage ensures all components are compatible with available materials.</p>
+                
+                <h3 style="margin-top: 20px;">Validation Steps:</h3>
+                <div class="diagram-box">
+                    <strong>1. Load Materials Database</strong>
+                    <div class="code-block">existing_materials = MaterialsDatabase.load_database
+# Returns: { "Material_Name" => { width, height, thickness, price, ... }, ... }</div>
+                    
+                    <strong>2. Clean Old Auto-Materials</strong>
+                    <div class="code-block">existing_materials.reject! { |name, _| name.start_with?('Auto_user_') }
+# Removes old auto-materials to prevent dimension mismatches</div>
+                    
+                    <strong>3. Validate Each Component</strong>
+                    <div class="code-block">parts_by_material.each do |material_name, part_entries|
+  part_entries.each do |part|
+    # Check: width, height, thickness within limits
+    # Check: material exists in database
+    # If not: auto-create material with exact component dimensions
+  end
+end</div>
+                    
+                    <strong>4. Save Auto-Created Materials</strong>
+                    <div class="code-block">MaterialsDatabase.save_database(updated_materials)
+# Persists new materials for future use</div>
+                </div>
+
+                <h3>Validation Limits:</h3>
+                <table>
+                    <tr>
+                        <th>Limit Type</th>
+                        <th>Value</th>
+                        <th>Purpose</th>
+                    </tr>
+                    <tr>
+                        <td>Hard Limit Width</td>
+                        <td>4500mm</td>
+                        <td>Reject unrealistic dimensions</td>
+                    </tr>
+                    <tr>
+                        <td>Hard Limit Height</td>
+                        <td>5500mm</td>
+                        <td>Reject unrealistic dimensions</td>
+                    </tr>
+                    <tr>
+                        <td>Min Dimension</td>
+                        <td>1mm</td>
+                        <td>Reject too-small parts</td>
+                    </tr>
+                    <tr>
+                        <td>Max Thickness</td>
+                        <td>500mm</td>
+                        <td>Ensure sheet material</td>
+                    </tr>
+                </table>
+
+                <h3>Auto-Material Creation Formula:</h3>
+                <div class="code-block">Auto_user_W{width}xH{height}xTH{thickness}_(SketchUpMaterialName)
+Example: Auto_user_W232xH348xTH8_(BLUE)</div>
+            </div>
+
+            <!-- NESTING TAB -->
+            <div id="nesting" class="tab-content hidden">
+                <h2>🎲 Nesting Optimization Process</h2>
+                <p>The nesting algorithm places parts on sheets to minimize waste.</p>
+
+                <h3>Nesting Algorithm:</h3>
+                <div class="diagram-box">
+                    <strong>1. Initialize Board</strong>
+                    <div class="code-block">board = Board.new(material, stock_width, stock_height)
+# free_rectangles = [[0, 0, stock_width, stock_height]]</div>
+                    
+                    <strong>2. Sort Parts by Area (Largest First)</strong>
+                    <div class="code-block">remaining_parts.sort_by! { |part| -part.area }
+# Ensures larger parts are placed first</div>
+                    
+                    <strong>3. Find Best Position</strong>
+                    <div class="code-block">position = board.find_best_position(part, kerf_width)
+# Special case: exact-fit parts (dimensions match board)
+# Normal case: find bottom-left free rectangle that fits</div>
+                    
+                    <strong>4. Place Part & Update Free Rectangles</strong>
+                    <div class="code-block">board.add_part(part, x, y, kerf_width)
+# Subtracts placed part from free rectangles
+# Kerf spacing is included in the subtraction</div>
+                    
+                    <strong>5. Repeat Until All Parts Placed</strong>
+                    <div class="code-block">if no_parts_fit_on_board
+  create_new_board
+else
+  save_board_and_continue
+end</div>
+                </div>
+
+                <h3>Free Rectangles Algorithm:</h3>
+                <div class="diagram-box">
+                    <strong>Initial State:</strong>
+                    <div class="code-block">Board: 250 x 750mm
+free_rectangles = [[0, 0, 250, 750]]</div>
+                    
+                    <strong>After Placing Part (100x200 at 0,0 with kerf=3):</strong>
+                    <div class="code-block">placed_rect_with_kerf = [0, 0, 103, 203]
+# Subtract from [0, 0, 250, 750]
+# Result: 4 new rectangles
+#   [103, 0, 147, 750]    (right side)
+#   [0, 203, 103, 547]    (bottom)
+#   [0, 0, 0, 0]          (invalid - filtered out)</div>
+                </div>
+
+                <h3>Exact-Fit Parts Special Case:</h3>
+                <div class="success">
+                    <strong>✓ When part dimensions match board dimensions exactly:</strong>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>Part: 232 x 348mm</li>
+                        <li>Board: 232 x 348mm</li>
+                        <li>Kerf: 3mm</li>
+                        <li>Result: Part placed at (0, 0) without kerf spacing requirement</li>
+                        <li>Reason: Exact-fit parts are designed to fill the entire sheet</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- EDGE CASES TAB -->
+            <div id="edge-cases" class="tab-content hidden">
+                <h2>⚠️ Edge Cases & Solutions</h2>
+
+                <h3>Edge Case 1: Material Not in Database</h3>
+                <div class="edge-case">
+                    <div class="edge-case-title">Scenario:</div>
+                    Component has material "BLUE" but it's not in the materials database
+                </div>
+                <div class="diagram-box">
+                    <strong>Solution:</strong>
+                    <div class="code-block">if !existing_materials.key?(material_name)
+  auto_create_oversized_material(material_name, width, height, thickness)
+  # Creates: Auto_user_W{W}xH{H}xTH{TH}_(BLUE)
+end</div>
+                </div>
+
+                <h3>Edge Case 2: Component Larger Than Material</h3>
+                <div class="edge-case">
+                    <div class="edge-case-title">Scenario:</div>
+                    Component: 300 x 400mm, Material in DB: 250 x 350mm
+                </div>
+                <div class="diagram-box">
+                    <strong>Solution:</strong>
+                    <div class="code-block">if width > material_width || height > material_height
+  auto_create_oversized_material(...)
+  # Creates new material sized to component
+end</div>
+                </div>
+
+                <h3>Edge Case 3: Thickness Mismatch</h3>
+                <div class="edge-case">
+                    <div class="edge-case-title">Scenario:</div>
+                    Component: 250 x 350 x 18mm, Material in DB: 250 x 350 x 8mm
+                </div>
+                <div class="diagram-box">
+                    <strong>Solution:</strong>
+                    <div class="code-block">if (thickness - material_thickness).abs > 0.5
+  auto_create_oversized_material(...)
+  # Creates new material with correct thickness
+end</div>
+                </div>
+
+                <h3>Edge Case 4: Exact-Fit Part Placement</h3>
+                <div class="edge-case">
+                    <div class="edge-case-title">Scenario:</div>
+                    Part: 232 x 348mm, Board: 232 x 348mm, Kerf: 3mm
+                </div>
+                <div class="success">
+                    <strong>✓ Solution:</strong>
+                    <div class="code-block">if board.empty? && part.width ≈ board.width && part.height ≈ board.height
+  return [0.0, 0.0]  # Place without kerf spacing
+end</div>
+                </div>
+
+                <h3>Edge Case 5: Part Cannot Fit on Any Board</h3>
+                <div class="edge-case">
+                    <div class="edge-case-title">Scenario:</div>
+                    Part: 300 x 400mm, Board: 250 x 350mm (part too large)
+                </div>
+                <div class="error">
+                    <strong>✗ Error Raised:</strong>
+                    <div class="code-block">ERROR: Unable to place component 'Part' (300x400mm) 
+on sheet (250x350mm). Check dimensions and kerf settings.</div>
+                </div>
+
+                <h3>Edge Case 6: Multiple Materials with Different Thicknesses</h3>
+                <div class="edge-case">
+                    <div class="edge-case-title">Scenario:</div>
+                    Material "GREEN" has components with 18mm and 100mm thickness
+                </div>
+                <div class="success">
+                    <strong>✓ Solution:</strong>
+                    <div class="code-block"># Creates separate auto-materials:
+Auto_user_W250xH750xTH18_(GREEN)
+Auto_user_W250xH750xTH100_(GREEN)
+# Each thickness gets its own material</div>
+                </div>
+            </div>
+
+            <!-- DATA FLOW TAB -->
+            <div id="data-flow" class="tab-content hidden">
+                <h2>📊 Data Flow Through the System</h2>
+
+                <h3>Stage 1: Component Analysis</h3>
+                <div class="diagram-box">
+                    <strong>Input:</strong> SketchUp Model with Components
+                    <div class="code-block">Component: "Glass Shelf"
+  - Dimensions: 232 x 348 x 8mm
+  - Material: "BLUE"
+  - Quantity: 8</div>
+                    
+                    <strong>Output:</strong> Parts by Material
+                    <div class="code-block">parts_by_material = {
+  "BLUE" => [
+    { part_type: Part, total_quantity: 8 },
+    { part_type: Part, total_quantity: 1 }
+  ],
+  "GREEN" => [...]
+}</div>
+                </div>
+
+                <h3>Stage 2: Validation & Auto-Material Creation</h3>
+                <div class="diagram-box">
+                    <strong>Input:</strong> parts_by_material
+                    <div class="code-block">Validation Results:
+  ✓ 6 materials, 6 parts
+  ✓ 0 errors, 5 warnings
+  ✓ 5 auto-materials created</div>
+                    
+                    <strong>Output:</strong> Validated Materials Database
+                    <div class="code-block">materials_database = {
+  "Auto_user_W232xH348xTH8_(BLUE)" => {
+    width: 232, height: 348, thickness: 8,
+    auto_generated: true
+  },
+  ...
+}</div>
+                </div>
+
+                <h3>Stage 3: Nesting Optimization</h3>
+                <div class="diagram-box">
+                    <strong>Input:</strong> Parts + Materials + Settings
+                    <div class="code-block">settings = {
+  kerf_width: 3,
+  allow_rotation: true,
+  stock_materials: { ... }
+}</div>
+                    
+                    <strong>Output:</strong> Optimized Boards
+                    <div class="code-block">boards = [
+  Board #1: Auto_user_W232xH348xTH8_(BLUE)
+    - 1 part placed
+    - Efficiency: 100%
+  Board #2: Auto_user_W232xH348xTH8_(BLUE)
+    - 1 part placed
+    - Efficiency: 100%
+  ...
+]</div>
+                </div>
+
+                <h3>Stage 4: Report Generation</h3>
+                <div class="diagram-box">
+                    <strong>Input:</strong> Optimized Boards
+                    <strong>Output:</strong> Cut Lists, Diagrams, Metrics
+                    <div class="code-block">Report includes:
+  ✓ 14 boards total
+  ✓ 13 parts placed
+  ✓ Total waste: 2.5%
+  ✓ Material breakdown by type
+  ✓ Assembly diagrams
+  ✓ Cut sequence</div>
+                </div>
+
+                <h3>Key Data Structures:</h3>
+                <table>
+                    <tr>
+                        <th>Structure</th>
+                        <th>Purpose</th>
+                        <th>Example</th>
+                    </tr>
+                    <tr>
+                        <td>Part</td>
+                        <td>Individual component</td>
+                        <td>{ name, width, height, thickness, material }</td>
+                    </tr>
+                    <tr>
+                        <td>Board</td>
+                        <td>Sheet with placed parts</td>
+                        <td>{ material, parts[], free_rectangles[] }</td>
+                    </tr>
+                    <tr>
+                        <td>Free Rectangle</td>
+                        <td>Available space on board</td>
+                        <td>[x, y, width, height]</td>
+                    </tr>
+                    <tr>
+                        <td>Material</td>
+                        <td>Sheet material definition</td>
+                        <td>{ width, height, thickness, price, density }</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // Hide all tabs
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.add('hidden'));
+            
+            // Remove active class from all buttons
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.remove('hidden');
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

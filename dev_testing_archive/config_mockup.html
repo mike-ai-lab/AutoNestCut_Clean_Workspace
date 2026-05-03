@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AutoNestCut - Reorganized Config Mockup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: #f6f8fa; color: #24292e; }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header h1 { font-size: 20px; font-weight: 700; }
+        .header-actions { display: flex; gap: 8px; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+        .btn-secondary { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.3); }
+        
+        /* Main Container */
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        /* Quick Stats Bar */
+        .stats-bar {
+            background: white;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat { display: flex; align-items: center; gap: 12px; }
+        .stat-icon { width: 40px; height: 40px; background: #e3f2fd; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #007cba; font-size: 20px; }
+        .stat-info { display: flex; flex-direction: column; }
+        .stat-value { font-size: 20px; font-weight: 700; color: #24292e; }
+        .stat-label { font-size: 12px; color: #656d76; }
+        
+        /* Accordion Sections */
+        .section {
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 16px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e1e5e9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        .section-header:hover { background: #f1f5f9; }
+        .section-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .section-number { background: #007cba; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+        .section-toggle { font-size: 20px; color: #656d76; transition: transform 0.3s; }
+        .section.collapsed .section-toggle { transform: rotate(-90deg); }
+        .section-content { padding: 20px; display: block; }
+        .section.collapsed .section-content { display: none; }
+        
+        /* Form Grid */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 13px; font-weight: 600; color: #24292e; }
+        .form-group input, .form-group select { padding: 8px 12px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #007cba; box-shadow: 0 0 0 3px rgba(0,124,186,0.1); }
+        
+        /* Materials Table */
+        .materials-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .materials-actions { display: flex; gap: 8px; }
+        .btn-icon { width: 36px; height: 36px; border-radius: 6px; border: 1px solid #d0d7de; background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .btn-icon:hover { background: #f6f8fa; border-color: #8c959f; }
+        .btn-add { background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; }
+        .btn-add:hover { background: #218838; }
+        
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #d0d7de;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .toggle-switch.active { background: #28a745; }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: left 0.3s;
+        }
+        .toggle-switch.active::after { left: 23px; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12px; color: #656d76; text-transform: uppercase; border-bottom: 2px solid #e1e5e9; }
+        td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+        tr:hover { background: #f8fafc; }
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .status-used { background: #d4edda; color: #155724; }
+        .status-unused { background: #f8f9fa; color: #6c757d; }
+        
+        /* Action Buttons */
+        .action-bar {
+            position: sticky;
+            bottom: 0;
+            background: white;
+            padding: 16px 24px;
+            border-top: 1px solid #e1e5e9;
+            display: flex;
+            justify-content: space-between;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+            margin: 20px -20px -20px -20px;
+        }
+        .btn-primary {
+            background: #007cba;
+            color: white;
+            padding: 12px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-primary:hover { background: #005a87; }
+        
+        /* Expandable Details */
+        .expandable { border: 1px solid #e1e5e9; border-radius: 6px; margin-top: 12px; }
+        .expandable-header {
+            padding: 12px 16px;
+            background: #f8fafc;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .expandable-header:hover { background: #f1f5f9; }
+        .expandable-content { padding: 16px; display: none; }
+        .expandable.open .expandable-content { display: block; }
+        .expandable.open .expandable-header { border-bottom: 1px solid #e1e5e9; }
+        
+        .badge { background: #007cba; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <h1>AutoNestCut Configuration</h1>
+            <p style="font-size: 12px; opacity: 0.9; margin-top: 4px;">by Int. Arch. M.Shkeir</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="alert('Settings')">⚙️ Settings</button>
+            <button class="btn btn-secondary" onclick="alert('Refresh')">🔄 Refresh</button>
+            <button class="btn btn-secondary" onclick="alert('Cancel')">✕ Cancel</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Quick Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat">
+                <div class="stat-icon">📦</div>
+                <div class="stat-info">
+                    <div class="stat-value">24</div>
+                    <div class="stat-label">Components</div>
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-icon">📐</div>
+                <div class="stat-info">
+                    <div class="stat-value">3</div>
+                    <div class="stat-label">Materials</div>
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-icon">📊</div>
+                <div class="stat-info">
+                    <div class="stat-value">12.5 m²</div>
+                    <div class="stat-label">Total Area</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 1: Project Configuration -->
+        <div class="section collapsed">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-number">1</span>
+                    Project Configuration
+                </div>
+                <span class="section-toggle">▼</span>
+            </div>
+            <div class="section-content">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Project Name</label>
+                        <input type="text" placeholder="Enter project name" value="Kitchen Cabinets">
+                    </div>
+                    <div class="form-group">
+                        <label>Client Name</label>
+                        <input type="text" placeholder="Enter client name" value="John Smith">
+                    </div>
+                    <div class="form-group">
+                        <label>Prepared By</label>
+                        <input type="text" value="Int. Arch. M.Shkeir">
+                    </div>
+                    <div class="form-group">
+                        <label>Kerf Width (mm)</label>
+                        <input type="number" value="3.0" step="0.1">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 16px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" checked>
+                        <span>Allow part rotation during nesting</span>
+                    </label>
+                </div>
+                
+                <!-- Expandable Component Details -->
+                <div class="expandable" style="margin-top: 20px;">
+                    <div class="expandable-header" onclick="toggleExpandable(this)">
+                        <span>📋 Component Details <span class="badge">24</span></span>
+                        <span>▼</span>
+                    </div>
+                    <div class="expandable-content">
+                        <table style="font-size: 13px;">
+                            <thead>
+                                <tr>
+                                    <th>Component</th>
+                                    <th style="text-align: right;">Width</th>
+                                    <th style="text-align: right;">Height</th>
+                                    <th style="text-align: right;">Thickness</th>
+                                    <th>Material</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Cabinet Door #1</td>
+                                    <td style="text-align: right;">600</td>
+                                    <td style="text-align: right;">800</td>
+                                    <td style="text-align: right;">18</td>
+                                    <td>Plywood 18mm</td>
+                                </tr>
+                                <tr>
+                                    <td>Shelf Panel</td>
+                                    <td style="text-align: right;">450</td>
+                                    <td style="text-align: right;">300</td>
+                                    <td style="text-align: right;">18</td>
+                                    <td>Plywood 18mm</td>
+                                </tr>
+                                <tr>
+                                    <td>Back Panel</td>
+                                    <td style="text-align: right;">900</td>
+                                    <td style="text-align: right;">600</td>
+                                    <td style="text-align: right;">6</td>
+                                    <td>MDF 6mm</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 2: Stock Materials & Pricing -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-number">2</span>
+                    Stock Materials & Pricing
+                </div>
+                <span class="section-toggle">▼</span>
+            </div>
+            <div class="section-content">
+                <div class="materials-header">
+                    <div class="materials-actions">
+                        <button class="btn-add" onclick="alert('Add Material')">+ Add Material</button>
+                        <button class="btn-icon" title="Load Defaults" onclick="alert('Load Defaults')">📂</button>
+                        <button class="btn-icon" title="More Options" onclick="alert('More')">⋮</button>
+                    </div>
+                </div>
+                
+                <div class="filter-bar">
+                    <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                    <span style="font-size: 14px; font-weight: 500;">Show Used Materials Only</span>
+                    <div style="flex: 1;"></div>
+                    <select style="padding: 6px 12px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 13px;">
+                        <option>Sort: A-Z</option>
+                        <option>Sort: Used First</option>
+                        <option>Sort: Most Used</option>
+                    </select>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Material Name</th>
+                            <th style="text-align: right;">Dimensions (mm)</th>
+                            <th style="text-align: right;">Density</th>
+                            <th style="text-align: right;">Price/Sheet</th>
+                            <th style="text-align: center;">Actions</th>
+                            <th style="text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Plywood 18mm</strong></td>
+                            <td style="text-align: right;">2440 × 1220 × 18</td>
+                            <td style="text-align: right;">680 kg/m³</td>
+                            <td style="text-align: right;">$85.00</td>
+                            <td style="text-align: center;">
+                                <button class="btn-icon" style="width: 28px; height: 28px; font-size: 14px;" title="Edit">✏️</button>
+                                <button class="btn-icon" style="width: 28px; height: 28px; font-size: 14px;" title="Delete">🗑️</button>
+                            </td>
+                            <td style="text-align: center;"><span class="status-badge status-used">✓ Used</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>MDF 18mm</strong></td>
+                            <td style="text-align: right;">2440 × 1220 × 18</td>
+                            <td style="text-align: right;">750 kg/m³</td>
+                            <td style="text-align: right;">$65.00</td>
+                            <td style="text-align: center;">
+                                <button class="btn-icon" style="width: 28px; height: 28px; font-size: 14px;" title="Edit">✏️</button>
+                                <button class="btn-icon" style="width: 28px; height: 28px; font-size: 14px;" title="Delete">🗑️</button>
+                            </td>
+                            <td style="text-align: center;"><span class="status-badge status-used">✓ Used</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>MDF 6mm</strong></td>
+                            <td style="text-align: right;">2440 × 1220 × 6</td>
+                            <td style="text-align: right;">750 kg/m³</td>
+                            <td style="text-align: right;">$35.00</td>
+                            <td style="text-align: center;">
+                                <button class="btn-icon" style="width: 28px; height: 28px; font-size: 14px;" title="Edit">✏️</button>
+                                <button class="btn-icon" style="width: 28px; height: 28px; font-size: 14px;" title="Delete">🗑️</button>
+                            </td>
+                            <td style="text-align: center;"><span class="status-badge status-used">✓ Used</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Section 3: Advanced Settings -->
+        <div class="section collapsed">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-number">3</span>
+                    Advanced Settings
+                </div>
+                <span class="section-toggle">▼</span>
+            </div>
+            <div class="section-content">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Optimization Level</label>
+                        <select>
+                            <option>Balanced (Recommended)</option>
+                            <option>Speed Priority</option>
+                            <option>Maximum Efficiency</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Grain Direction</label>
+                        <select>
+                            <option>Auto-detect</option>
+                            <option>Respect grain always</option>
+                            <option>Ignore grain</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <div style="display: flex; align-items: center; gap: 12px; color: #656d76; font-size: 14px;">
+                <span>✓ Ready to generate</span>
+            </div>
+            <button class="btn-primary" onclick="alert('Generate Cut List')">🚀 Generate Cut List</button>
+        </div>
+    </div>
+    
+    <script>
+        function toggleSection(header) {
+            header.parentElement.classList.toggle('collapsed');
+        }
+        
+        function toggleExpandable(header) {
+            header.parentElement.classList.toggle('open');
+            const arrow = header.querySelector('span:last-child');
+            arrow.textContent = header.parentElement.classList.contains('open') ? '▲' : '▼';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stock Materials Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #console { 
+            background: #f5f5f5; 
+            border: 1px solid #ddd; 
+            padding: 10px; 
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log { margin: 2px 0; }
+        .error { color: red; }
+        .success { color: green; }
+        button { margin: 5px; padding: 8px 16px; }
+    </style>
+</head>
+<body>
+    <h1>Stock Materials Manager Test</h1>
+    
+    <div>
+        <button onclick="testInit()">Test Initialization</button>
+        <button onclick="testButtons()">Test Button Elements</button>
+        <button onclick="testManager()">Test Manager Instance</button>
+        <button onclick="clearLocalStorage()">Clear LocalStorage</button>
+        <button onclick="clearConsole()">Clear Console</button>
+    </div>
+    
+    <div id="console"></div>
+    
+    <div id="stockMaterialsContainer"></div>
+    
+    <script>
+        // Intercept console.log
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        function logToDiv(message, type = 'log') {
+            const div = document.getElementById('console');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            div.appendChild(logDiv);
+            div.scrollTop = div.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            logToDiv(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            logToDiv(args.join(' '), 'error');
+        };
+        
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '';
+        }
+        
+        function clearLocalStorage() {
+            localStorage.clear();
+            console.log('LocalStorage cleared');
+        }
+        
+        function testInit() {
+            console.log('=== Testing Initialization ===');
+            console.log('Document ready state:', document.readyState);
+            console.log('stockMaterialsContainer exists:', !!document.getElementById('stockMaterialsContainer'));
+            console.log('window.stockMaterialsManager exists:', !!window.stockMaterialsManager);
+        }
+        
+        function testButtons() {
+            console.log('=== Testing Button Elements ===');
+            const buttons = [
+                'addMaterialBtn',
+                'loadDefaultsBtn',
+                'importCSVBtn',
+                'exportDatabaseBtn',
+                'foldToggle',
+                'clearHighlightBtn',
+                'purgeOldAutoBtn'
+            ];
+            
+            buttons.forEach(id => {
+                const btn = document.getElementById(id);
+                console.log(`${id}:`, btn ? 'FOUND' : 'NOT FOUND');
+            });
+            
+            const tbody = document.getElementById('materials_tbody');
+            console.log('materials_tbody:', tbody ? 'FOUND' : 'NOT FOUND');
+        }
+        
+        function testManager() {
+            console.log('=== Testing Manager Instance ===');
+            if (window.stockMaterialsManager) {
+                console.log('Manager exists!', 'success');
+                console.log('Materials count:', Object.keys(window.stockMaterialsManager.materialsData).length);
+                console.log('Materials data:', window.stockMaterialsManager.materialsData);
+            } else {
+                console.error('Manager NOT found!');
+            }
+        }
+    </script>
+    
+    <!-- Include the Stock Materials Manager code from main.html -->
+    <script>
+        // Copy the StockMaterialsManager class definition here
+        // (Lines 4800-5200 from main.html)
+    </script>
+</body>
+</html>

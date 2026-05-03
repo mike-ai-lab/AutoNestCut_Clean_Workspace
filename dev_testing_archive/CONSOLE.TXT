@@ -1,0 +1,545 @@
+
+Licensing system loaded successfully
+✅ AutoNestCut Module Loaded [12:20:46] - Build: 20250119_1445
+✅ Extension reloaded - UI should be visible
+Loaded: C:\Users\Administrator\Desktop\AUTOMATION\cutlist\AutoNestCut\AutoNestCut_Clean_Workspace\Extension\POWER_LOADER.rb
+  Material from specific_material string: "reddd3"
+🦟 CONFIG DEBUG [ModelAnalyzer] Component: Panel#1
+🦟 CONFIG DEBUG [ModelAnalyzer] Dimensions: W364.0 x H450.0 x TH21.0
+🦟 CONFIG DEBUG [ModelAnalyzer] Detected Material: "reddd3"
+🦟 CONFIG DEBUG [ModelAnalyzer] Quantity: 2
+  Material from specific_material string: "reddd3"
+🦟 CONFIG DEBUG [ModelAnalyzer] Component: Panel - bottom
+🦟 CONFIG DEBUG [ModelAnalyzer] Dimensions: W380.0 x H2040.0 x TH18.0
+🦟 CONFIG DEBUG [ModelAnalyzer] Detected Material: "reddd3"
+🦟 CONFIG DEBUG [ModelAnalyzer] Quantity: 1
+🦟 CONFIG DEBUG [ModelAnalyzer] Component: 
+🦟 CONFIG DEBUG [ModelAnalyzer] Dimensions: W320.8 x H486.3 x TH45.4
+🦟 CONFIG DEBUG [ModelAnalyzer] Detected Material: nil
+🦟 CONFIG DEBUG [ModelAnalyzer] Quantity: 4
+🦟 CONFIG DEBUG [ModelAnalyzer] Component: 
+🦟 CONFIG DEBUG [ModelAnalyzer] Dimensions: W45.4 x H500.1 x TH11.5
+🦟 CONFIG DEBUG [ModelAnalyzer] Detected Material: nil
+🦟 CONFIG DEBUG [ModelAnalyzer] Quantity: 8
+🦟 CONFIG DEBUG [ModelAnalyzer] Component: 
+🦟 CONFIG DEBUG [ModelAnalyzer] Dimensions: W35.3 x H435.0 x TH9.5
+🦟 CONFIG DEBUG [ModelAnalyzer] Detected Material: nil
+🦟 CONFIG DEBUG [ModelAnalyzer] Quantity: 8
+  Material from specific_material string: "reddd3"
+🦟 CONFIG DEBUG [ModelAnalyzer] Component: Panel - top
+🦟 CONFIG DEBUG [ModelAnalyzer] Dimensions: W400.0 x H2040.0 x TH18.0
+🦟 CONFIG DEBUG [ModelAnalyzer] Detected Material: "reddd3"
+🦟 CONFIG DEBUG [ModelAnalyzer] Quantity: 1
+🦟 CONFIG DEBUG [ModelAnalyzer] Component: 
+🦟 CONFIG DEBUG [ModelAnalyzer] Dimensions: W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [ModelAnalyzer] Detected Material: nil
+🦟 CONFIG DEBUG [ModelAnalyzer] Quantity: 1
+🦟 CONFIG DEBUG [ModelAnalyzer] Component: 
+🦟 CONFIG DEBUG [ModelAnalyzer] Dimensions: W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [ModelAnalyzer] Detected Material: nil
+🦟 CONFIG DEBUG [ModelAnalyzer] Quantity: 1
+🦟 CONFIG DEBUG [ModelAnalyzer] Component: 
+🦟 CONFIG DEBUG [ModelAnalyzer] Dimensions: W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [ModelAnalyzer] Detected Material: nil
+🦟 CONFIG DEBUG [ModelAnalyzer] Quantity: 1
+🦟 CONFIG DEBUG [ModelAnalyzer] Component: 
+🦟 CONFIG DEBUG [ModelAnalyzer] Dimensions: W40.0 x H3354.5 x TH18.0
+🦟 CONFIG DEBUG [ModelAnalyzer] Detected Material: nil
+🦟 CONFIG DEBUG [ModelAnalyzer] Quantity: 1
+
+🦟 CONFIG DEBUG [ModelAnalyzer] FINAL PARTS BY MATERIAL:
+🦟 CONFIG DEBUG [ModelAnalyzer]   Material: reddd3 => 3 part types
+🦟 CONFIG DEBUG [ModelAnalyzer]     - Panel#1: W364.0 x H450.0 x TH21.0 (qty: 2)
+🦟 CONFIG DEBUG [ModelAnalyzer]     - Panel - bottom: W380.0 x H2040.0 x TH18.0 (qty: 1)
+🦟 CONFIG DEBUG [ModelAnalyzer]     - Panel - top: W400.0 x H2040.0 x TH18.0 (qty: 1)
+🦟 CONFIG DEBUG [ModelAnalyzer]   Material:  => 7 part types
+🦟 CONFIG DEBUG [ModelAnalyzer]     - : W320.8 x H486.3 x TH45.4 (qty: 4)
+🦟 CONFIG DEBUG [ModelAnalyzer]     - : W45.4 x H500.1 x TH11.5 (qty: 8)
+🦟 CONFIG DEBUG [ModelAnalyzer]     - : W35.3 x H435.0 x TH9.5 (qty: 8)
+🦟 CONFIG DEBUG [ModelAnalyzer]     - : W362.0 x H364.0 x TH30.2 (qty: 1)
+🦟 CONFIG DEBUG [ModelAnalyzer]     - : W362.0 x H364.0 x TH30.2 (qty: 1)
+🦟 CONFIG DEBUG [ModelAnalyzer]     - : W362.0 x H364.0 x TH30.2 (qty: 1)
+🦟 CONFIG DEBUG [ModelAnalyzer]     - : W40.0 x H3354.5 x TH18.0 (qty: 1)
+🦟 CONFIG DEBUG [ModelAnalyzer] END PARTS BY MATERIAL
+
+=== FINAL MATERIAL GROUPING ===
+Material: "reddd3" => 3 part types
+Material: nil => 7 part types
+================================
+✅ Materials database loaded: 169 materials
+🦟 Validation: 2 materials, 10 parts
+✅ Materials database loaded: 169 materials
+🦟 Database: 169 materials loaded from CSV
+🦟 Defaults: 111 default materials available
+🦟 Merged: 169 total materials available for matching
+🦟 VALIDATOR: Checking component 'Panel#1'
+  Dimensions: W364.0 x H450.0 x TH21.0mm
+  Material: 'reddd3'
+  Exact match in database: NO
+  ✗ NO EXACT MATCH
+  → Decision: COLLECT AS MISSING (user will decide)
+🦟 VALIDATOR: Checking component 'Panel - bottom'
+  Dimensions: W380.0 x H2040.0 x TH18.0mm
+  Material: 'reddd3'
+  Exact match in database: NO
+  ✗ NO EXACT MATCH
+  → Decision: COLLECT AS MISSING (user will decide)
+🦟 VALIDATOR: Checking component 'Panel - top'
+  Dimensions: W400.0 x H2040.0 x TH18.0mm
+  Material: 'reddd3'
+  Exact match in database: NO
+  ✗ NO EXACT MATCH
+  → Decision: COLLECT AS MISSING (user will decide)
+🦟 Created: 5 auto-materials
+✅ Materials database saved successfully (174 materials)
+🦟 Validation: SUCCESS (0 errors, 6 warnings)
+================================================================================
+🦟 DIALOG CALLBACK: material_choices
+================================================================================
+Raw JSON received: {"0":{"type":"standard","width":2440,"height":1220,"saveToDb":true,"materialName":"reddd3","thickness":21},"1":{"type":"existing","existingMaterial":"MDF_Veneered_Oak_18mm_2800x2070","materialName":"re...
+Parsed 3 choices successfully
+  Choice 0: standard for reddd3
+  Choice 1: existing for reddd3
+  Choice 2: existing for reddd3
+Dialog closed, calling Ruby callback...
+================================================================================
+🦟 PROCESSING MATERIAL CHOICES
+================================================================================
+Received 3 choices
+User choices JSON: {"0"=>{"type"=>"standard", "width"=>2440, "height"=>1220, "saveToDb"=>true, "materialName"=>"reddd3", "thickness"=>21}, "1"=>{"type"=>"existing", "existingMaterial"=>"MDF_Veneered_Oak_18mm_2800x2070", "materialName"=>"reddd3", "thickness"=>18}, "2"=>{"type"=>"existing", "existingMaterial"=>"MDF_Standard_18mm_2800x2070", "materialName"=>"reddd3", "thickness"=>18}}
+
+Processing choice 0:
+  Material: reddd3
+  Thickness: 21.0mm
+  Type: standard
+
+  → Creating standard sheet 'reddd3' (2440.0x1220.0x21.0mm)
+    ✓ Will save to database
+Processing choice 1:
+  Material: reddd3
+  Thickness: 18.0mm
+  Type: existing
+
+  → REMAPPING 'reddd3' to 'MDF_Veneered_Oak_18mm_2800x2070'
+    Parts before remap: ["reddd3", nil]
+    ✓ Remapped to new key
+    Parts after remap: [nil, "MDF_Veneered_Oak_18mm_2800x2070"]
+Processing choice 2:
+  Material: reddd3
+  Thickness: 18.0mm
+  Type: existing
+
+  → REMAPPING 'reddd3' to 'MDF_Standard_18mm_2800x2070'
+    Parts before remap: [nil, "MDF_Veneered_Oak_18mm_2800x2070"]
+    ✗ WARNING: Material 'reddd3' not found in parts_by_material!
+✅ Materials database loaded: 174 materials
+✅ Materials database saved successfully (175 materials)
+✅ Saved 1 materials to database
+
+🦟 FINAL STATE AFTER PROCESSING:
+  Materials in parts_by_material: [nil, "MDF_Veneered_Oak_18mm_2800x2070"]
+  Materials in existing_materials: 169 total
+================================================================================
+🦟 Material choices processed successfully
+================================================================================
+================================================================================
+🦟 CONFIG DIALOG: show_config_dialog called
+================================================================================
+Materials received: [nil, "MDF_Veneered_Oak_18mm_2800x2070"]
+Total parts: 10
+Skip validation: true
+  : 7 parts
+  MDF_Veneered_Oak_18mm_2800x2070: 3 parts
+================================================================================
+DEBUG: Capturing assembly views for: Assembly
+✓ Assembly image 'Assembly_Component#7_Front' optimized: 19.1KB (limit: 500KB)
+✓ Assembly image 'Assembly_Component#7_Back' optimized: 25.59KB (limit: 500KB)
+✓ Assembly image 'Assembly_Component#7_Left' optimized: 23.26KB (limit: 500KB)
+✓ Assembly image 'Assembly_Component#7_Right' optimized: 23.27KB (limit: 500KB)
+✓ Assembly image 'Assembly_Component#7_Top' optimized: 17.72KB (limit: 500KB)
+✓ Assembly image 'Assembly_Component#7_Bottom' optimized: 19.11KB (limit: 500KB)
+DEBUG: Views captured: ["Front", "Back", "Left", "Right", "Top", "Bottom"]
+DEBUG: Geometry faces count: 11386
+DEBUG: Encoded Front view to base64 data URI
+DEBUG: Encoded Back view to base64 data URI
+DEBUG: Encoded Left view to base64 data URI
+DEBUG: Encoded Right view to base64 data URI
+DEBUG: Encoded Top view to base64 data URI
+DEBUG: Encoded Bottom view to base64 data URI
+DEBUG: Assembly data captured: [:entity_name, :views, :geometry]
+Callback completed
+================================================================================
+DEBUG: Frontend is ready. Sending initial data.
+
+=== STAGE 1: SKIPPING VALIDATION (materials already resolved) ===
+DEBUG: Reloading materials database to include auto-created materials...
+✅ Materials database loaded: 175 materials
+DEBUG: Loaded 175 materials from database
+DEBUG: Auto-created materials in database: []
+
+🦟 CONFIG DEBUG [send_initial_data] Binding components to auto-materials...
+
+🦟 CONFIG DEBUG [DialogManager] Starting deterministic binding...
+🦟 CONFIG DEBUG [DialogManager] Input parts_by_material:
+🦟 CONFIG DEBUG [DialogManager]   Material: 
+🦟 CONFIG DEBUG [DialogManager]     - W320.8 x H486.3 x TH45.4
+🦟 CONFIG DEBUG [DialogManager]     - W45.4 x H500.1 x TH11.5
+🦟 CONFIG DEBUG [DialogManager]     - W35.3 x H435.0 x TH9.5
+🦟 CONFIG DEBUG [DialogManager]     - W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]     - W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]     - W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]     - W40.0 x H3354.5 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]   Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [DialogManager]     - W364.0 x H450.0 x TH21.0
+🦟 CONFIG DEBUG [DialogManager]     - W380.0 x H2040.0 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]     - W400.0 x H2040.0 x TH18.0
+
+🦟 CONFIG DEBUG [DialogManager] Auto-created materials available:
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W321xH486xTH45_(unnamed): W320.8 x H486.3
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W45xH500xTH12_(unnamed): W45.4 x H500.1
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W35xH435xTH9_(unnamed): W35.3 x H435.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W362xH364xTH30_(unnamed): W362.0 x H364.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W40xH3355xTH18_(unnamed): W40.0 x H3354.5
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W320.8 x H486.3 x TH45.4
+🦟 CONFIG DEBUG [DialogManager]   Original Material: 
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W321xH486xTH45_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W45.4 x H500.1 x TH11.5
+🦟 CONFIG DEBUG [DialogManager]   Original Material: 
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W45xH500xTH12_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W35.3 x H435.0 x TH9.5
+🦟 CONFIG DEBUG [DialogManager]   Original Material: 
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W35xH435xTH9_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]   Original Material: 
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W362xH364xTH30_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]   Original Material: 
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W362xH364xTH30_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]   Original Material: 
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W362xH364xTH30_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W40.0 x H3354.5 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]   Original Material: 
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W40xH3355xTH18_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: Panel#1
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W364.0 x H450.0 x TH21.0
+🦟 CONFIG DEBUG [DialogManager]   Original Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [DialogManager]   → No auto-material found, keeping original: MDF_Veneered_Oak_18mm_2800x2070
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: Panel - bottom
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W380.0 x H2040.0 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]   Original Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [DialogManager]   → No auto-material found, keeping original: MDF_Veneered_Oak_18mm_2800x2070
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: Panel - top
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W400.0 x H2040.0 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]   Original Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [DialogManager]   → No auto-material found, keeping original: MDF_Veneered_Oak_18mm_2800x2070
+
+🦟 CONFIG DEBUG [DialogManager] BINDING RESULT:
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W321xH486xTH45_(unnamed) => 1 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W45xH500xTH12_(unnamed) => 1 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W35xH435xTH9_(unnamed) => 1 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W362xH364xTH30_(unnamed) => 3 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W40xH3355xTH18_(unnamed) => 1 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: MDF_Veneered_Oak_18mm_2800x2070 => 3 parts
+🦟 CONFIG DEBUG [DialogManager] END BINDING
+🦟 CONFIG DEBUG [send_initial_data] Binding complete
+✅ Materials database saved successfully (181 materials)
+
+🦟 CONFIG DEBUG [serialize_parts_by_material] Serializing parts...
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W320.8 x H486.3 x TH45.4, Material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W45.4 x H500.1 x TH11.5, Material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W35.3 x H435.0 x TH9.5, Material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W362.0 x H364.0 x TH30.2, Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W362.0 x H364.0 x TH30.2, Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W362.0 x H364.0 x TH30.2, Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W40.0 x H3354.5 x TH18.0, Material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - Panel#1: W364.0 x H450.0 x TH21.0, Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - Panel - bottom: W380.0 x H2040.0 x TH18.0, Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - Panel - top: W400.0 x H2040.0 x TH18.0, Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [serialize_parts_by_material] Serialization complete
+DEBUG: Frontend is ready. Sending initial data.
+
+=== STAGE 1: SKIPPING VALIDATION (materials already resolved) ===
+DEBUG: Reloading materials database to include auto-created materials...
+✅ Materials database loaded: 181 materials
+DEBUG: Loaded 181 materials from database
+DEBUG: Auto-created materials in database: []
+
+🦟 CONFIG DEBUG [send_initial_data] Binding components to auto-materials...
+
+🦟 CONFIG DEBUG [DialogManager] Starting deterministic binding...
+🦟 CONFIG DEBUG [DialogManager] Input parts_by_material:
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]     - W320.8 x H486.3 x TH45.4
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]     - W45.4 x H500.1 x TH11.5
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]     - W35.3 x H435.0 x TH9.5
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]     - W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]     - W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]     - W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]     - W40.0 x H3354.5 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]   Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [DialogManager]     - W364.0 x H450.0 x TH21.0
+🦟 CONFIG DEBUG [DialogManager]     - W380.0 x H2040.0 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]     - W400.0 x H2040.0 x TH18.0
+
+🦟 CONFIG DEBUG [DialogManager] Auto-created materials available:
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W321xH486xTH45_(unnamed): W320.8 x H486.3
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W45xH500xTH12_(unnamed): W45.4 x H500.1
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W35xH435xTH9_(unnamed): W35.3 x H435.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W362xH364xTH30_(unnamed): W362.0 x H364.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W40xH3355xTH18_(unnamed): W40.0 x H3354.5
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W321xH486xTH45_(unnamed) (45.4mm): W2440.0 x H1220.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W45xH500xTH12_(unnamed) (11.5mm): W2440.0 x H1220.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W35xH435xTH9_(unnamed) (9.5mm): W2440.0 x H1220.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W362xH364xTH30_(unnamed) (30.2mm): W2440.0 x H1220.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W40xH3355xTH18_(unnamed) (18.0mm): W2440.0 x H1220.0
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W320.8 x H486.3 x TH45.4
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W321xH486xTH45_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W45.4 x H500.1 x TH11.5
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W45xH500xTH12_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W35.3 x H435.0 x TH9.5
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W35xH435xTH9_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W362xH364xTH30_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W362xH364xTH30_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W362xH364xTH30_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W40.0 x H3354.5 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W40xH3355xTH18_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: Panel#1
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W364.0 x H450.0 x TH21.0
+🦟 CONFIG DEBUG [DialogManager]   Original Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [DialogManager]   → No auto-material found, keeping original: MDF_Veneered_Oak_18mm_2800x2070
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: Panel - bottom
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W380.0 x H2040.0 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]   Original Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [DialogManager]   → No auto-material found, keeping original: MDF_Veneered_Oak_18mm_2800x2070
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: Panel - top
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W400.0 x H2040.0 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]   Original Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [DialogManager]   → No auto-material found, keeping original: MDF_Veneered_Oak_18mm_2800x2070
+
+🦟 CONFIG DEBUG [DialogManager] BINDING RESULT:
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W321xH486xTH45_(unnamed) => 1 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W45xH500xTH12_(unnamed) => 1 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W35xH435xTH9_(unnamed) => 1 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W362xH364xTH30_(unnamed) => 3 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W40xH3355xTH18_(unnamed) => 1 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: MDF_Veneered_Oak_18mm_2800x2070 => 3 parts
+🦟 CONFIG DEBUG [DialogManager] END BINDING
+🦟 CONFIG DEBUG [send_initial_data] Binding complete
+✅ Materials database saved successfully (181 materials)
+
+🦟 CONFIG DEBUG [serialize_parts_by_material] Serializing parts...
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W320.8 x H486.3 x TH45.4, Material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W45.4 x H500.1 x TH11.5, Material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W35.3 x H435.0 x TH9.5, Material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W362.0 x H364.0 x TH30.2, Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W362.0 x H364.0 x TH30.2, Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W362.0 x H364.0 x TH30.2, Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W40.0 x H3354.5 x TH18.0, Material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - Panel#1: W364.0 x H450.0 x TH21.0, Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - Panel - bottom: W380.0 x H2040.0 x TH18.0, Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - Panel - top: W400.0 x H2040.0 x TH18.0, Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [serialize_parts_by_material] Serialization complete
+DEBUG: Frontend is ready. Sending initial data.
+
+=== STAGE 1: SKIPPING VALIDATION (materials already resolved) ===
+DEBUG: Reloading materials database to include auto-created materials...
+✅ Materials database loaded: 181 materials
+DEBUG: Loaded 181 materials from database
+DEBUG: Auto-created materials in database: []
+
+🦟 CONFIG DEBUG [send_initial_data] Binding components to auto-materials...
+
+🦟 CONFIG DEBUG [DialogManager] Starting deterministic binding...
+🦟 CONFIG DEBUG [DialogManager] Input parts_by_material:
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]     - W320.8 x H486.3 x TH45.4
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]     - W45.4 x H500.1 x TH11.5
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]     - W35.3 x H435.0 x TH9.5
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]     - W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]     - W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]     - W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]     - W40.0 x H3354.5 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]   Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [DialogManager]     - W364.0 x H450.0 x TH21.0
+🦟 CONFIG DEBUG [DialogManager]     - W380.0 x H2040.0 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]     - W400.0 x H2040.0 x TH18.0
+
+🦟 CONFIG DEBUG [DialogManager] Auto-created materials available:
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W321xH486xTH45_(unnamed): W320.8 x H486.3
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W45xH500xTH12_(unnamed): W45.4 x H500.1
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W35xH435xTH9_(unnamed): W35.3 x H435.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W362xH364xTH30_(unnamed): W362.0 x H364.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W40xH3355xTH18_(unnamed): W40.0 x H3354.5
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W321xH486xTH45_(unnamed) (45.4mm): W2440.0 x H1220.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W45xH500xTH12_(unnamed) (11.5mm): W2440.0 x H1220.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W35xH435xTH9_(unnamed) (9.5mm): W2440.0 x H1220.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W362xH364xTH30_(unnamed) (30.2mm): W2440.0 x H1220.0
+🦟 CONFIG DEBUG [DialogManager]   - no_material_W40xH3355xTH18_(unnamed) (18.0mm): W2440.0 x H1220.0
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W320.8 x H486.3 x TH45.4
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W321xH486xTH45_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W45.4 x H500.1 x TH11.5
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W45xH500xTH12_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W35.3 x H435.0 x TH9.5
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W35xH435xTH9_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W362xH364xTH30_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W362xH364xTH30_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W362.0 x H364.0 x TH30.2
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W362xH364xTH30_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: 
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W40.0 x H3354.5 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]   Original Material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   ✓ Found matching auto-material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [DialogManager]   → Binding to auto-material: no_material_W40xH3355xTH18_(unnamed)
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: Panel#1
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W364.0 x H450.0 x TH21.0
+🦟 CONFIG DEBUG [DialogManager]   Original Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [DialogManager]   → No auto-material found, keeping original: MDF_Veneered_Oak_18mm_2800x2070
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: Panel - bottom
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W380.0 x H2040.0 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]   Original Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [DialogManager]   → No auto-material found, keeping original: MDF_Veneered_Oak_18mm_2800x2070
+
+🦟 CONFIG DEBUG [DialogManager] Checking component: Panel - top
+🦟 CONFIG DEBUG [DialogManager]   Dimensions: W400.0 x H2040.0 x TH18.0
+🦟 CONFIG DEBUG [DialogManager]   Original Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [DialogManager]   → No auto-material found, keeping original: MDF_Veneered_Oak_18mm_2800x2070
+
+🦟 CONFIG DEBUG [DialogManager] BINDING RESULT:
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W321xH486xTH45_(unnamed) => 1 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W45xH500xTH12_(unnamed) => 1 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W35xH435xTH9_(unnamed) => 1 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W362xH364xTH30_(unnamed) => 3 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: no_material_W40xH3355xTH18_(unnamed) => 1 parts
+🦟 CONFIG DEBUG [DialogManager]   Material: MDF_Veneered_Oak_18mm_2800x2070 => 3 parts
+🦟 CONFIG DEBUG [DialogManager] END BINDING
+🦟 CONFIG DEBUG [send_initial_data] Binding complete
+✅ Materials database saved successfully (181 materials)
+
+🦟 CONFIG DEBUG [serialize_parts_by_material] Serializing parts...
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W320.8 x H486.3 x TH45.4, Material: no_material_W321xH486xTH45_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W45.4 x H500.1 x TH11.5, Material: no_material_W45xH500xTH12_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W35.3 x H435.0 x TH9.5, Material: no_material_W35xH435xTH9_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W362.0 x H364.0 x TH30.2, Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W362.0 x H364.0 x TH30.2, Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W362.0 x H364.0 x TH30.2, Material: no_material_W362xH364xTH30_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - : W40.0 x H3354.5 x TH18.0, Material: no_material_W40xH3355xTH18_(unnamed)
+🦟 CONFIG DEBUG [serialize_parts_by_material]   Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - Panel#1: W364.0 x H450.0 x TH21.0, Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - Panel - bottom: W380.0 x H2040.0 x TH18.0, Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [serialize_parts_by_material]     - Panel - top: W400.0 x H2040.0 x TH18.0, Material: MDF_Veneered_Oak_18mm_2800x2070
+🦟 CONFIG DEBUG [serialize_parts_by_material] Serialization complete
+DEBUG: UIDialogManager cleanup started
+DEBUG: UIDialogManager cleanup completed

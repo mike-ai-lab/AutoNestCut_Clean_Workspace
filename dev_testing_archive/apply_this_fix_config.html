@@ -1,0 +1,110 @@
+in the Configuration tab, in the “Parts Preview / Parts Found” section:
+
+The parts group cards (Black Shaker, White Melamine, etc.) have a full-width border, but the table content doesn’t reach the right edge – there is a gap.
+The group titles inside those cards look shifted, because the card itself is narrower than the available width.
+The root causes are:
+
+.config-container has max-width: 900px; margin: 0 auto;, so the whole configuration content is centered in a fixed-width column while the screenshot shows a full-width layout.
+The parts-preview tables inside .parts-card are likely rendered with a wrapper or table that isn’t set to width: 100% inside that card.
+Given the current style.css (the one actually on disk), do this:
+
+1. Make the configuration column full-width
+In Extension/AutoNestCut/ui/html/style.css, find:
+
+.config-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+Copy
+
+Insert
+
+Change it to:
+
+.config-container {
+    /* Use full available width so cards and tables go from far left to far right */
+    max-width: none;
+    margin: 0;
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+Copy
+
+Insert
+
+This removes the centered, 900px-limited column and lets the cards (including Parts Preview) align with the outer layout.
+
+2. Force parts-preview table to span the full card
+Still in style.css, you already have:
+
+.parts-card {
+    margin-bottom: 16px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    background: #ffffff;
+    position: relative; /* For absolute positioning of markdown button */
+}
+
+Copy
+
+Insert
+
+Immediately after that, add:
+
+/* Ensure parts-preview tables fill the card: no trailing gap after last column */
+.parts-card table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+Copy
+
+Insert
+
+If there is already a .parts-preview-table class in this file (near the bottom):
+
+.parts-preview-table th, .parts-preview-table td {
+    padding: 6px 8px;
+    font-size: 14px;
+}
+
+Copy
+
+Insert
+
+leave that, it only touches padding.
+
+3. Keep the titles anchored correctly
+Your current parts-card-title block in style.css is:
+
+.parts-card-title {
+    background: #f5f5f5;
+    padding: 8px 12px;
+    font-weight: 700;
+    font-size: 14px;
+    border-bottom: 1px solid #d0d7de;
+    color: #000000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Inter', sans-serif !important;
+}
+
+Copy
+
+Insert
+
+This is already correct: justify-content: space-between keeps the label hard-left and the icon hard-right. The apparent “shift” you saw was caused by the card itself being narrower and centered because of .config-container. Once step 1 is applied, those titles will sit where they should.
+
+After making these edits, reload the extension UI (close and reopen the AutoNestCut window or trigger reload) and:
+
+Go to Configuration → Parts Preview.
+The “Parts Found” and each material group card should now span the full width, with the last column touching the right card border (no empty strip).
+Group titles should appear left-aligned within the card header, not shifted inward.
+These changes are minimal and surgical;

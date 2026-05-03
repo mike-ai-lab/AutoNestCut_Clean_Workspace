@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoNestCut - Theme Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            /* Default Palette (Initial State) */
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --primary: #38bdf8;
+            --primary-dark: #0ea5e9;
+            --accent: #22c55e;
+            --border: #e2e8f0;
+            --table-header: #38bdf8;
+            --table-row-hover: #f1f5f9;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .sidebar {
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+
+        .primary-btn {
+            background-color: var(--primary);
+            color: white;
+            transition: background-color 0.2s;
+        }
+        .primary-btn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .table-header {
+            background-color: var(--table-header);
+            color: white;
+        }
+
+        .nest-visual {
+            aspect-ratio: 1 / 1;
+            border: 2px solid #334155;
+            position: relative;
+            background: #e2e8f0;
+        }
+
+        .part-p2 {
+            position: absolute;
+            top: 10%;
+            left: 10%;
+            width: 80%;
+            height: 80%;
+            background: #d1d5db;
+            border: 2px solid #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+
+        /* Palette Switcher Styles */
+        #palette-control {
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            color: white;
+            z-index: 50;
+        }
+        
+        .favorite-active {
+            color: #ef4444 !important;
+            fill: #ef4444;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Top Navigation Bar -->
+    <header class="h-16 border-b bg-white flex items-center justify-between px-6 sticky top-0 z-40" style="background-color: var(--bg-card); border-color: var(--border);">
+        <div>
+            <h1 class="text-xl font-bold" style="color: var(--text-main);">AutoNestCut</h1>
+            <p class="text-xs" style="color: var(--text-muted);">by Int. Arch. M.Shkeir</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Icon Buttons from Screenshot -->
+            <div class="flex border rounded-md overflow-hidden mr-4" style="border-color: var(--border);">
+                <button class="p-2 hover:bg-gray-100 border-r" style="border-color: var(--border);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20v-6M9 20v-10M15 20v-4M18 20V4M6 20v-8"/></svg></button>
+                <button class="p-2 hover:bg-gray-100 border-r" style="border-color: var(--border);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></button>
+                <button class="p-2 hover:bg-gray-100 border-r" style="border-color: var(--border);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>
+                <button class="p-2 hover:bg-gray-100 border-r" style="border-color: var(--border);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></button>
+                <button class="p-2 hover:bg-gray-100"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></button>
+            </div>
+            
+            <button class="px-4 py-2 border rounded-md font-medium text-sm" style="border-color: var(--border); color: var(--text-main);">Configuration</button>
+            <button class="px-6 py-2 rounded-md font-bold text-sm primary-btn">Report</button>
+        </div>
+    </header>
+
+    <main class="flex p-6 gap-6">
+        <!-- Sidebar: Board Previews -->
+        <aside class="w-1/3 sidebar flex flex-col gap-6">
+            <!-- Board Item 1 -->
+            <div class="card p-6 flex flex-col items-center">
+                <div class="text-center mb-4">
+                    <h2 class="font-bold text-sm break-all" style="color: var(--text-main);">Auto_user_W480xH500xTH8_(Plywood_08_1K)</h2>
+                    <p class="text-lg font-semibold" style="color: var(--primary);">Board 2</p>
+                    <p class="text-xs" style="color: var(--text-muted);">Size: 480.0 × 500.0 mm</p>
+                    <p class="text-xs" style="color: var(--text-muted);">Waste: 0.0% (Efficiency: 100.0%)</p>
+                </div>
+                
+                <div class="w-full max-w-[280px] p-4 bg-gray-50 border rounded" style="border-color: var(--border);">
+                    <div class="relative w-full aspect-square border-2 border-slate-800 bg-white">
+                        <span class="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold">480.0mm</span>
+                        <span class="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-xs font-bold">500.0mm</span>
+                        <div class="absolute inset-[10%] border-2 border-slate-900 flex items-center justify-center font-bold text-xl bg-gray-200">
+                            P2
+                        </div>
+                        <div class="absolute top-1 left-1/2 -translate-x-1/2 text-[10px] font-mono">480.0</div>
+                        <div class="absolute left-1 top-1/2 -translate-y-1/2 text-[10px] font-mono -rotate-90">500.0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Board Item 2 (Duplicate for scroll) -->
+            <div class="card p-6 flex flex-col items-center opacity-70">
+                <div class="text-center mb-4">
+                    <h2 class="font-bold text-sm break-all" style="color: var(--text-main);">Auto_user_W600xH600xTH18_(Plywood_08_1K)</h2>
+                    <p class="text-lg font-semibold" style="color: var(--primary);">Board 3</p>
+                </div>
+                <div class="w-full h-32 bg-gray-100 flex items-center justify-center border-dashed border-2 rounded" style="border-color: var(--border);">
+                    <span class="text-xs italic" style="color: var(--text-muted);">Visual Preview Loading...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content: Tables -->
+        <section class="flex-1 flex flex-col gap-6">
+            <!-- Material Table -->
+            <div class="card overflow-hidden">
+                <div class="p-3 flex gap-2 border-b" style="border-color: var(--border);">
+                    <button class="p-1 border rounded" style="border-color: var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg></button>
+                    <button class="p-1 border rounded" style="border-color: var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></button>
+                </div>
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="table-header">
+                            <th class="p-3 font-semibold">Material</th>
+                            <th class="p-3 font-semibold text-right">Price per Sheet</th>
+                        </tr>
+                    </thead>
+                    <tbody style="color: var(--text-main);">
+                        <tr class="border-b" style="border-color: var(--border);">
+                            <td class="p-3">Auto_user_W100xH700xTH18_(Plywood_08_1K)</td>
+                            <td class="p-3 text-right">$1.28</td>
+                        </tr>
+                        <tr class="border-b" style="border-color: var(--border);">
+                            <td class="p-3">Auto_user_W480xH500xTH8_(Plywood_08_1K)</td>
+                            <td class="p-3 text-right">$4.39</td>
+                        </tr>
+                        <tr class="border-b" style="border-color: var(--border);">
+                            <td class="p-3">Auto_user_W550xH720xTH18_(Plywood_08_1K)</td>
+                            <td class="p-3 text-right">$7.25</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3">no_material_W1370xH1700xTH18_(unnamed)</td>
+                            <td class="p-3 text-right">$0.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Overall Summary Table -->
+            <div>
+                <h3 class="text-lg font-bold mb-3" style="color: var(--text-main);">Overall Summary</h3>
+                <div class="card overflow-hidden">
+                    <div class="p-3 flex gap-2 border-b" style="border-color: var(--border);">
+                        <button class="p-1 border rounded" style="border-color: var(--border);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg></button>
+                    </div>
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="table-header">
+                                <th class="p-3 font-semibold">Metric</th>
+                                <th class="p-3 font-semibold text-right">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody style="color: var(--text-main);">
+                            <tr class="border-b" style="border-color: var(--border);">
+                                <td class="p-3">Total Parts Instances</td>
+                                <td class="p-3 text-right">5</td>
+                            </tr>
+                            <tr class="border-b" style="border-color: var(--border);">
+                                <td class="p-3">Total Unique Part Types</td>
+                                <td class="p-3 text-right">5</td>
+                            </tr>
+                            <tr class="border-b" style="border-color: var(--border);">
+                                <td class="p-3">Total Boards</td>
+                                <td class="p-3 text-right">5</td>
+                            </tr>
+                            <tr class="border-b" style="border-color: var(--border);">
+                                <td class="p-3 font-bold">Total Project Weight</td>
+                                <td class="p-3 text-right font-bold text-green-600 bg-green-50">35.23 kg</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold">Total Project Cost</td>
+                                <td class="p-3 text-right font-bold text-green-600 bg-green-50">$19.51</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- UI PALETTE CONTROLLER -->
+    <div id="palette-control" class="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 px-6 py-4 rounded-full shadow-2xl">
+        <div class="flex flex-col items-center min-w-[120px]">
+            <span class="text-[10px] uppercase tracking-widest opacity-60">Palette</span>
+            <span id="palette-name" class="font-bold text-sm">Default Blue</span>
+        </div>
+
+        <div class="h-8 w-[1px] bg-white/20"></div>
+
+        <div class="flex items-center gap-3">
+            <button onclick="prevPalette()" class="p-2 hover:bg-white/10 rounded-full transition" title="Previous palette">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            
+            <button onclick="toggleFavorite()" id="favorite-btn" class="p-2 hover:bg-white/10 rounded-full transition" title="Save palette">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            </button>
+
+            <button onclick="nextPalette()" class="p-2 hover:bg-white/10 rounded-full transition" title="Next palette">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+
+            <button onclick="toggleSavedPanel()" class="p-2 hover:bg-white/10 rounded-full transition" title="View saved palettes">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4h16v10H4z"/></svg>
+            </button>
+        </div>
+
+        <div class="h-8 w-[1px] bg-white/20"></div>
+
+        <button onclick="copyPalette()" class="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-full font-bold text-xs hover:bg-gray-200 transition">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            COPY SPECS
+        </button>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 px-6 py-2 bg-black text-white rounded-full text-sm opacity-0 pointer-events-none transition-all duration-300 transform translate-y-4">
+        Specs copied to clipboard!
+    </div>
+
+    <style>
+        .saved-palettes-panel {
+            position: fixed;
+            right: -400px;
+            top: 0;
+            width: 400px;
+            height: 100vh;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(8px);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            transition: right 0.3s ease;
+            z-index: 60;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .saved-palettes-panel.open {
+            right: 0;
+        }
+
+        .palette-thumbnail {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .palette-thumbnail:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .palette-thumbnail.active {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        .color-strip {
+            display: flex;
+            gap: 2px;
+            flex: 1;
+            height: 40px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .color-swatch {
+            flex: 1;
+            border-radius: 2px;
+        }
+
+        .palette-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .palette-info h4 {
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .palette-info p {
+            color: rgba(255,255,255,0.6);
+            font-size: 10px;
+            margin: 2px 0 0 0;
+        }
+
+        .remove-palette-btn {
+            background: rgba(255,59,48,0.2);
+            border: 1px solid rgba(255,59,48,0.4);
+            color: #ff3b30;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .remove-palette-btn:hover {
+            background: rgba(255,59,48,0.4);
+            border-color: rgba(255,59,48,0.6);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .panel-header h3 {
+            color: white;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .close-panel-btn {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: rgba(255,255,255,0.5);
+            padding: 40px 20px;
+            font-size: 12px;
+        }
+    </style>
+
+    <!-- Saved Palettes Panel -->
+    <div id="saved-palettes-panel" class="saved-palettes-panel">
+        <div class="panel-header">
+            <h3>Saved Palettes</h3>
+            <button class="close-panel-btn" onclick="toggleSavedPanel()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div id="saved-palettes-list"></div>
+        <div id="empty-state" class="empty-state">No saved palettes yet.<br>Click the heart icon to save!</div>
+    </div>
+
+    <script>
+        // Palette generator using HSL color space for infinite unique palettes
+        class PaletteGenerator {
+            constructor() {
+                this.seed = 0;
+                this.paletteNames = [
+                    "Aurora", "Nebula", "Twilight", "Ember", "Frost", "Sage", "Copper", "Indigo",
+                    "Coral", "Slate", "Amber", "Jade", "Plum", "Rust", "Mint", "Charcoal",
+                    "Blaze", "Ocean", "Forest", "Desert", "Storm", "Sunset", "Midnight", "Dawn",
+                    "Lavender", "Olive", "Crimson", "Teal", "Gold", "Silver", "Bronze", "Pearl"
+                ];
+            }
+
+            seededRandom(seed) {
+                const x = Math.sin(seed) * 10000;
+                return x - Math.floor(x);
+            }
+
+            generatePalette(index) {
+                const seed = index * 73856093;
+                
+                // Generate base hue
+                const baseHue = Math.floor(this.seededRandom(seed) * 360);
+                const saturation = 40 + this.seededRandom(seed + 1) * 40;
+                const lightness = 50 + this.seededRandom(seed + 2) * 20;
+                
+                // Determine if dark or light theme
+                const isDark = this.seededRandom(seed + 3) > 0.5;
+                
+                const colors = this.generateColorScheme(baseHue, saturation, lightness, isDark);
+                const name = this.generateName(index);
+                
+                return {
+                    name: name,
+                    colors: colors,
+                    index: index
+                };
+            }
+
+            generateColorScheme(hue, sat, light, isDark) {
+                const adjustHue = (h, offset) => (h + offset + 360) % 360;
+                
+                if (isDark) {
+                    return {
+                        "--bg-main": this.hslToHex(hue, 20, 12),
+                        "--bg-card": this.hslToHex(hue, 18, 18),
+                        "--text-main": this.hslToHex(hue, 15, 92),
+                        "--text-muted": this.hslToHex(hue, 12, 65),
+                        "--primary": this.hslToHex(hue, sat, light),
+                        "--primary-dark": this.hslToHex(hue, sat, light - 15),
+                        "--accent": this.hslToHex(adjustHue(hue, 120), sat + 10, light + 5),
+                        "--border": this.hslToHex(hue, 15, 30),
+                        "--table-header": this.hslToHex(hue, sat - 10, light - 5)
+                    };
+                } else {
+                    return {
+                        "--bg-main": this.hslToHex(hue, 30, 96),
+                        "--bg-card": this.hslToHex(hue, 20, 99),
+                        "--text-main": this.hslToHex(hue, 25, 20),
+                        "--text-muted": this.hslToHex(hue, 15, 45),
+                        "--primary": this.hslToHex(hue, sat, light),
+                        "--primary-dark": this.hslToHex(hue, sat, light - 12),
+                        "--accent": this.hslToHex(adjustHue(hue, 120), sat, light - 5),
+                        "--border": this.hslToHex(hue, 25, 88),
+                        "--table-header": this.hslToHex(hue, sat - 5, light - 8)
+                    };
+                }
+            }
+
+            hslToHex(h, s, l) {
+                s /= 100;
+                l /= 100;
+                const k = n => (n + h / 30) % 12;
+                const a = s * Math.min(l, 1 - l);
+                const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+                return "#" + [f(0), f(8), f(4)].map(x => {
+                    const hex = Math.round(x * 255).toString(16);
+                    return hex.length === 1 ? "0" + hex : hex;
+                }).join("").toUpperCase();
+            }
+
+            generateName(index) {
+                const adjectives = ["Vivid", "Deep", "Soft", "Bright", "Dark", "Warm", "Cool", "Rich", "Pale", "Bold"];
+                const adj = adjectives[Math.floor(this.seededRandom(index * 2) * adjectives.length)];
+                const base = this.paletteNames[index % this.paletteNames.length];
+                return `${adj} ${base}`;
+            }
+        }
+
+        const generator = new PaletteGenerator();
+        let currentIndex = 0;
+        let savedPalettes = [];
+        let currentPalette = null;
+
+        function generatePalette(index) {
+            return generator.generatePalette(index);
+        }
+
+        function loadSavedPalettes() {
+            const saved = localStorage.getItem('savedPalettes');
+            if (saved) {
+                savedPalettes = JSON.parse(saved);
+            }
+            renderSavedPalettes();
+        }
+
+        function savePalette() {
+            const palette = currentPalette;
+            const exists = savedPalettes.some(p => p.index === palette.index);
+            
+            if (!exists) {
+                savedPalettes.push({...palette});
+                localStorage.setItem('savedPalettes', JSON.stringify(savedPalettes));
+                renderSavedPalettes();
+            }
+        }
+
+        function removeSavedPalette(index) {
+            savedPalettes.splice(index, 1);
+            localStorage.setItem('savedPalettes', JSON.stringify(savedPalettes));
+            renderSavedPalettes();
+        }
+
+        function loadSavedPaletteByIndex(index) {
+            currentPalette = savedPalettes[index];
+            currentIndex = currentPalette.index;
+            applyPalette();
+            toggleSavedPanel();
+        }
+
+        function renderSavedPalettes() {
+            const list = document.getElementById('saved-palettes-list');
+            const empty = document.getElementById('empty-state');
+            
+            if (savedPalettes.length === 0) {
+                list.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+            
+            empty.style.display = 'none';
+            list.innerHTML = savedPalettes.map((palette, idx) => {
+                const colorValues = Object.values(palette.colors).slice(0, 5);
+                const isActive = currentPalette && currentPalette.index === palette.index;
+                
+                return `
+                    <div class="palette-thumbnail ${isActive ? 'active' : ''}" onclick="loadSavedPaletteByIndex(${idx})">
+                        <div class="color-strip">
+                            ${colorValues.map(color => `<div class="color-swatch" style="background: ${color};"></div>`).join('')}
+                        </div>
+                        <div class="palette-info">
+                            <h4>${palette.name}</h4>
+                            <p>#${palette.index}</p>
+                        </div>
+                        <button class="remove-palette-btn" onclick="event.stopPropagation(); removeSavedPalette(${idx})">Remove</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleSavedPanel() {
+            document.getElementById('saved-palettes-panel').classList.toggle('open');
+        }
+
+        function applyPalette() {
+            const root = document.documentElement;
+            
+            document.getElementById('palette-name').innerText = currentPalette.name;
+            
+            for (const [key, value] of Object.entries(currentPalette.colors)) {
+                root.style.setProperty(key, value);
+            }
+
+            const favBtn = document.getElementById('favorite-btn');
+            const isSaved = savedPalettes.some(p => p.index === currentPalette.index);
+            if (isSaved) {
+                favBtn.classList.add('favorite-active');
+            } else {
+                favBtn.classList.remove('favorite-active');
+            }
+        }
+
+        function nextPalette() {
+            currentIndex++;
+            currentPalette = generatePalette(currentIndex);
+            applyPalette();
+        }
+
+        function prevPalette() {
+            currentIndex = Math.max(0, currentIndex - 1);
+            currentPalette = generatePalette(currentIndex);
+            applyPalette();
+        }
+
+        function toggleFavorite() {
+            const exists = savedPalettes.some(p => p.index === currentPalette.index);
+            
+            if (exists) {
+                const idx = savedPalettes.findIndex(p => p.index === currentPalette.index);
+                removeSavedPalette(idx);
+            } else {
+                savePalette();
+            }
+            applyPalette();
+        }
+
+        function copyPalette() {
+            let specString = `/* Palette: ${currentPalette.name} */\n`;
+            for (const [key, value] of Object.entries(currentPalette.colors)) {
+                specString += `${key}: ${value};\n`;
+            }
+
+            const el = document.createElement('textarea');
+            el.value = specString;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+
+            const toast = document.getElementById('toast');
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%, 0)';
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, 1rem)';
+            }, 2000);
+        }
+
+        window.onload = () => {
+            loadSavedPalettes();
+            currentPalette = generatePalette(0);
+            applyPalette();
+        };
+    </script>
+</body>
+</html>

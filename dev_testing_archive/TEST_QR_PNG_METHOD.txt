@@ -1,0 +1,70 @@
+===========================================
+TEST QR CODE USING PNG METHOD (IF AVAILABLE)
+COPY THIS INTO SKETCHUP RUBY CONSOLE
+===========================================
+
+require 'rqrcode'
+require 'tmpdir'
+
+puts "\n" + "="*60
+puts "TESTING QR CODE PNG EXPORT"
+puts "="*60
+
+data = "HELLO123"
+qr = RQRCode::QRCode.new(data, level: :l)
+
+puts "\nGenerating QR for: #{data}"
+puts "Modules: #{qr.modules.size}x#{qr.modules.size}"
+
+# Try PNG export
+puts "\n[1] Trying as_png method:"
+begin
+  png = qr.as_png(size: 300)
+  png_file = File.join(Dir.tmpdir, "qr_test_#{Time.now.to_i}.png")
+  
+  # Save PNG
+  File.open(png_file, 'wb') do |f|
+    f.write(png.to_s)
+  end
+  
+  puts "  ✓ PNG generated: #{png_file}"
+  puts "\n  📱 OPEN THIS PNG FILE AND SCAN IT"
+  puts "  If this PNG scans successfully, the QR data is valid"
+  puts "  If not, there's an issue with RQRCode gem"
+  
+rescue => e
+  puts "  ✗ ERROR: #{e.message}"
+  puts "  PNG method not available"
+end
+
+# Try SVG export
+puts "\n[2] Trying as_svg method:"
+begin
+  svg = qr.as_svg(module_size: 10)
+  svg_file = File.join(Dir.tmpdir, "qr_test_#{Time.now.to_i}.svg")
+  
+  File.write(svg_file, svg)
+  
+  puts "  ✓ SVG generated: #{svg_file}"
+  puts "\n  📱 OPEN THIS SVG FILE IN BROWSER AND SCAN IT"
+  
+rescue => e
+  puts "  ✗ ERROR: #{e.message}"
+end
+
+# Manual ASCII art QR (for visual verification)
+puts "\n[3] ASCII QR Code (visual check):"
+puts "  If this looks like a QR code pattern, generation is working:\n"
+qr.modules.each do |row|
+  puts "  " + row.map { |m| m ? '██' : '  ' }.join
+end
+
+puts "\n" + "="*60
+puts "NEXT STEPS:"
+puts "1. Open the PNG/SVG files above"
+puts "2. Try scanning them with your phone"
+puts "3. If they scan, the issue is with PDF rendering"
+puts "4. If they don't scan, the issue is with RQRCode gem"
+puts "="*60
+
+===========================================

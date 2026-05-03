@@ -1,0 +1,309 @@
+/**
+ * DocMark Style - Official DocMark branding style
+ * Premium typography with Plus Jakarta Sans
+ * Blue accent color (#2563eb) for emphasis
+ * Clean, modern, professional aesthetic
+ */
+
+/* Import Plus Jakarta Sans font */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
+
+.markdown-body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 16px;
+    line-height: 1.8;
+    color: #24292f;
+    background-color: #ffffff;
+    letter-spacing: 0.01em;
+}
+
+/* Headings */
+.markdown-body h1 {
+    font-size: 48px;
+    font-weight: 300;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin-top: 0;
+    margin-bottom: 24px;
+    padding-bottom: 0.3em;
+    border-bottom: none;
+    color: #2563eb !important;
+}
+
+.markdown-body h1 strong,
+.markdown-body h1 b {
+    font-weight: 700;
+    color: #2563eb;
+}
+
+.markdown-body h2 {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    margin-top: 48px;
+    margin-bottom: 20px;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid #d0d7de;
+    color: #2563eb !important;
+}
+
+.markdown-body h2 strong,
+.markdown-body h2 b {
+    font-weight: 900;
+    color: #2563eb;
+}
+
+.markdown-body h3 {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+    margin-top: 32px;
+    margin-bottom: 16px;
+    color: #2563eb !important;
+}
+
+.markdown-body h3 strong,
+.markdown-body h3 b {
+    font-weight: 900;
+    color: #2563eb !important;
+}
+
+.markdown-body h4 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    color: #2563eb !important;
+}
+
+.markdown-body h5 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: #2563eb !important;
+}
+
+.markdown-body h6 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    color: #2563eb !important;
+}
+
+/* Paragraphs and text */
+.markdown-body p {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-weight: 400;
+}
+
+.markdown-body strong,
+.markdown-body b {
+    font-weight: 700;
+    color: #2563eb;
+}
+
+/* Links */
+.markdown-body a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+    transition: opacity 0.2s;
+}
+
+.markdown-body a:hover {
+    opacity: 0.8;
+}
+
+/* Lists */
+.markdown-body ul,
+.markdown-body ol {
+    margin-top: 0;
+    margin-bottom: 20px;
+    padding-left: 2em;
+}
+
+.markdown-body li {
+    margin-bottom: 8px;
+}
+
+.markdown-body li > p {
+    margin-bottom: 8px;
+}
+
+/* Code */
+.markdown-body code {
+    font-family: 'JetBrains Mono', 'Monaco', 'Menlo', 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 3px 8px;
+    margin: 0;
+    background-color: rgba(37, 99, 235, 0.08);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: 4px;
+    color: #2563eb;
+}
+
+.markdown-body pre {
+    padding: 20px;
+    overflow: auto;
+    font-size: 14px;
+    line-height: 1.6;
+    background-color: #f6f8fa;
+    border-radius: 8px;
+    border: 1px solid #d0d7de;
+    margin-bottom: 20px;
+}
+
+.markdown-body pre code {
+    display: inline;
+    max-width: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    line-height: inherit;
+    word-wrap: normal;
+    background: transparent !important;
+    background-color: transparent;
+    border: 0;
+    border: none !important;
+    color: #24292f !important;
+    font-weight: 400;
+}
+
+/* Blockquotes */
+.markdown-body blockquote {
+    margin: 0 0 20px 0;
+    padding: 0 1em;
+    color: #656d76;
+    border-left: 4px solid #2563eb;
+    background-color: rgba(37, 99, 235, 0.05);
+}
+
+/* Tables */
+.markdown-body table {
+    border-spacing: 0;
+    border-collapse: collapse;
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow: auto;
+    margin-bottom: 20px;
+}
+
+.markdown-body table tr {
+    background-color: #ffffff;
+    border-top: 1px solid #d0d7de;
+}
+
+.markdown-body table th,
+.markdown-body table td {
+    padding: 12px 16px;
+    border: 1px solid #d0d7de;
+}
+
+.markdown-body table th {
+    font-weight: 700;
+    background-color: #f6f8fa;
+}
+
+/* Horizontal rule */
+.markdown-body hr {
+    height: 1px;
+    padding: 0;
+    margin: 32px 0;
+    background-color: #d0d7de;
+    border: 0;
+}
+
+/* Images */
+.markdown-body img {
+    max-width: 100%;
+    box-sizing: content-box;
+    background-color: #ffffff;
+}
+
+/* Task lists */
+.markdown-body .task-list-item {
+    list-style-type: none;
+}
+
+.markdown-body .task-list-item input {
+    margin: 0 0.5em 0.25em -1.6em;
+    vertical-align: middle;
+}
+
+/* ============================================
+   DARK THEME
+   ============================================ */
+
+[data-theme="dark"] .markdown-body {
+    color: rgba(241, 245, 249, 0.9);
+    background-color: transparent;
+}
+
+[data-theme="dark"] .markdown-body h1,
+[data-theme="dark"] .markdown-body h2,
+[data-theme="dark"] .markdown-body h3,
+[data-theme="dark"] .markdown-body h4,
+[data-theme="dark"] .markdown-body h5,
+[data-theme="dark"] .markdown-body h6 {
+    color: #60a5fa !important;
+}
+
+[data-theme="dark"] .markdown-body h2 {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .markdown-body a {
+    color: #2563eb;
+}
+
+[data-theme="dark"] .markdown-body code {
+    background-color: rgba(37, 99, 235, 0.15);
+    border-color: rgba(37, 99, 235, 0.3);
+    color: #2563eb;
+}
+
+[data-theme="dark"] .markdown-body pre {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .markdown-body pre code {
+    color: #f1f5f9 !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+[data-theme="dark"] .markdown-body blockquote {
+    color: rgba(241, 245, 249, 0.7);
+    border-left-color: #2563eb;
+    background-color: rgba(37, 99, 235, 0.1);
+}
+
+[data-theme="dark"] .markdown-body table tr {
+    background-color: transparent;
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .markdown-body table th,
+[data-theme="dark"] .markdown-body table td {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .markdown-body table th {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .markdown-body hr {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .markdown-body img {
+    background-color: transparent;
+}

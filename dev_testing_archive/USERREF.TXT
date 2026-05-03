@@ -1,0 +1,178 @@
+Selection Status
+✓
+White_Panel_12x24
+White Melamine
+Processed
+✓
+White_Panel_15x24
+White Melamine
+Processed
+✓
+Maple_Panel_15x30
+Maple Wood
+Processed
+✓
+Cherry_Panel_18x36
+Cherry Wood
+Processed
+✓
+White_Panel_24x24
+White Melamine
+Processed
+✓
+Cherry_Panel_24x36
+Cherry Wood
+Processed
+✓
+Grey_Panel_42x21
+Grey Laminate
+Processed
+✓
+Grey_Panel_48x24
+Grey Laminate
+Processed
+✓
+White_Panel_21x24
+White Melamine
+Processed
+✓
+Maple_Panel_18x30
+Maple Wood
+Processed
+✓
+Maple_Panel_12x30
+Maple Wood
+Processed
+✓
+Cherry_Panel_15x36
+Cherry Wood
+Processed
+✓
+Cherry_Panel_12x36
+Cherry Wood
+Processed
+✓
+Black_Panel_12x42
+Black Shaker
+Processed
+✓
+Black_Panel_15x42
+Black Shaker
+Processed
+✓
+Grey_Panel_30x15
+Grey Laminate
+Processed
+✓
+Maple_Panel_21x30
+Maple Wood
+Processed
+✓
+Maple_Panel_24x30
+Maple Wood
+Processed
+✓
+Cherry_Panel_21x36
+Cherry Wood
+Processed
+✓
+White_Panel_18x24
+White Melamine
+Processed
+✓
+Grey_Panel_24x12
+Grey Laminate
+Processed
+✓
+Black_Panel_18x42
+Black Shaker
+Processed
+✓
+Grey_Panel_36x18
+Grey Laminate
+Processed
+✓
+Black_Panel_21x42
+Black Shaker
+Processed
+✓
+Black_Panel_24x42
+Black Shaker
+Processed
+Components Found (
+25
+)
+
+Component	Width	Height	Thickness	Material
+White_Panel_12x24	304.8	609.6	19.1	White Melamine
+White_Panel_15x24	381.0	609.6	19.1	White Melamine
+Maple_Panel_15x30	381.0	762.0	19.1	Maple Wood
+Cherry_Panel_18x36	457.2	914.4	19.1	Cherry Wood
+White_Panel_24x24	609.6	609.6	19.1	White Melamine
+Cherry_Panel_24x36	609.6	914.4	19.1	Cherry Wood
+Grey_Panel_42x21	533.4	1066.8	19.1	Grey Laminate
+Grey_Panel_48x24	609.6	1219.2	19.1	Grey Laminate
+White_Panel_21x24	533.4	609.6	19.1	White Melamine
+Maple_Panel_18x30	457.2	762.0	19.1	Maple Wood
+Maple_Panel_12x30	304.8	762.0	19.1	Maple Wood
+Cherry_Panel_15x36	381.0	914.4	19.1	Cherry Wood
+Cherry_Panel_12x36	304.8	914.4	19.1	Cherry Wood
+Black_Panel_12x42	304.8	1066.8	19.1	Black Shaker
+Black_Panel_15x42	381.0	1066.8	19.1	Black Shaker
+Grey_Panel_30x15	381.0	762.0	19.1	Grey Laminate
+Maple_Panel_21x30	533.4	762.0	19.1	Maple Wood
+Maple_Panel_24x30	609.6	762.0	19.1	Maple Wood
+Cherry_Panel_21x36	533.4	914.4	19.1	Cherry Wood
+White_Panel_18x24	457.2	609.6	19.1	White Melamine
+Grey_Panel_24x12	304.8	609.6	19.1	Grey Laminate
+Black_Panel_18x42	457.2	1066.8	19.1	Black Shaker
+Grey_Panel_36x18	457.2	914.4	19.1	Grey Laminate
+Black_Panel_21x42	533.4	1066.8	19.1	Black Shaker
+Black_Panel_24x42	609.6	1066.8	19.1	Black Shaker
+Parts Preview
+Parts Found
+White Melamine (5 parts)
+
+Name	W (in)	H (in)	T (in)	Qty
+White_Panel_12x24	12	24	1	1
+White_Panel_15x24	15	24	1	1
+White_Panel_24x24	24	24	1	1
+White_Panel_21x24	21	24	1	1
+White_Panel_18x24	18	24	1	1
+Total	5
+Maple Wood (5 parts)
+
+Name	W (in)	H (in)	T (in)	Qty
+Maple_Panel_15x30	15	30	1	1
+Maple_Panel_18x30	18	30	1	1
+Maple_Panel_12x30	12	30	1	1
+Maple_Panel_21x30	21	30	1	1
+Maple_Panel_24x30	24	30	1	1
+Total	5
+Cherry Wood (5 parts)
+
+Name	W (in)	H (in)	T (in)	Qty
+Cherry_Panel_18x36	18	36	1	1
+Cherry_Panel_24x36	24	36	1	1
+Cherry_Panel_15x36	15	36	1	1
+Cherry_Panel_12x36	12	36	1	1
+Cherry_Panel_21x36	21	36	1	1
+Total	5
+Grey Laminate (5 parts)
+
+Name	W (in)	H (in)	T (in)	Qty
+Grey_Panel_42x21	21	42	1	1
+Grey_Panel_48x24	24	48	1	1
+Grey_Panel_30x15	15	30	1	1
+Grey_Panel_24x12	12	24	1	1
+Grey_Panel_36x18	18	36	1	1
+Total	5
+Black Shaker (5 parts)
+
+Name	W (in)	H (in)	T (in)	Qty
+Black_Panel_12x42	12	42	1	1
+Black_Panel_15x42	15	42	1	1
+Black_Panel_18x42	18	42	1	1
+Black_Panel_21x42	21	42	1	1
+Black_Panel_24x42	24	42	1	1
+Total	5

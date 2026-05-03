@@ -1,0 +1,67 @@
+===========================================
+TEST RQRCODE BUILT-IN SVG METHOD
+COPY THIS INTO SKETCHUP RUBY CONSOLE
+===========================================
+
+require 'rqrcode'
+require 'prawn'
+require 'prawn-svg' rescue nil
+require 'tmpdir'
+
+puts "\n" + "="*60
+puts "TESTING RQRCODE SVG METHODS"
+puts "="*60
+
+# Test 1: Check available methods
+puts "\n[1] Available QR methods:"
+qr = RQRCode::QRCode.new("TEST", level: :l)
+methods = qr.methods.grep(/svg|png|render|as_/)
+puts "  #{methods.join(', ')}"
+
+# Test 2: Try as_svg method
+puts "\n[2] Testing as_svg method:"
+begin
+  svg_string = qr.as_svg(module_size: 5)
+  puts "  ✓ as_svg works!"
+  puts "  Length: #{svg_string.length} chars"
+  puts "  Contains <svg>: #{svg_string.include?('<svg')}"
+  puts "  Contains <rect>: #{svg_string.include?('<rect')}"
+  puts "  Contains <path>: #{svg_string.include?('<path')}"
+  
+  # Save SVG to file
+  svg_file = File.join(Dir.tmpdir, "qr_test_#{Time.now.to_i}.svg")
+  File.write(svg_file, svg_string)
+  puts "  ✓ SVG saved: #{svg_file}"
+  puts "\n  OPEN THIS SVG FILE AND CHECK IF IT'S A VALID QR CODE"
+  
+rescue => e
+  puts "  ✗ ERROR: #{e.message}"
+end
+
+# Test 3: Try as_png method
+puts "\n[3] Testing as_png method:"
+begin
+  png_string = qr.as_png(size: 200)
+  puts "  ✓ as_png works!"
+  puts "  Type: #{png_string.class}"
+rescue => e
+  puts "  ✗ ERROR: #{e.message}"
+end
+
+# Test 4: Check if prawn-svg is available
+puts "\n[4] Checking prawn-svg gem:"
+if defined?(Prawn::SVG)
+  puts "  ✓ prawn-svg is available!"
+  puts "  We can embed SVG directly in PDF"
+else
+  puts "  ✗ prawn-svg NOT available"
+  puts "  We need to draw QR manually with rectangles"
+end
+
+puts "\n" + "="*60
+puts "IMPORTANT: Open the SVG file above in a browser"
+puts "If it shows a valid QR code, the gem works fine"
+puts "If not, there's an issue with RQRCode gem itself"
+puts "="*60
+
+===========================================

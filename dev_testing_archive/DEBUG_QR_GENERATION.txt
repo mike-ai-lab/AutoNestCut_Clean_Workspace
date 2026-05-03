@@ -1,0 +1,60 @@
+===========================================
+DEBUG QR CODE GENERATION
+COPY THIS INTO SKETCHUP RUBY CONSOLE
+===========================================
+
+require 'rqrcode'
+
+puts "\n" + "="*60
+puts "QR CODE GENERATION DEBUG"
+puts "="*60
+
+# Test 1: Check RQRCode version and basic generation
+puts "\n[1] RQRCode gem info:"
+puts "  Defined: #{defined?(RQRCode)}"
+begin
+  puts "  Version: #{RQRCode::VERSION}"
+rescue
+  puts "  Version: unknown"
+end
+
+# Test 2: Generate simple QR and inspect
+puts "\n[2] Generating QR for 'HELLO':"
+qr = RQRCode::QRCode.new("HELLO", level: :l)
+puts "  Modules size: #{qr.modules.size}x#{qr.modules.size}"
+puts "  Module count: #{qr.modules.flatten.size}"
+puts "  Black modules: #{qr.modules.flatten.count(true)}"
+puts "  White modules: #{qr.modules.flatten.count(false)}"
+
+# Test 3: Show first few rows
+puts "\n[3] First 5 rows of QR matrix (true=black, false=white):"
+qr.modules.take(5).each_with_index do |row, i|
+  visual = row.take(21).map { |m| m ? '█' : '·' }.join
+  puts "  Row #{i}: #{visual}"
+end
+
+# Test 4: Check if modules are accessible
+puts "\n[4] Testing module access:"
+begin
+  test_module = qr.modules[0][0]
+  puts "  ✓ Can access modules: qr.modules[0][0] = #{test_module}"
+rescue => e
+  puts "  ✗ ERROR accessing modules: #{e.message}"
+end
+
+# Test 5: Try to generate SVG (as string)
+puts "\n[5] Generating SVG string:"
+begin
+  svg = qr.as_svg(module_size: 5)
+  puts "  ✓ SVG generated: #{svg.length} characters"
+  puts "  First 100 chars: #{svg[0..100]}"
+rescue => e
+  puts "  ✗ ERROR: #{e.message}"
+end
+
+puts "\n" + "="*60
+puts "If you see errors above, the RQRCode gem has issues"
+puts "If everything looks OK, the problem is in PDF rendering"
+puts "="*60
+
+===========================================

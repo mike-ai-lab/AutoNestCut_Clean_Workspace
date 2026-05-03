@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoNestCut Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #ffffff;
+            --bg-card: #ffffff;
+            --bg-sidebar: #f8fafc;
+            --border-color: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --text-accent: #0f172a;
+            --primary-color: #3b82f6;
+            --primary-light: #eff6ff;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        .app-header {
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand h1 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-accent);
+            margin: 0;
+            letter-spacing: -0.01em;
+        }
+
+        .brand span {
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: var(--radius-md);
+        }
+
+        .nav-btn {
+            border: none;
+            background: transparent;
+            padding: 6px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.5);
+        }
+
+        .nav-btn.active {
+            background: var(--bg-card);
+            color: var(--primary-color);
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            font-weight: 600;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-secondary);
+            border-radius: var(--radius-md);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: #f1f5f9;
+            color: var(--text-primary);
+        }
+
+        /* --- Main Layout --- */
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar-panel {
+            width: 300px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .content-panel {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 40px 60px;
+            scroll-behavior: smooth;
+        }
+
+        /* --- Resizer --- */
+        .resizer {
+            width: 4px;
+            background: transparent;
+            cursor: col-resize;
+            flex-shrink: 0;
+            margin-left: -2px; 
+            z-index: 20;
+        }
+        .resizer:hover {
+            background: var(--primary-color);
+        }
+
+        /* --- Typography & Sections --- */
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-accent);
+            margin: 0 0 24px 0;
+            letter-spacing: -0.025em;
+        }
+        
+        .subsection-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 40px 0 16px 0;
+            letter-spacing: -0.015em;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* --- Summary Cards (GitBook Style) --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            /* No shadow for flat look */
+        }
+
+        .stat-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+        }
+
+        .stat-value {
+            font-size: 30px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+            margin-bottom: 4px;
+            letter-spacing: -0.02em;
+        }
+
+        .stat-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* --- Tables --- */
+        .table-container {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .table-header {
+            padding: 12px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            table-layout: fixed; /* CRITICAL for consistent widths */
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 20px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            background: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        td {
+            padding: 12px 20px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* --- Text Utilities --- */
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .font-medium { font-weight: 500; }
+        .text-accent { color: var(--text-primary); font-weight: 600; }
+        .text-secondary { color: var(--text-secondary); }
+
+        /* --- Sidebar Diagrams --- */
+        .diagram-list {
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .sidebar-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 13px;
+            background: #ffffff;
+        }
+
+        .diagram-card-small {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-bottom: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .diagram-card-small:hover {
+            border-color: var(--primary-color);
+        }
+
+        .diagram-info {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+            background: #fcfcfc;
+        }
+
+        .diagram-title {
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .diagram-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .diagram-canvas-wrapper {
+            padding: 8px;
+            background: #fff;
+            display: flex;
+            justify-content: center;
+        }
+
+        .diagram-canvas-wrapper canvas {
+            max-width: 100%;
+            height: auto !important;
+            border: 1px solid #f1f5f9;
+        }
+
+        /* --- Placeholders --- */
+        .placeholder-box {
+            background: #f8fafc;
+            border: 1px dashed var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            text-align: center;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 30px;
+            min-height: 180px;
+        }
+        
+        .placeholder-icon {
+            width: 32px;
+            height: 32px;
+            color: #94a3b8;
+        }
+
+        /* --- Badges --- */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-gray { background: #f1f5f9; color: #475569; }
+
+        @media (max-width: 1024px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .sidebar-panel { width: 260px; }
+            .content-panel { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-color);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            <h1>AutoNestCut Report</h1>
+        </div>
+        
+        <div class="nav-tabs">
+            <button class="nav-btn" onclick="showTab('config')">Configuration</button>
+            <button class="nav-btn active" onclick="showTab('report')">Report</button>
+        </div>
+
+        <div class="actions">
+            <button class="icon-btn" onclick="window.print()" title="Print / PDF">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            </button>
+        </div>
+    </header>
+
+    <div class="main-content">
+        
+        <!-- Tab Content -->
+        <div id="reportTabContent" style="display: flex; width: 100%; height: 100%;">
+            
+            <!-- Sidebar -->
+            <div id="diagramsContainer" class="sidebar-panel">
+                <div class="sidebar-header">Cutting Diagrams</div>
+                <div class="diagram-list" id="diagramList">
+                    <div style="text-align:center; padding:20px; color:var(--text-secondary);">Loading...</div>
+                </div>
+            </div>
+
+            <div class="resizer" id="resizer"></div>
+
+            <!-- Report Body -->
+            <div id="reportContainer" class="content-panel">
+                
+                <h2 class="section-title">Project Overview</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Cost</div>
+                        <div class="stat-value" id="summaryTotalCost">-</div>
+                        <div class="stat-meta">Estimated Cost</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Efficiency</div>
+                        <div class="stat-value" id="summaryOverallEfficiency">-</div>
+                        <div class="stat-meta">Material Usage</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Sheets</div>
+                        <div class="stat-value" id="summaryTotalBoards">0</div>
+                        <div class="stat-meta">Required</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Parts</div>
+                        <div class="stat-value" id="summaryTotalParts">0</div>
+                        <div class="stat-meta">Total Cut</div>
+                    </div>
+                </div>
+
+                <!-- Detailed Summary Table -->
+                <div class="table-container">
+                    <div class="table-header">Detailed Summary</div>
+                    <table id="summaryTable">
+                        <!-- Populated via JS -->
+                    </table>
+                </div>
+
+                <h2 class="subsection-title">Materials Breakdown</h2>
+                <div class="table-container">
+                    <table id="materialsUsedTable"></table>
+                </div>
+
+                <h2 class="subsection-title">Unique Part Types</h2>
+                <div class="table-container">
+                    <table id="uniquePartTypesTable"></table>
+                </div>
+
+                <h2 class="subsection-title">Sheet Inventory</h2>
+                <div class="table-container">
+                    <table id="sheetInventoryTable"></table>
+                </div>
+
+                <h2 class="subsection-title">Cut Sequences</h2>
+                <div id="cutSequenceContainer"></div>
+
+                <h2 class="subsection-title">Usable Offcuts</h2>
+                <div class="table-container">
+                    <table id="offcutsTable"></table>
+                </div>
+
+                <h2 class="subsection-title">Detailed Parts List</h2>
+                <div class="table-container">
+                    <table id="partsTable"></table>
+                </div>
+
+                <h2 class="subsection-title">Assembly Visualization</h2>
+                <div id="assemblyViewsContainer">
+                    <div class="placeholder-box">
+                        <svg class="placeholder-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        <p>Interactive 3D Viewer Placeholder</p>
+                        <span style="font-size:12px;">(Optimization enabled: 3D model data excluded)</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="configTab" style="display: none; padding: 40px; max-width: 800px; margin: 0 auto;">
+            <h2 class="section-title">Configuration</h2>
+            <div class="placeholder-box">
+                <p>Configuration panel is disabled in this view.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Data Injection -->
+    <script id="embedded-data" type="application/json">
+    {"diagrams":[{"material":"Silver_Metal_Finish","stock_width":2440,"stock_height":1220,"thickness":18,"parts_count":1,"used_area":1665048.0000000002,"waste_area":1311751.9999999998,"waste_percentage":44.07,"efficiency_percentage":55.93,"parts":[{"name":"Back Panel","width":2332,"height":714,"thickness":18,"material":"Silver_Metal_Finish","grain_direction":"Any","edge_banding":{"type":"None","edges":[]},"edge_banding_summary":{"type":"None","edges":[],"total_length":0},"area":1665048,"x":0,"y":0,"rotated":true,"instance_id":"P1"}],"offcuts":[{"x":2335.0000000000005,"y":0,"width":104.99999999999955,"height":1220,"area":128100},{"x":0,"y":717,"width":2335.0000000000005,"height":503,"area":1174505}]}],"report":{"parts_placed":[{"part_unique_id":"P1","name":"Back Panel","width":2332,"height":714,"thickness":18,"material":"Silver_Metal_Finish","area":1665048,"weight_kg":17.983,"board_number":1,"position_x":0,"position_y":0,"rotated":"Yes","grain_direction":"Any","edge_banding":{"type":"None","edges":[]},"units":"mm"}],"unique_part_types":[{"name":"Back Panel","width":2332,"height":714,"thickness":18,"material":"Silver_Metal_Finish","grain_direction":"Any","edge_banding":{"type":"None","edges":[]},"total_quantity":1,"total_area":1665048.0000000002,"total_weight_kg":17.982518400000004,"units":"mm"}],"unique_board_types":[{"material":"Silver_Metal_Finish","dimensions_mm":"2440.0 x 1220.0 mm","stock_width":2440,"stock_height":1220,"count":1,"total_area":2976800,"units":"mm","price_per_sheet":300,"currency":"SAR","total_cost":300}],"boards":[{"board_number":1,"material":"Silver_Metal_Finish","stock_size_mm":"2440.0 x 1220.0 mm","stock_width":2440,"stock_height":1220,"parts_count":1,"used_area":1665048.0000000002,"waste_area":1311751.9999999998,"waste_percentage":44.07,"efficiency_percentage":55.93,"weight_kg":17.98,"units":"mm","precision":0}],"cut_sequences":[{"board_number":1,"material":"Silver_Metal_Finish","stock_dimensions":"2440 x 1220 mm","cut_sequence":[{"step":1,"type":"Setup","description":"Prepare stock material","measurement":"2440 x 1220 mm"},{"step":2,"type":"Cut","description":"Cut Back Panel - Length","measurement":"2332 mm"},{"step":3,"type":"Cut","description":"Cut Back Panel - Width","measurement":"714 mm"},{"step":4,"type":"Edge Band","description":"Apply edge banding to Back Panel","measurement":"None ()"}]}],"usable_offcuts":[{"board_number":1,"material":"Silver_Metal_Finish","estimated_dimensions":"1952 x 672mm","estimated_width_mm":1952,"estimated_height_mm":672,"area":1311752,"area_m2":1.312}],"summary":{"total_parts_instances":1,"total_unique_part_types":1,"total_boards":1,"total_stock_area":2976800,"total_used_area":1665048,"total_waste_area":1311752,"total_waste_area_absolute":"1.31 m²","overall_waste_percentage":44.07,"overall_efficiency":55.93,"total_project_cost":300,"total_project_weight_kg":17.98,"kerf_width":"3mm","project_name":"Untitled Project","client_name":"","currency":"SAR","units":"mm","precision":0,"area_units":"m2"}},"original_components":[{"name":"Back Panel","entity_id":704031,"definition_id":324871,"width":714,"height":2332,"depth":18,"position":{"x":18,"y":-4263,"z":100},"material":"Silver_Metal_Finish","definition":"#<Sketchup::ComponentDefinition:0x000000003fabbf50>","has_face_materials":true}],"hierarchy_tree":[{"type":"component","name":"Back Panel","level":0,"material":"Silver_Metal_Finish","dimensions":"714.0x2332.0x18.0mm","children":[]}],"settings":{"kerf_width":3,"allow_rotation":false,"default_currency":"SAR","units":"mm","precision":0,"area_units":"m2","auto_create_materials":null,"enable_part_labels":true},"assembly_data":{"entity_name":"Assembly","views":{"Front":"","Back":"","Left":"","Right":"","Top":"","Bottom":""},"geometry":{"parts":[],"id_mapping":{}}}}
+    </script>
+
+    <script>
+        let EMBEDDED_DATA = {};
+        try {
+            EMBEDDED_DATA = JSON.parse(document.getElementById('embedded-data').textContent);
+        } catch(e) { console.error(e); }
+
+        const settings = EMBEDDED_DATA.settings || {};
+        const reportUnits = settings.units || 'mm';
+        const precision = settings.precision ?? 1;
+        const currency = EMBEDDED_DATA.report?.summary?.currency || 'USD';
+
+        function formatNum(val) {
+            return (typeof val === 'number') ? val.toFixed(precision) : '-';
+        }
+
+        function showTab(name) {
+            document.querySelectorAll('.tab-content').forEach(d => d.style.display = 'none'); // Reset main content
+            document.getElementById('configTab').style.display = 'none'; // Reset config
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            
+            if(name === 'report') {
+                document.getElementById('reportTabContent').style.display = 'flex';
+                document.querySelector('button[onclick="showTab(\'report\')"]').classList.add('active');
+            } else {
+                document.getElementById('configTab').style.display = 'block';
+                document.querySelector('button[onclick="showTab(\'config\')"]').classList.add('active');
+            }
+        }
+
+        function copyTable(id) { alert('Copied to clipboard'); }
+
+        function renderSummary() {
+            const s = EMBEDDED_DATA.report.summary;
+            if(!s) return;
+            document.getElementById('summaryTotalCost').textContent = `${s.total_project_cost} ${currency}`;
+            document.getElementById('summaryOverallEfficiency').textContent = `${s.overall_efficiency.toFixed(1)}%`;
+            document.getElementById('summaryTotalBoards').textContent = s.total_boards;
+            document.getElementById('summaryTotalParts').textContent = s.total_parts_instances;
+
+            const table = document.getElementById('summaryTable');
+            table.innerHTML = `
+                <colgroup>
+                    <col style="width: 30%;">
+                    <col style="width: 70%;">
+                </colgroup>
+                <tr>
+                    <td class="font-medium text-secondary">Project Name</td>
+                    <td class="text-right text-accent font-medium">${s.project_name}</td>
+                </tr>
+                <tr>
+                    <td class="font-medium text-secondary">Client</td>
+                    <td class="text-right">${s.client_name || '-'}</td>
+                </tr>
+                 <tr>
+                    <td class="font-medium text-secondary">Total Weight</td>
+                    <td class="text-right">${formatNum(s.total_project_weight_kg)} kg</td>
+                </tr>
+                 <tr>
+                    <td class="font-medium text-secondary">Waste Area</td>
+                    <td class="text-right">${s.total_waste_area_absolute}</td>
+                </tr>
+            `;
+        }
+
+        function renderMaterialsUsed() {
+            const list = EMBEDDED_DATA.report.unique_board_types || [];
+            const t = document.getElementById('materialsUsedTable');
+            let h = `
+                <colgroup>
+                    <col style="width: auto;">
+                    <col style="width: 20%;">
+                    <col style="width: 15%;">
+                    <col style="width: 20%;">
+                </colgroup>
+                <thead><tr><th>Material</th><th class="text-right">Price</th><th class="text-right">Qty</th><th class="text-right">Total</th></tr></thead><tbody>`;
+            list.forEach(i => {
+                h += `<tr><td class="font-medium">${i.material}</td><td class="text-right">${i.price_per_sheet}</td><td class="text-right">${i.count}</td><td class="text-right text-accent">${i.total_cost}</td></tr>`;
+            });
+            t.innerHTML = h + '</tbody>';
+        }
+
+        function renderUniqueParts() {
+            const list = EMBEDDED_DATA.report.unique_part_types || [];
+            const t = document.getElementById('uniquePartTypesTable');
+            let h = `
+                <colgroup>
+                    <col style="width: auto;">
+                    <col style="width: 25%;">
+                    <col style="width: 20%;">
+                    <col style="width: 10%;">
+                    <col style="width: 15%;">
+                </colgroup>
+                <thead><tr><th>Part Name</th><th>Dims (${reportUnits})</th><th>Material</th><th class="text-right">Qty</th><th class="text-right">Area</th></tr></thead><tbody>`;
+            list.forEach(i => {
+                h += `<tr><td class="font-medium">${i.name}</td><td>${formatNum(i.width)} × ${formatNum(i.height)}</td><td><span class="badge badge-gray">${i.material}</span></td><td class="text-right">${i.total_quantity}</td><td class="text-right">${formatNum(i.total_area)}</td></tr>`;
+            });
+            t.innerHTML = h + '</tbody>';
+        }
+
+        function renderSheetInventory() {
+            const list = EMBEDDED_DATA.report.unique_board_types || [];
+            const t = document.getElementById('sheetInventoryTable');
+            let h = `
+                <colgroup>
+                    <col style="width: auto;">
+                    <col style="width: 25%;">
+                    <col style="width: 10%;">
+                    <col style="width: 20%;">
+                </colgroup>
+                <thead><tr><th>Material</th><th>Dimensions (${reportUnits})</th><th class="text-right">Count</th><th class="text-right">Total Area</th></tr></thead><tbody>`;
+            list.forEach(i => {
+                h += `<tr><td class="font-medium">${i.material}</td><td>${formatNum(i.stock_width)} × ${formatNum(i.stock_height)}</td><td class="text-right">${i.count}</td><td class="text-right">${formatNum(i.total_area)}</td></tr>`;
+            });
+            t.innerHTML = h + '</tbody>';
+        }
+
+        function renderCutSequences() {
+            const seqs = EMBEDDED_DATA.report.cut_sequences || [];
+            const c = document.getElementById('cutSequenceContainer');
+            if(seqs.length===0) { c.innerHTML = '<div class="placeholder-box" style="min-height:100px;">No cuts</div>'; return; }
+            let h = '';
+            seqs.forEach(b => {
+                h += `<div class="table-container"><div class="table-header">Sheet ${b.board_number}: ${b.material}</div>
+                <table>
+                <colgroup><col style="width:10%"><col style="width:20%"><col style="width:auto"><col style="width:20%"></colgroup>
+                <thead><tr><th>#</th><th>Op</th><th>Desc</th><th class="text-right">Val</th></tr></thead><tbody>`;
+                b.cut_sequence.forEach(s => {
+                    h += `<tr><td><span class="badge badge-gray">${s.step}</span></td><td class="font-medium">${s.type}</td><td>${s.description}</td><td class="text-right">${s.measurement}</td></tr>`;
+                });
+                h += `</tbody></table></div>`;
+            });
+            c.innerHTML = h;
+        }
+
+        function renderOffcuts() {
+            const list = EMBEDDED_DATA.report.usable_offcuts || [];
+            const t = document.getElementById('offcutsTable');
+            if(list.length===0) { t.innerHTML='<tbody><tr><td colspan="4" class="text-center" style="padding:20px; color:#94a3b8;">No offcuts</td></tr></tbody>'; return; }
+            let h = `
+                <colgroup>
+                    <col style="width: 10%;">
+                    <col style="width: auto;">
+                    <col style="width: 30%;">
+                    <col style="width: 20%;">
+                </colgroup>
+                <thead><tr><th>#</th><th>Material</th><th>Dimensions</th><th class="text-right">Area</th></tr></thead><tbody>`;
+            list.forEach(i => {
+                h += `<tr><td>${i.board_number}</td><td>${i.material}</td><td>${i.estimated_dimensions}</td><td class="text-right">${i.area_m2} m²</td></tr>`;
+            });
+            t.innerHTML = h + '</tbody>';
+        }
+
+        function renderPartsList() {
+            const list = EMBEDDED_DATA.report.parts_placed || [];
+            const t = document.getElementById('partsTable');
+            let h = `
+                <colgroup>
+                    <col style="width: 10%;">
+                    <col style="width: 30%;">
+                    <col style="width: 20%;">
+                    <col style="width: 10%;">
+                    <col style="width: 10%;">
+                    <col style="width: 20%;">
+                </colgroup>
+                <thead><tr><th>ID</th><th>Name</th><th>Material</th><th>B#</th><th>Grain</th><th class="text-right">Size</th></tr></thead><tbody>`;
+            list.forEach(i => {
+                h += `<tr><td><span class="badge badge-green">${i.part_unique_id||'P'}</span></td><td class="font-medium">${i.name}</td><td>${i.material}</td><td>${i.board_number}</td><td>${i.grain_direction}</td><td class="text-right">${formatNum(i.width)} × ${formatNum(i.height)}</td></tr>`;
+            });
+            t.innerHTML = h + '</tbody>';
+        }
+
+        function renderDiagramList() {
+            const list = EMBEDDED_DATA.diagrams || [];
+            const c = document.getElementById('diagramList');
+            c.innerHTML = '';
+            list.forEach((d, idx) => {
+                const div = document.createElement('div');
+                div.className = 'diagram-card-small';
+                div.innerHTML = `
+                    <div class="diagram-info">
+                        <div class="diagram-title"><span>Board ${idx+1}</span><span class="badge badge-green">${d.efficiency_percentage}%</span></div>
+                        <div class="diagram-meta">${d.material} &bull; ${formatNum(d.stock_width)}x${formatNum(d.stock_height)}</div>
+                    </div>
+                    <div class="diagram-canvas-wrapper"><canvas id="cv-${idx}" width="200" height="100"></canvas></div>
+                `;
+                c.appendChild(div);
+                
+                // Draw simple placeholder
+                const ctx = div.querySelector('canvas').getContext('2d');
+                ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,200,100);
+                ctx.strokeStyle = '#e2e8f0'; ctx.strokeRect(0,0,200,100);
+                ctx.fillStyle = '#94a3b8'; ctx.font = '10px Inter'; ctx.fillText('Diagram Preview', 60, 55);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if(EMBEDDED_DATA.report) {
+                renderSummary();
+                renderMaterialsUsed();
+                renderUniqueParts();
+                renderSheetInventory();
+                renderCutSequences();
+                renderOffcuts();
+                renderPartsList();
+                renderDiagramList();
+            }
+            
+            // Resizer
+            const resizer = document.getElementById('resizer');
+            const sidebar = document.getElementById('diagramsContainer');
+            resizer.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+            function onMouseMove(e) {
+                if(e.pageX > 200 && e.pageX < 600) sidebar.style.width = e.pageX + 'px';
+            }
+            function onMouseUp() {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+        });
+    </script>
+</body>
+</html>

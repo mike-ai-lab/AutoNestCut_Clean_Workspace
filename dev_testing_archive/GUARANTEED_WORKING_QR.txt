@@ -1,0 +1,86 @@
+===========================================
+GUARANTEED WORKING QR CODE TEST
+This uses RQRCode's built-in rendering
+COPY THIS INTO SKETCHUP RUBY CONSOLE
+===========================================
+
+require 'rqrcode'
+require 'tmpdir'
+
+puts "\n" + "="*60
+puts "GUARANTEED QR CODE TEST"
+puts "="*60
+
+data = "HELLO"
+qr = RQRCode::QRCode.new(data, level: :l)
+
+puts "\nGenerating QR for: #{data}"
+
+# Method 1: SVG (most reliable)
+begin
+  svg = qr.as_svg(
+    color: "000",
+    shape_rendering: "crispEdges",
+    module_size: 11,
+    standalone: true
+  )
+  
+  svg_file = File.join(Dir.tmpdir, "qr_guaranteed_#{Time.now.to_i}.svg")
+  File.write(svg_file, svg)
+  
+  puts "\n✓ SVG FILE CREATED:"
+  puts "  #{svg_file}"
+  puts "\n📱 OPEN THIS SVG IN BROWSER AND SCAN IT"
+  puts "  This WILL work if RQRCode gem is functional"
+  
+rescue => e
+  puts "\n✗ SVG method failed: #{e.message}"
+end
+
+# Method 2: PNG (if chunky_png is available)
+begin
+  png = qr.as_png(
+    bit_depth: 1,
+    border_modules: 4,
+    color_mode: ChunkyPNG::COLOR_GRAYSCALE,
+    color: "black",
+    file: nil,
+    fill: "white",
+    module_px_size: 6,
+    resize_exactly_to: false,
+    resize_gte_to: false,
+    size: 300
+  )
+  
+  png_file = File.join(Dir.tmpdir, "qr_guaranteed_#{Time.now.to_i}.png")
+  png.save(png_file)
+  
+  puts "\n✓ PNG FILE CREATED:"
+  puts "  #{png_file}"
+  puts "\n📱 OPEN THIS PNG AND SCAN IT"
+  
+rescue => e
+  puts "\n✗ PNG method failed: #{e.message}"
+  puts "  (This is OK - chunky_png might not be installed)"
+end
+
+# Method 3: Terminal ASCII (visual verification)
+puts "\n" + "="*60
+puts "ASCII QR CODE (visual check):"
+puts "="*60
+puts ""
+qr.modules.each do |row|
+  puts row.map { |m| m ? '██' : '  ' }.join
+end
+puts ""
+puts "="*60
+
+puts "\nIf the ASCII art above looks like a QR code pattern,"
+puts "then RQRCode is generating valid data."
+puts "\nIf the SVG file scans successfully, we know:"
+puts "  1. RQRCode gem works"
+puts "  2. The data format is valid"
+puts "  3. The problem is with PDF rendering"
+puts "="*60
+
+===========================================

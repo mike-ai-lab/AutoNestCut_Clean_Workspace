@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AutoNestCut - Revised Config Mockup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: #ffffff; color: #24292e; font-size: 14px; }
+        
+        /* Minimal Header */
+        .header {
+            background: #ffffff;
+            border-bottom: 1px solid #d0d7de;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 16px; font-weight: 600; color: #24292e; }
+        .header-actions { display: flex; gap: 6px; }
+        .btn { 
+            padding: 6px 12px; 
+            border-radius: 4px; 
+            border: 1px solid #d0d7de; 
+            background: #ffffff;
+            cursor: pointer; 
+            font-size: 13px; 
+            font-weight: 500;
+            color: #24292e;
+        }
+        .btn:hover { background: #f6f8fa; }
+        .btn-primary { background: #24292e; color: white; border-color: #24292e; }
+        .btn-primary:hover { background: #1c2128; }
+        
+        /* Container */
+        .container { max-width: 1400px; margin: 0 auto; padding: 16px; }
+        
+        /* Compact Section */
+        .section {
+            background: #ffffff;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        .section-header {
+            padding: 10px 14px;
+            background: #f6f8fa;
+            border-bottom: 1px solid #d0d7de;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .section-header:hover { background: #f1f5f9; }
+        .section-title { font-size: 14px; font-weight: 600; color: #24292e; }
+        .section-toggle { font-size: 12px; color: #656d76; }
+        .section-content { padding: 14px; }
+        .section.collapsed .section-content { display: none; }
+        .section.collapsed .section-toggle::before { content: '▶'; }
+        .section-toggle::before { content: '▼'; }
+        
+        /* Form Compact */
+        .form-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 10px; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 12px; font-weight: 500; color: #656d76; }
+        .form-group input, .form-group select { 
+            padding: 6px 8px; 
+            border: 1px solid #d0d7de; 
+            border-radius: 4px; 
+            font-size: 13px;
+            background: #ffffff;
+        }
+        .form-group input:focus, .form-group select:focus { 
+            outline: none; 
+            border-color: #24292e; 
+        }
+        
+        /* Parts Preview - KEY SECTION */
+        .parts-preview-section {
+            background: #ffffff;
+            border: 2px solid #24292e;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        .parts-preview-header {
+            padding: 12px 14px;
+            background: #24292e;
+            color: #ffffff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .parts-preview-title { font-size: 15px; font-weight: 600; }
+        .parts-stats { font-size: 12px; opacity: 0.9; }
+        .parts-preview-content { padding: 0; }
+        
+        /* Compact Table */
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { 
+            background: #f6f8fa; 
+            padding: 8px 10px; 
+            text-align: left; 
+            font-weight: 600; 
+            font-size: 11px; 
+            color: #656d76; 
+            text-transform: uppercase;
+            border-bottom: 1px solid #d0d7de;
+            letter-spacing: 0.3px;
+        }
+        td { 
+            padding: 7px 10px; 
+            border-bottom: 1px solid #f1f5f9;
+            color: #24292e;
+        }
+        tr:hover { background: #f8fafc; }
+        th:nth-child(n+2), td:nth-child(n+2) { text-align: right; }
+        
+        /* Materials Table Compact */
+        .materials-toolbar {
+            padding: 8px 10px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e1e5e9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toolbar-left { display: flex; gap: 6px; }
+        .toolbar-right { display: flex; gap: 8px; align-items: center; }
+        .btn-sm { 
+            padding: 5px 10px; 
+            font-size: 12px; 
+            border: 1px solid #d0d7de; 
+            background: #ffffff;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-sm:hover { background: #f6f8fa; }
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #656d76;
+            cursor: pointer;
+        }
+        input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+        }
+        select.compact {
+            padding: 4px 8px;
+            font-size: 12px;
+            border: 1px solid #d0d7de;
+            border-radius: 4px;
+            background: #ffffff;
+        }
+        
+        /* Status Indicators */
+        .status { 
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+        .status-used { background: #28a745; }
+        .status-unused { background: #d0d7de; }
+        
+        /* Action Bar Minimal */
+        .action-bar {
+            position: sticky;
+            bottom: 0;
+            background: #ffffff;
+            padding: 10px 16px;
+            border-top: 1px solid #d0d7de;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        
+        /* Visual 3D Preview Area */
+        .preview-canvas {
+            width: 100%;
+            height: 400px;
+            background: #fafbfc;
+            border: 1px solid #e1e5e9;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #656d76;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Minimal Header -->
+    <div class="header">
+        <h1>AutoNestCut Configuration</h1>
+        <div class="header-actions">
+            <button class="btn">Settings</button>
+            <button class="btn">Refresh</button>
+            <button class="btn">Cancel</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        
+        <!-- Project Configuration - Collapsed by default -->
+        <div class="section collapsed">
+            <div class="section-header" onclick="toggleSection(this)">
+                <span class="section-title">Project Configuration</span>
+                <span class="section-toggle"></span>
+            </div>
+            <div class="section-content">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Project Name</label>
+                        <input type="text" value="Kitchen Cabinets">
+                    </div>
+                    <div class="form-group">
+                        <label>Client Name</label>
+                        <input type="text" value="John Smith">
+                    </div>
+                    <div class="form-group">
+                        <label>Prepared By</label>
+                        <input type="text" value="Int. Arch. M.Shkeir">
+                    </div>
+                    <div class="form-group">
+                        <label>Kerf Width (mm)</label>
+                        <input type="number" value="3.0" step="0.1">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 8px;">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" checked>
+                        <span style="font-size: 13px; color: #24292e;">Allow part rotation</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PARTS PREVIEW - KEY SECTION (Always Visible, Prominent) -->
+        <div class="parts-preview-section">
+            <div class="parts-preview-header">
+                <span class="parts-preview-title">Parts Preview</span>
+                <span class="parts-stats">24 Components | 3 Materials | 12.5 m² Total Area</span>
+            </div>
+            <div class="parts-preview-content">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Component Name</th>
+                            <th>Width (mm)</th>
+                            <th>Height (mm)</th>
+                            <th>Thickness (mm)</th>
+                            <th>Material</th>
+                            <th>Qty</th>
+                            <th>Area (m²)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Cabinet Door #1</td>
+                            <td>600</td>
+                            <td>800</td>
+                            <td>18</td>
+                            <td>Plywood 18mm</td>
+                            <td>4</td>
+                            <td>1.92</td>
+                        </tr>
+                        <tr>
+                            <td>Cabinet Door #2</td>
+                            <td>500</td>
+                            <td>700</td>
+                            <td>18</td>
+                            <td>Plywood 18mm</td>
+                            <td>2</td>
+                            <td>0.70</td>
+                        </tr>
+                        <tr>
+                            <td>Shelf Panel</td>
+                            <td>450</td>
+                            <td>300</td>
+                            <td>18</td>
+                            <td>Plywood 18mm</td>
+                            <td>8</td>
+                            <td>1.08</td>
+                        </tr>
+                        <tr>
+                            <td>Side Panel Left</td>
+                            <td>600</td>
+                            <td>900</td>
+                            <td>18</td>
+                            <td>MDF 18mm</td>
+                            <td>2</td>
+                            <td>1.08</td>
+                        </tr>
+                        <tr>
+                            <td>Side Panel Right</td>
+                            <td>600</td>
+                            <td>900</td>
+                            <td>18</td>
+                            <td>MDF 18mm</td>
+                            <td>2</td>
+                            <td>1.08</td>
+                        </tr>
+                        <tr>
+                            <td>Back Panel</td>
+                            <td>900</td>
+                            <td>600</td>
+                            <td>6</td>
+                            <td>MDF 6mm</td>
+                            <td>4</td>
+                            <td>2.16</td>
+                        </tr>
+                        <tr>
+                            <td>Drawer Front</td>
+                            <td>400</td>
+                            <td>150</td>
+                            <td>18</td>
+                            <td>Plywood 18mm</td>
+                            <td>6</td>
+                            <td>0.36</td>
+                        </tr>
+                        <tr>
+                            <td>Top Panel</td>
+                            <td>1200</td>
+                            <td>600</td>
+                            <td>18</td>
+                            <td>Plywood 18mm</td>
+                            <td>1</td>
+                            <td>0.72</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <!-- Optional: 3D Visual Preview -->
+                <div class="preview-canvas">
+                    3D Component Visualization Area (Canvas)
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stock Materials & Pricing -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <span class="section-title">Stock Materials & Pricing</span>
+                <span class="section-toggle"></span>
+            </div>
+            <div class="section-content" style="padding: 0;">
+                <div class="materials-toolbar">
+                    <div class="toolbar-left">
+                        <button class="btn-sm">Add Material</button>
+                        <button class="btn-sm">Load Defaults</button>
+                        <button class="btn-sm">Import CSV</button>
+                        <button class="btn-sm">Export Database</button>
+                    </div>
+                    <div class="toolbar-right">
+                        <label class="toggle-label">
+                            <input type="checkbox" checked>
+                            <span>Used Only</span>
+                        </label>
+                        <select class="compact">
+                            <option>Sort: A-Z</option>
+                            <option>Sort: Used First</option>
+                            <option>Sort: Most Used</option>
+                        </select>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Material Name</th>
+                            <th>Width</th>
+                            <th>Height</th>
+                            <th>Thickness</th>
+                            <th>Density</th>
+                            <th>Price</th>
+                            <th style="text-align: center;">Actions</th>
+                            <th style="text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Plywood 18mm</td>
+                            <td>2440</td>
+                            <td>1220</td>
+                            <td>18</td>
+                            <td>680</td>
+                            <td>$85.00</td>
+                            <td style="text-align: center;">
+                                <button class="btn-sm" style="padding: 3px 8px; font-size: 11px;">Edit</button>
+                                <button class="btn-sm" style="padding: 3px 8px; font-size: 11px;">Delete</button>
+                            </td>
+                            <td style="text-align: center;"><span class="status status-used"></span>Used</td>
+                        </tr>
+                        <tr>
+                            <td>MDF 18mm</td>
+                            <td>2440</td>
+                            <td>1220</td>
+                            <td>18</td>
+                            <td>750</td>
+                            <td>$65.00</td>
+                            <td style="text-align: center;">
+                                <button class="btn-sm" style="padding: 3px 8px; font-size: 11px;">Edit</button>
+                                <button class="btn-sm" style="padding: 3px 8px; font-size: 11px;">Delete</button>
+                            </td>
+                            <td style="text-align: center;"><span class="status status-used"></span>Used</td>
+                        </tr>
+                        <tr>
+                            <td>MDF 6mm</td>
+                            <td>2440</td>
+                            <td>1220</td>
+                            <td>6</td>
+                            <td>750</td>
+                            <td>$35.00</td>
+                            <td style="text-align: center;">
+                                <button class="btn-sm" style="padding: 3px 8px; font-size: 11px;">Edit</button>
+                                <button class="btn-sm" style="padding: 3px 8px; font-size: 11px;">Delete</button>
+                            </td>
+                            <td style="text-align: center;"><span class="status status-used"></span>Used</td>
+                        </tr>
+                        <tr>
+                            <td>Chipboard 16mm</td>
+                            <td>2800</td>
+                            <td>2070</td>
+                            <td>16</td>
+                            <td>650</td>
+                            <td>$55.00</td>
+                            <td style="text-align: center;">
+                                <button class="btn-sm" style="padding: 3px 8px; font-size: 11px;">Edit</button>
+                                <button class="btn-sm" style="padding: 3px 8px; font-size: 11px;">Delete</button>
+                            </td>
+                            <td style="text-align: center;"><span class="status status-unused"></span>Unused</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Minimal Action Bar -->
+    <div class="action-bar">
+        <button class="btn">Refresh Selection</button>
+        <button class="btn btn-primary">Generate Cut List</button>
+    </div>
+    
+    <script>
+        function toggleSection(header) {
+            header.parentElement.classList.toggle('collapsed');
+        }
+    </script>
+</body>
+</html>
