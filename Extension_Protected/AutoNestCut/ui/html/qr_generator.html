@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>QR Code Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+        }
+        #qrcode {
+            margin: 20px auto;
+            text-align: center;
+        }
+        #qrcode canvas {
+            border: 2px solid #333;
+            border-radius: 4px;
+        }
+        .info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h2>QR Code Generator - AutoNestCut</h2>
+        <p>Generating QR code for part data...</p>
+    </div>
+    
+    <div id="status"></div>
+    <div id="qrcode"></div>
+    <div id="data-display" class="info" style="display:none;">
+        <h3>Encoded Data:</h3>
+        <pre id="json-data"></pre>
+    </div>
+
+    <script>
+        // QR Code generation function
+        function generateQRCode(data, size) {
+            try {
+                // Clear previous QR code
+                document.getElementById('qrcode').innerHTML = '';
+                
+                // Create QR code
+                var qrcode = new QRCode(document.getElementById('qrcode'), {
+                    text: data,
+                    width: size,
+                    height: size,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+                
+                // Show success message
+                document.getElementById('status').className = 'status success';
+                document.getElementById('status').textContent = '✓ QR Code generated successfully!';
+                
+                // Display encoded data
+                document.getElementById('json-data').textContent = data;
+                document.getElementById('data-display').style.display = 'block';
+                
+                // Wait for QR code to render, then get SVG
+                setTimeout(function() {
+                    var canvas = document.querySelector('#qrcode canvas');
+                    if (canvas) {
+                        var svgData = convertCanvasToSVG(canvas);
+                        // Send SVG back to Ruby
+                        if (window.sketchup) {
+                            window.sketchup.qr_generated(svgData);
+                        }
+                    }
+                }, 100);
+                
+                return true;
+            } catch (error) {
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').textContent = '✗ Error: ' + error.message;
+                console.error('QR Code generation error:', error);
+                return false;
+            }
+        }
+        
+        // Convert canvas to SVG
+        function convertCanvasToSVG(canvas) {
+            var ctx = canvas.getContext('2d');
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var data = imageData.data;
+            var width = canvas.width;
+            var height = canvas.height;
+            
+            var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '">';
+            svg += '<rect width="' + width + '" height="' + height + '" fill="white"/>';
+            
+            // Convert pixels to SVG rectangles
+            for (var y = 0; y < height; y++) {
+                for (var x = 0; x < width; x++) {
+                    var index = (y * width + x) * 4;
+                    var r = data[index];
+                    var g = data[index + 1];
+                    var b = data[index + 2];
+                    
+                    // If pixel is dark (black module)
+                    if (r < 128 && g < 128 && b < 128) {
+                        svg += '<rect x="' + x + '" y="' + y + '" width="1" height="1" fill="black"/>';
+                    }
+                }
+            }
+            
+            svg += '</svg>';
+            return svg;
+        }
+        
+        // Get SVG as data URL
+        function getSVGDataURL() {
+            var canvas = document.querySelector('#qrcode canvas');
+            if (canvas) {
+                return canvas.toDataURL('image/png');
+            }
+            return null;
+        }
+        
+        // Expose functions to Ruby
+        window.generateQRCode = generateQRCode;
+        window.getSVGDataURL = getSVGDataURL;
+        
+        // Notify Ruby that page is ready
+        if (window.sketchup) {
+            window.sketchup.ready();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,3761 @@
+// diagrams_report.js - Diagram rendering and report display
+
+// Global formatting utility - put this at the top of the script or in a global utility file.
+// This ensures consistency across all numeric displays affected by precision settings.
+
+// Ensure window.currencySymbols and other globals are defined if app.js hasn't done so
+// This prevents "Cannot read properties of undefined" errors if app.js loads later or fails.
+window.currencySymbols = window.currencySymbols || {
+    'USD': '$',
+    'EUR': 'Ôé¼',
+    'GBP': '┬ú',
+    'JPY': '┬Ñ',
+    'CAD': '$',
+    'AUD': '$',
+    'CHF': 'CHF',
+    'CNY': '┬Ñ',
+    'SEK': 'kr',
+    'NZD': '$',
+    'SAR': 'SAR', // Added SAR
+    // Add other common currencies as needed
+};
+
+// Also ensure other critical globals expected from app.js are initialized
+window.currentUnits = window.currentUnits || 'mm';
+window.currentPrecision = window.currentPrecision ?? 1; // Use nullish coalescing for precision
+window.currentAreaUnits = window.currentAreaUnits || 'm2'; // Ensure this is also global
+
+// Unit system utilities removed - no debug logging
+
+window.areaFactors = window.areaFactors || {
+    'mm2': 1,
+    'cm2': 100,
+    'm2': 1000000,
+    'in2': 645.16, // Factor for converting from mm² to in² (1 in² = 645.16 mm²)
+    'ft2': 92903.04, // Factor for converting from mm² to ft² (1 ft² = 92903.04 mm²)
+};
+window.unitFactors = window.unitFactors || { // Unit factors for linear dimensions (mm as base)
+    'mm': 1,
+    'cm': 10,
+    'm': 1000,
+    'in': 25.4,
+    'ft': 304.8
+};
+window.defaultCurrency = window.defaultCurrency || 'USD';
+
+
+function getAreaDisplay(areaMM2) {
+    // Using currentAreaUnits and areaFactors from app.js globals
+    const units = window.currentAreaUnits || 'm2';
+    // The factor needs to divide areaMM2 to convert to target area unit.
+    // e.g., if areaMM2 is 1,000,000 and units is 'm2', factor is 1,000,000. 1,000,000 / 1,000,000 = 1 m2
+    const factor = window.areaFactors[units] || window.areaFactors['m2']; // Fallback to m2 factor
+    const convertedArea = areaMM2 / factor;
+    // Return formatted number only, unit is in the header
+    return formatNumber(convertedArea, window.currentPrecision); 
+}
+
+function formatAreaForPDF(areaMM2) {
+    const units = window.currentAreaUnits || 'm2';
+    const areaLabels = { mm2: 'mm²', cm2: 'cm²', m2: 'm²', in2: 'in²', ft2: 'ft²' };
+    const factor = window.areaFactors[units] || window.areaFactors['m2']; 
+    const convertedArea = areaMM2 / factor;
+    return `${formatNumber(convertedArea, window.currentPrecision)} ${areaLabels[units]}`;
+}
+
+function getAreaUnitLabel() {
+    // This function can be more complex if you have specific labels for units.
+    // For now, it will just return 'm2', 'mm2', etc.
+    // It should ideally return a displayable string like 'm²'
+    const unitMap = {
+        'mm2': 'mm²',
+        'cm2': 'cm²',
+        'm2': 'm²',
+        'in2': 'in²',
+        'ft2': 'ft²'
+    };
+    return unitMap[window.currentAreaUnits] || window.currentAreaUnits || 'm²';
+}
+
+
+function formatNumber(value, precision) {
+    if (typeof value !== 'number' || isNaN(value) || value === null) { // Handle null, undefined, NaN
+        return '-'; // Return placeholder for invalid numbers
+    }
+    
+    // Explicitly check for 0 or string '0' to use Math.round for no decimal places.
+    // This correctly renders 800 instead of 800.0 when precision is 0.
+    const actualPrecision = (precision === 0 || precision === '0' || precision === 0.0) ? 0 : (typeof precision === 'number' ? precision : parseFloat(precision));
+    
+    if (isNaN(actualPrecision) || actualPrecision < 0) {
+        console.warn('Invalid precision provided to formatNumber, defaulting to 1 decimal:', precision);
+        return value.toFixed(1); // Default to 1 decimal place if precision is invalid
+    }
+    
+    return value.toFixed(actualPrecision);
+}
+
+// HTML escaping function to prevent XSS vulnerabilities
+function escapeHtml(text) {
+    if (typeof text !== 'string') {
+        return String(text || '');
+    }
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function callRuby(method, args) {
+    if (typeof sketchup === 'object' && sketchup[method]) {
+        sketchup[method](args);
+    }
+}
+
+let g_boardsData = [];
+let g_reportData = null;
+let currentHighlightedPiece = null;
+let currentHighlightedCanvas = null;
+
+// 3D Viewer globals (removed - now using unified Assembly 3D Viewer)
+// Old modal-based viewer variables removed: modalScene, modalCamera, modalRenderer, modalControls, currentPart
+
+function receiveData(data) {
+    console.log('╔════════════════════════════════════════════════════════════════╗');
+    console.log('║ RECEIVE DATA - FRONTEND ENTRY POINT                            ║');
+    console.log('╚═════════════════════════════════════════════════════���══════════╝');
+    console.log('📥 Data received from Ruby backend');
+    console.log('📊 Data type:', typeof data);
+    console.log('📋 Data keys:', data ? Object.keys(data) : 'NULL/UNDEFINED');
+    console.log('📈 Full data object:', data);
+    
+    if (!data) {
+        console.error('❌ CRITICAL: Data is NULL or UNDEFINED!');
+        return;
+    }
+    
+    console.log('✓ Data exists');
+    console.log('  - diagrams:', data.diagrams ? `${data.diagrams.length} boards` : 'MISSING');
+    console.log('  - report:', data.report ? 'EXISTS' : 'MISSING');
+    console.log('  - assembly_data:', data.assembly_data ? 'EXISTS' : 'MISSING');
+    console.log('  - original_components:', data.original_components ? `${data.original_components.length} items` : 'MISSING');
+    console.log('  - hierarchy_tree:', data.hierarchy_tree ? `${data.hierarchy_tree.length} items` : 'MISSING');
+    
+    g_boardsData = data.diagrams || [];
+    g_reportData = data.report;
+    window.originalComponents = data.original_components || [];
+    window.hierarchyTree = data.hierarchy_tree || [];
+    window.assemblyData = data.assembly_data || null;
+    
+    console.log('✓ Global variables assigned:');
+    console.log('  - g_boardsData:', g_boardsData.length, 'boards');
+    console.log('  - g_reportData:', g_reportData ? 'SET' : 'NULL');
+    console.log('  - window.assemblyData:', window.assemblyData ? 'SET' : 'NULL');
+    console.log('  - window.hierarchyTree:', window.hierarchyTree.length, 'items');
+    
+    if (g_reportData && g_reportData.summary) {
+        window.currentUnits = g_reportData.summary.units || 'mm';
+        window.currentPrecision = g_reportData.summary.precision ?? 1;
+        window.defaultCurrency = g_reportData.summary.currency || 'USD';
+        window.currentAreaUnits = g_reportData.summary.area_units || 'm2';
+    } else {
+        console.error('⚠️  No report summary found or g_reportData is null!');
+        console.error('g_reportData:', g_reportData);
+    }
+
+    console.log('🎨 Calling renderDiagrams()...');
+    try {
+        renderDiagrams();
+        console.log('✓ renderDiagrams() completed');
+    } catch (e) {
+        console.error('❌ renderDiagrams() failed:', e);
+    }
+    
+    console.log('📊 Calling renderReport()...');
+    try {
+        renderReport();
+        console.log('✓ renderReport() completed');
+    } catch (e) {
+        console.error('❌ renderReport() failed:', e);
+    }
+    
+    if (window.assemblyData && window.assemblyData.views) {
+        console.log('🏗️  Calling renderAssemblyViews()...');
+        try {
+            renderAssemblyViews(window.assemblyData);
+            console.log('✓ renderAssemblyViews() completed');
+        } catch (e) {
+            console.error('❌ renderAssemblyViews() failed:', e);
+        }
+    } else {
+        console.log('⚠️  No assembly data to render');
+    }
+    
+    setTimeout(() => {
+        if (typeof validateExports === 'function') {
+            validateExports();
+        }
+    }, 500);
+    
+    console.log('╔════════════════════════════════════════════════════════════════╗');
+    console.log('║ RECEIVE DATA - COMPLETE                                        ║');
+    console.log('╚════════════════════════════════════════════════════════════════╝');
+}
+
+function convertDimension(value, fromUnit, toUnit) {
+    if (fromUnit === toUnit) return value;
+    const valueInMM = value * window.unitFactors[fromUnit];
+    return valueInMM / window.unitFactors[toUnit];
+}
+
+function renderDiagrams() {
+    const container = document.getElementById('diagramsContainer');
+    if (!container) {
+        return;
+    }
+    
+    container.innerHTML = '';
+
+    if (!g_boardsData || g_boardsData.length === 0) {
+        container.innerHTML = '<p>No cutting diagrams to display. Please generate a cut list first.</p>';
+        return;
+    }
+    
+    // Use report-specific units and precision
+    const reportUnits = window.currentUnits || 'mm';
+    const reportPrecision = window.currentPrecision ?? 1; 
+
+    g_boardsData.forEach((board, boardIndex) => {
+        const card = document.createElement('div');
+        card.className = 'diagram-card';
+
+        const boardMaterial = board.material || 'Unknown Material';
+
+        // Create header with title
+        const header = document.createElement('div');
+        header.className = 'diagram-header';
+        
+        const title = document.createElement('h3');
+        title.textContent = `Board ${boardIndex + 1}`;
+        title.id = `diagram-${String(boardMaterial).replace(/[^a-zA-Z0-9]/g, '_')}-${boardIndex}`;
+        header.appendChild(title);
+        
+        // Create tags container with Lucide icons
+        const tagsContainer = document.createElement('div');
+        tagsContainer.className = 'diagram-tags';
+        
+        // Material tag with Package icon
+        const materialTag = document.createElement('div');
+        materialTag.className = 'diagram-tag material-tag';
+        materialTag.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m7.5 4.27 9 5.15"></path>
+                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                <path d="m3.3 7 8.7 5 8.7-5"></path>
+                <path d="M12 22V12"></path>
+            </svg>
+            <span>${boardMaterial}</span>
+        `;
+        tagsContainer.appendChild(materialTag);
+        
+        // Dimensions tag with Maximize icon
+        const width = board.stock_width / window.unitFactors[reportUnits];
+        const height = board.stock_height / window.unitFactors[reportUnits];
+        const dimensionsTag = document.createElement('div');
+        dimensionsTag.className = 'diagram-tag dimensions-tag';
+        dimensionsTag.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
+                <path d="M21 8V5a2 2 0 0 0-2-2h-3"></path>
+                <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+                <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
+            </svg>
+            <span>${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)} ${reportUnits}</span>
+        `;
+        tagsContainer.appendChild(dimensionsTag);
+        
+        // Thickness tag with Layers icon
+        const thickness = board.thickness || (board.parts_on_board && board.parts_on_board.length > 0 ? board.parts_on_board[0].thickness : 18);
+        const thicknessTag = document.createElement('div');
+        thicknessTag.className = 'diagram-tag thickness-tag';
+        thicknessTag.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"></path>
+                <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"></path>
+                <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"></path>
+            </svg>
+            <span>${formatNumber(thickness / window.unitFactors[reportUnits], reportPrecision)} ${reportUnits}</span>
+        `;
+        tagsContainer.appendChild(thicknessTag);
+        
+        // Efficiency tag with TrendingUp icon
+        const efficiencyTag = document.createElement('div');
+        efficiencyTag.className = 'diagram-tag efficiency-tag';
+        const efficiencyValue = board.efficiency_percentage || 0;
+        const efficiencyClass = efficiencyValue >= 80 ? 'high' : efficiencyValue >= 60 ? 'medium' : 'low';
+        efficiencyTag.classList.add(`efficiency-${efficiencyClass}`);
+        efficiencyTag.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                <polyline points="16 7 22 7 22 13"></polyline>
+            </svg>
+            <span>${formatNumber(efficiencyValue, 1)}% Efficiency</span>
+        `;
+        tagsContainer.appendChild(efficiencyTag);
+        
+        header.appendChild(tagsContainer);
+        
+        // Add maximize button inside header (positioned absolutely in corner)
+        const maximizeBtn = document.createElement('button');
+        maximizeBtn.className = 'diagram-maximize-btn';
+        maximizeBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
+                <path d="M21 8V5a2 2 0 0 0-2-2h-3"></path>
+                <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+                <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
+            </svg>
+        `;
+        maximizeBtn.title = 'Maximize view';
+        maximizeBtn.onclick = (e) => {
+            e.stopPropagation();
+            openMaximizedView(null, board, boardIndex, reportUnits, reportPrecision);
+        };
+        header.appendChild(maximizeBtn);
+        
+        card.appendChild(header);
+
+        // ✅ SVG REPLACEMENT: Generate SVG diagram instead of canvas
+        // This provides infinite scalability without blur
+        if (typeof window.generateBoardSVG === 'function') {
+            const containerWidth = card.offsetWidth || 600;
+            const svg = window.generateBoardSVG(board, containerWidth, reportUnits, reportPrecision);
+            if (svg) {
+                card.appendChild(svg);
+                container.appendChild(card);
+                return; // Skip canvas drawing for this board
+            }
+        }
+
+        // Fallback to canvas if SVG generation fails
+        const canvas = document.createElement('canvas');
+        canvas.className = 'diagram-canvas';
+        card.appendChild(canvas);
+        container.appendChild(card);
+
+        canvas.drawCanvas = function() {
+            const containerWidth = card.offsetWidth - 24;
+            const ctx = canvas.getContext('2d');
+            const padding = 40;
+            const maxCanvasDim = Math.min(containerWidth, 600);
+            
+            const boardWidth = parseFloat(board.stock_width) || 1000;
+            const boardHeight = parseFloat(board.stock_height) || 1000;
+            
+            const scale = Math.min(
+                (maxCanvasDim - 2 * padding) / boardWidth,
+                (maxCanvasDim - 2 * padding) / boardHeight
+            );
+
+            // Use normal DPR for live display (performance), but allow override for PDF capture
+            // When capturing for PDF, we'll temporarily set a higher DPR for quality
+            const dpr = window.capturingForPDF ? 3 : (window.devicePixelRatio || 1);
+            canvas.width = (boardWidth * scale + 2 * padding) * dpr;
+            canvas.height = (boardHeight * scale + 2 * padding) * dpr;
+            canvas.style.width = (boardWidth * scale + 2 * padding) + 'px';
+            canvas.style.height = (boardHeight * scale + 2 * padding) + 'px';
+            ctx.scale(dpr, dpr);
+
+            // Draw board background with light color
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(padding, padding, boardWidth * scale, boardHeight * scale);
+            
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2.5;
+            ctx.strokeRect(padding, padding, boardWidth * scale, boardHeight * scale);
+            
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = `600 ${Math.max(13, 15 * scale)}px 'Inter', -apple-system, sans-serif`;
+            ctx.textAlign = 'center';
+            const displayWidth = boardWidth / window.unitFactors[reportUnits];
+            ctx.fillText(`${formatNumber(displayWidth, reportPrecision)}${reportUnits}`, padding + (boardWidth * scale) / 2, padding - 8);
+            
+            ctx.save();
+            ctx.translate(padding - 18, padding + (boardHeight * scale) / 2);
+            ctx.rotate(-Math.PI / 2);
+            const displayHeight = boardHeight / window.unitFactors[reportUnits];
+            ctx.fillText(`${formatNumber(displayHeight, reportPrecision)}${reportUnits}`, 0, 0);
+            ctx.restore();
+
+            const parts = board.parts || [];
+            const offcuts = board.offcuts || [];
+            canvas.boardIndex = boardIndex;
+            canvas.boardData = board;
+            canvas.partData = [];
+            
+            // Draw offcuts FIRST (so they appear behind parts)
+            if (offcuts && offcuts.length > 0) {
+                offcuts.forEach((offcut) => {
+                    const offcutX = padding + (offcut.x || 0) * scale;
+                    const offcutY = padding + (offcut.y || 0) * scale;
+                    const offcutWidth = (offcut.width || offcut.w || 0) * scale;
+                    const offcutHeight = (offcut.height || offcut.h || 0) * scale;
+                    
+                    if (offcutWidth > 0 && offcutHeight > 0) {
+                        drawCrossedOffcut(ctx, offcutX, offcutY, offcutWidth, offcutHeight);
+                    }
+                });
+            }
+            
+            parts.forEach((part, partIndex) => {
+                // Ensure part dimensions and positions are valid numbers
+                const partPosX = parseFloat(part.x) || 0;
+                const partPosY = parseFloat(part.y) || 0;
+                const partW = parseFloat(part.width) || 10;
+                const partH = parseFloat(part.height) || 10;
+                
+                const partX = padding + partPosX * scale;
+                const partY = padding + partPosY * scale;
+                const partWidth = partW * scale;
+                const partHeight = partH * scale;
+
+                drawPartWithGrain(ctx, partX, partY, partWidth, partHeight, part);
+                
+                ctx.strokeStyle = '#1a1a1a';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(partX, partY, partWidth, partHeight);
+                
+                drawGrainArrow(ctx, partX, partY, partWidth, partHeight, part.grain_direction);
+
+                canvas.partData.push({
+                    x: partX, y: partY, width: partWidth, height: partHeight,
+                    part: part, boardIndex: boardIndex
+                });
+
+                if (partWidth > 50) {
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.font = `500 ${Math.max(11, 13 * scale)}px 'Inter', -apple-system, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'top';
+                    const partDisplayW = partW / window.unitFactors[reportUnits];
+                    ctx.fillText(`${formatNumber(partDisplayW, reportPrecision)}`, partX + partWidth / 2, partY + 6);
+                }
+
+                if (partHeight > 50) {
+                    ctx.save();
+                    ctx.translate(partX + 6, partY + partHeight / 2);
+                    ctx.rotate(-Math.PI / 2);
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.font = `500 ${Math.max(11, 13 * scale)}px 'Inter', -apple-system, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'top';
+                    const partDisplayH = partH / window.unitFactors[reportUnits];
+                    ctx.fillText(`${formatNumber(partDisplayH, reportPrecision)}`, 0, 0);
+                    ctx.restore();
+                }
+
+                if (partWidth > 30 && partHeight > 20) {
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.font = `700 ${Math.max(15, 18 * scale)}px 'Inter', -apple-system, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const labelContent = String(part.part_unique_id || part.part_number || part.instance_id || `P${partIndex + 1}`);
+                    const maxChars = Math.max(6, Math.floor(partWidth / 8));
+                    const displayLabel = labelContent.length > maxChars ? labelContent.slice(0, maxChars - 1) + 'ÔÇª' : labelContent;
+                    
+                    let labelX = partX + partWidth / 2;
+                    let labelY = partY + partHeight / 2;
+                    
+                    if (partWidth < 50 && partHeight > partWidth * 2) {
+                        labelY = partY + partHeight * 0.7;
+                    }
+                    
+                    if (partHeight < 35 && partWidth > partHeight * 2) {
+                        labelX = partX + partWidth * 0.7;
+                    }
+                    
+                    ctx.fillText(displayLabel, labelX, labelY);
+                }
+            });
+
+            canvas.addEventListener('click', (e) => handleCanvasClick(e, canvas));
+            canvas.addEventListener('mousemove', (e) => handleCanvasHover(e, canvas));
+            canvas.style.cursor = 'pointer';
+        };
+        
+        canvas.drawCanvas(); // Initial draw
+        
+        const resizeObserver = new ResizeObserver(() => {
+            canvas.drawCanvas(); // Redraw on resize
+        });
+        resizeObserver.observe(card);
+    });
+}
+
+function renderReport() {
+    if (!g_reportData) {
+        return;
+    }
+    
+    // Validate report data structure
+    if (!g_reportData.summary) {
+        const container = document.getElementById('reportContainer');
+        if (container) {
+            container.innerHTML = '<div style="color: red; padding: 20px; text-align: center;"><h3>Invalid Report Data</h3><p>The report data is incomplete. Please try generating the cut list again.</p></div>';
+        }
+        return;
+    }
+    
+    // Populate Summary Cards
+    const currency = g_reportData.summary.currency || window.defaultCurrency || 'USD';
+    const currencySymbol = window.currencySymbols[currency] || currency;
+    const reportPrecision = window.currentPrecision ?? 1;
+    
+    // Total Cost Card
+    const totalCostElement = document.getElementById('summaryTotalCost');
+    if (totalCostElement) {
+        const totalCost = g_reportData.summary.total_project_cost || 0;
+        totalCostElement.textContent = `${currencySymbol}${formatNumber(totalCost, 2)}`;
+    }
+    
+    // Number of Materials Card
+    const materialCountElement = document.getElementById('summaryMaterialCount');
+    if (materialCountElement) {
+        const materialCount = g_reportData.unique_board_types ? g_reportData.unique_board_types.length : 0;
+        materialCountElement.textContent = materialCount;
+    }
+    
+    // Total Boards Card
+    const totalBoardsElement = document.getElementById('summaryTotalBoards');
+    if (totalBoardsElement) {
+        const totalBoards = g_reportData.summary.total_boards || 0;
+        totalBoardsElement.textContent = totalBoards;
+    }
+    
+    // Overall Efficiency Card
+    const overallEfficiencyElement = document.getElementById('summaryOverallEfficiency');
+    if (overallEfficiencyElement) {
+        const efficiency = g_reportData.summary.overall_efficiency || 0;
+        overallEfficiencyElement.textContent = `${formatNumber(efficiency, reportPrecision)}%`;
+    }
+    
+    // Total Parts Card
+    const totalPartsElement = document.getElementById('summaryTotalParts');
+    if (totalPartsElement) {
+        const totalParts = g_reportData.summary.total_parts_instances || 0;
+        totalPartsElement.textContent = totalParts;
+    }
+    
+    // Use globals from app.js
+    const reportUnits = window.currentUnits || 'mm';
+    const currentAreaUnitLabel = getAreaUnitLabel(); // Get label like 'm²'
+
+
+    const summaryTable = document.getElementById('summaryTable');
+    if (summaryTable) {
+        // Check if summary data exists
+        if (!g_reportData.summary || Object.keys(g_reportData.summary).length === 0) {
+            // Hide the entire Overall Summary section if no data
+            const summarySection = summaryTable.closest('.report-table-container');
+            const summaryTitle = document.querySelector('h2[data-translate="overall_summary"]');
+            if (summarySection) summarySection.style.display = 'none';
+            if (summaryTitle) summaryTitle.style.display = 'none';
+        } else {
+            let summaryHTML = `
+                <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+                <tbody>`;
+            
+            // Add project details if available (with HTML escaping)
+            if (g_reportData.summary.project_name && g_reportData.summary.project_name !== 'Untitled Project') {
+                summaryHTML += `<tr><td>Project Name</td><td><strong>${escapeHtml(g_reportData.summary.project_name)}</strong></td></tr>`;
+            }
+            if (g_reportData.summary.client_name) {
+                summaryHTML += `<tr><td>Client</td><td><strong>${escapeHtml(g_reportData.summary.client_name)}</strong></td></tr>`;
+            }
+            if (g_reportData.summary.prepared_by) {
+                summaryHTML += `<tr><td>Prepared by</td><td><strong>${escapeHtml(g_reportData.summary.prepared_by)}</strong></td></tr>`;
+            }
+            
+            summaryHTML += `
+                <tr><td>Total Parts Instances</td><td>${g_reportData.summary.total_parts_instances || 0}</td></tr>
+                <tr><td>Total Unique Part Types</td><td>${g_reportData.summary.total_unique_part_types || 0}</td></tr>
+                <tr><td>Total Boards</td><td>${g_reportData.summary.total_boards || 0}</td></tr>
+                <tr><td>Overall Efficiency</td><td>${formatNumber(g_reportData.summary.overall_efficiency || 0, reportPrecision)}%</td></tr>
+                <tr><td><strong>Total Project Weight</strong></td><td class="total-highlight"><strong>${formatNumber(g_reportData.summary.total_project_weight_kg || 0, 2)} kg</strong></td></tr>
+                <tr><td><strong>Total Project Cost</strong></td><td class="total-highlight"><strong>${currencySymbol}${formatNumber(g_reportData.summary.total_project_cost || 0, 2)}</strong></td></tr>
+                </tbody>`;
+            
+            summaryTable.innerHTML = summaryHTML;
+        }
+    }
+
+    const materialsUsedTable = document.getElementById('materialsUsedTable');
+    if (materialsUsedTable && g_reportData.unique_board_types) {
+        let html = `<thead><tr><th>Material</th><th>Price per Sheet</th></tr></thead><tbody>`;
+        g_reportData.unique_board_types.forEach(board_type => {
+            const boardCurrency = board_type.currency || currency;
+            const boardSymbol = window.currencySymbols[boardCurrency] || boardCurrency;
+            html += `<tr><td>${board_type.material}</td><td>${boardSymbol}${formatNumber(board_type.price_per_sheet || 0, 2)}</td></tr>`;
+        });
+        html += `</tbody>`;
+        materialsUsedTable.innerHTML = html;
+    } else if (materialsUsedTable) {
+        materialsUsedTable.innerHTML = `<thead><tr><th>Material</th><th>Price per Sheet</th></tr></thead><tbody><tr><td colspan="2">No materials data available.</td></tr></tbody>`;
+    }
+
+
+    const uniquePartTypesTable = document.getElementById('uniquePartTypesTable');
+    if (uniquePartTypesTable) {
+        let html = `<thead><tr><th>Name</th><th>W (${reportUnits})</th><th>H (${reportUnits})</th><th>Thick (${reportUnits})</th><th>Material</th><th>Grain</th><th>Edge Banding</th><th>Total Qty</th><th>Total Area (${currentAreaUnitLabel})</th><th>Weight (kg)</th></tr></thead><tbody>`;
+        if (g_reportData.unique_part_types && g_reportData.unique_part_types.length > 0) {
+            g_reportData.unique_part_types.forEach(part_type => {
+                const width = part_type.width / window.unitFactors[reportUnits];
+                const height = part_type.height / window.unitFactors[reportUnits];
+                const thickness = part_type.thickness / window.unitFactors[reportUnits];
+                
+                const edgeBandingDisplay = typeof part_type.edge_banding === 'object' && part_type.edge_banding.type ? part_type.edge_banding.type : (part_type.edge_banding || 'None');
+                html += `
+                    <tr>
+                        <td title="${escapeHtml(part_type.name)}">${escapeHtml(part_type.name)}</td>
+                        <td>${formatNumber(width, reportPrecision)}</td>
+                        <td>${formatNumber(height, reportPrecision)}</td>
+                        <td>${formatNumber(thickness, reportPrecision)}</td>
+                        <td title="${escapeHtml(part_type.material)}">${escapeHtml(part_type.material)}</td>
+                        <td>${escapeHtml(part_type.grain_direction || 'Any')}</td>
+                        <td>${escapeHtml(edgeBandingDisplay)}</td>
+                        <td class="total-highlight">${part_type.total_quantity}</td>
+                        <td>${getAreaDisplay(part_type.total_area)}</td>
+                        <td>${formatNumber(part_type.total_weight_kg || 0, 2)}</td>
+                    </tr>
+                `;
+            });
+        }
+        html += `</tbody>`;
+        uniquePartTypesTable.innerHTML = html;
+    }
+
+    // Sheet Inventory Summary Table
+    const sheetInventoryTable = document.getElementById('sheetInventoryTable');
+    if (sheetInventoryTable && g_reportData.unique_board_types) {
+        // Updated Dimensions header to explicitly include units
+        let html = `<thead><tr><th>Material</th><th>Dimensions (${reportUnits})</th><th>Count</th><th>Total Area (${currentAreaUnitLabel})</th><th>Price/Sheet</th><th>Total Cost</th></tr></thead><tbody>`;
+        g_reportData.unique_board_types.forEach(board_type => {
+            const boardCurrency = board_type.currency || currency;
+            const boardSymbol = window.currencySymbols[boardCurrency] || boardCurrency;
+            const width_mm = parseFloat(board_type.stock_width);
+            const height_mm = parseFloat(board_type.stock_height);
+
+            const width = width_mm / window.unitFactors[reportUnits];
+            const height = height_mm / window.unitFactors[reportUnits];
+            // Removed unit from dimensionsStr
+            const dimensionsStr = `${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)}`;
+            
+            html += `
+                <tr>
+                    <td title="${escapeHtml(board_type.material)}">${escapeHtml(board_type.material)}</td>
+                    <td>${dimensionsStr}</td>
+                    <td class="total-highlight">${board_type.count}</td>
+                    <td>${getAreaDisplay(board_type.total_area)}</td>
+                    <td>${boardSymbol}${formatNumber(board_type.price_per_sheet || 0, 2)}</td>
+                    <td class="total-highlight">${boardSymbol}${formatNumber(board_type.total_cost || 0, 2)}</td>
+                </tr>
+            `;
+        });
+        html += `</tbody>`;
+        sheetInventoryTable.innerHTML = html;
+    }
+
+    const partsTable = document.getElementById('partsTable');
+    if (partsTable) {
+        
+        // Calculate piece costs and statistics (logic from original)
+        const parts_list = g_reportData.parts_placed || g_reportData.parts || [];
+        const boardTypeMap = {};
+        g_reportData.unique_board_types.forEach(bt => {
+            boardTypeMap[bt.material] = {
+                price: bt.price_per_sheet || 0,
+                currency: bt.currency || currency,
+                area: (bt.stock_width || 2440) * (bt.stock_height || 1220) // Use actual stock_width/height from board_type
+            };
+        });
+        
+        const partsWithCosts = parts_list.map(part => {
+            const boardType = boardTypeMap[part.material] || { price: 0, currency: currency, area: 2976800 }; // Fallback to default area
+            const partArea = (part.width || 0) * (part.height || 0); // in mm²
+            const costPerMm2 = boardType.area > 0 ? boardType.price / boardType.area : 0;
+            const partCost = partArea * costPerMm2;
+            return { ...part, cost: partCost, currency: boardType.currency };
+        });
+        
+        const costs = partsWithCosts.map(p => p.cost).filter(c => c > 0);
+        const totalPartsCost = costs.reduce((a, b) => a + b, 0);
+        const avgCost = costs.length > 0 ? totalPartsCost / costs.length : 0;
+        
+        let partsHtml = `<thead><tr><th>ID</th><th>Name</th><th>Dimensions (${reportUnits})</th><th>Material</th><th>Grain</th><th>Edge<br>Banding</th><th>Board#</th><th>Cost</th><th>Level</th></tr></thead><tbody>`;
+        
+        partsWithCosts.forEach(part => {
+            // CRITICAL FIX: Use instance_id (P1, P2, P3) for display, not persistent_id
+            const partId = part.instance_id || part.part_number || `P${partsWithCosts.indexOf(part) + 1}`;
+            const width = (part.width || 0) / window.unitFactors[reportUnits];
+            const height = (part.height || 0) / window.unitFactors[reportUnits];
+            // Removed unit from dimensionsStr
+            const dimensionsStr = `${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)}`;
+            const partSymbol = window.currencySymbols[part.currency] || part.currency;
+            
+            let costLevel = 'avg', costColor = '#ffa500', costText = 'Average';
+            if (part.cost > avgCost * 1.2) { costLevel = 'high'; costColor = '#ff4444'; costText = 'High'; }
+            else if (part.cost < avgCost * 0.8 && part.cost > 0) { costLevel = 'low'; costColor = '#44aa44'; costText = 'Low'; }
+            
+            const edgeBandingDisplay = typeof part.edge_banding === 'object' && part.edge_banding.type ? part.edge_banding.type : (part.edge_banding || 'None');
+            partsHtml += `
+                <tr data-part-id="${escapeHtml(partId)}" data-board-number="${part.board_number}" data-cost-level="${costLevel}">
+                    <td><button class="part-id-btn" onclick="scrollToPieceDiagram('${escapeHtml(partId)}', ${part.board_number})">${escapeHtml(partId)}</button></td>
+                    <td title="${escapeHtml(part.name)}">${escapeHtml(part.name)}</td>
+                    <td>${dimensionsStr}</td>
+                    <td title="${escapeHtml(part.material)}">${escapeHtml(part.material)}</td>
+                    <td>${escapeHtml(part.grain_direction || 'Any')}</td>
+                    <td>${escapeHtml(edgeBandingDisplay)}</td>
+                    <td>${part.board_number}</td>
+                    <td>${partSymbol}${formatNumber(part.cost, 2)}</td>
+                    <td><span class="cost-indicator" style="background: ${costColor}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">${costText}</span></td>
+                </tr>
+            `;
+        });
+        
+        partsHtml += `
+                <tr style="border-top: 2px solid #22863a; background: #f6ffed;">
+                    <td colspan="7" style="font-weight: bold;">Total Parts Cost:</td>
+                    <td style="font-weight: bold; color: #22863a;">${currencySymbol}${formatNumber(totalPartsCost, 2)}</td>
+                    <td></td>
+                </tr>
+            </tbody>`;
+        
+        partsTable.innerHTML = partsHtml;
+        // attachPartTableClickHandlers(); // This function is empty, no need to call
+    } else {
+        console.error('partsTable element not found');
+    }
+    
+    // Render new sections
+    if (g_reportData.boards) {
+        renderBoardsSummary(g_reportData);
+    }
+    
+    if (g_reportData.cut_sequences) {
+        renderCutSequences(g_reportData);
+    }
+
+    if (g_reportData.usable_offcuts) {
+        renderOffcutsTable(g_reportData);
+    }
+    
+    // Initialize card visualizations after report is rendered
+    if (typeof initializeCardVisualizations === 'function') {
+        initializeCardVisualizations();
+    }
+    
+    console.log('Finished rendering report');
+}
+
+function renderBoardsSummary(reportData) {
+    console.log('🔧 renderBoardsSummary called with data:', reportData);
+    console.log('🔧 Boards count:', reportData.boards?.length || 0);
+    
+    const container = document.getElementById('boardsSummaryContainer');
+    if (!container) {
+        console.error('❌ Boards summary container not found');
+        return;
+    }
+    
+    console.log('✅ Container found:', container);
+    
+    if (!reportData.boards || reportData.boards.length === 0) {
+        console.log('⚠️ No boards data available');
+        container.innerHTML = '<div class="report-table-container"><div class="report-table-header">No Boards Summary</div><div style="padding: 20px; text-align: center; color: #64748b;">No boards data available</div></div>';
+        return;
+    }
+    
+    // Get parts data for mapping
+    const parts_list = reportData.parts_placed || reportData.parts || [];
+    
+    // Use globals from app.js
+    const reportUnits = window.currentUnits || 'mm';
+    const reportPrecision = window.currentPrecision ?? 1;
+    
+    console.log('🎨 Building HTML for', reportData.boards.length, 'boards');
+    
+    // Build HTML from scratch with new design
+    let htmlOutput = '';
+    
+    reportData.boards.forEach(board => {
+        // Get parts on this board
+        const partsOnBoard = parts_list.filter(part => part.board_number === board.board_number);
+        
+        // Convert dimensions from mm to current units
+        const width = board.stock_width / window.unitFactors[reportUnits];
+        const height = board.stock_height / window.unitFactors[reportUnits];
+        const dimensionsStr = `${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)} ${reportUnits}`;
+        
+        // Create board summary section
+        htmlOutput += `
+            <div class="report-table-container" style="margin-bottom: 24px;">
+                <div class="report-table-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Board ${board.board_number}: ${escapeHtml(board.material)}</span>
+                </div>
+                <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 13px;">
+                        <div><strong style="color: #64748b;">Size:</strong> <span style="color: #0f172a;">${dimensionsStr}</span></div>
+                        <div><strong style="color: #64748b;">Parts:</strong> <span style="color: #0f172a;">${board.parts_count}</span></div>
+                        <div><strong style="color: #64748b;">Efficiency:</strong> <span style="color: #22863a; font-weight: 500;">${formatNumber(board.efficiency_percentage, reportPrecision)}%</span></div>
+                        <div><strong style="color: #64748b;">Waste:</strong> <span style="color: #d73a49; font-weight: 500;">${formatNumber(board.waste_percentage, reportPrecision)}%</span></div>
+                    </div>
+                </div>`;
+        
+        // Add parts table if there are parts on this board
+        if (partsOnBoard.length > 0) {
+            htmlOutput += `
+                <div style="padding: 16px 20px;">
+                    <div style="font-weight: 600; color: #0f172a; margin-bottom: 12px; font-size: 13px;">Parts on this board:</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Part ID</th>
+                                <th>Name</th>
+                                <th>Dimensions (${reportUnits})</th>
+                                <th>Material</th>
+                                <th>Grain</th>
+                                <th>Edge<br>Banding</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+            
+            partsOnBoard.forEach((part, index) => {
+                // CRITICAL FIX: Use instance_id (P1, P2, P3) for display, not persistent_id
+                const partId = part.instance_id || part.part_number || `P${index + 1}`;
+                const partWidth = (part.width || 0) / window.unitFactors[reportUnits];
+                const partHeight = (part.height || 0) / window.unitFactors[reportUnits];
+                const dimensionsStr = `${formatNumber(partWidth, reportPrecision)} × ${formatNumber(partHeight, reportPrecision)}`;
+                const edgeBandingDisplay = typeof part.edge_banding === 'object' && part.edge_banding.type ? part.edge_banding.type : (part.edge_banding || 'None');
+                
+                htmlOutput += `
+                            <tr>
+                                <td>${escapeHtml(partId)}</td>
+                                <td title="${escapeHtml(part.name)}">${escapeHtml(part.name)}</td>
+                                <td>${dimensionsStr}</td>
+                                <td title="${escapeHtml(part.material)}">${escapeHtml(part.material)}</td>
+                                <td>${escapeHtml(part.grain_direction || 'Any')}</td>
+                                <td>${escapeHtml(edgeBandingDisplay)}</td>
+                            </tr>`;
+            });
+            
+            htmlOutput += `
+                        </tbody>
+                    </table>
+                </div>`;
+        }
+        
+        htmlOutput += `
+            </div>`;
+    });
+    
+    // Set the HTML
+    container.innerHTML = htmlOutput;
+    
+    console.log('✅ Boards summary rendered successfully');
+    console.log('📊 Total boards rendered:', reportData.boards.length);
+}
+
+function renderCutSequences(reportData) {
+    console.log('🔧 renderCutSequences called with data:', reportData);
+    console.log('🔧 Cut sequences count:', reportData.cut_sequences?.length || 0);
+    
+    // COMPLETELY NEW IMPLEMENTATION - NO OLD CODE
+    const container = document.getElementById('cutSequencesContainer');
+    if (!container) {
+        console.error('❌ Cut sequences container not found');
+        return;
+    }
+    
+    console.log('✅ Container found:', container);
+    
+    if (!reportData.cut_sequences || reportData.cut_sequences.length === 0) {
+        console.log('⚠️ No cut sequences data available');
+        container.innerHTML = '<div class="report-table-container"><div class="report-table-header">No Cut Sequences</div><div style="padding: 20px; text-align: center; color: #64748b;">No cut sequences available</div></div>';
+        return;
+    }
+    
+    console.log('🎨 Building HTML with NEW DESIGN for', reportData.cut_sequences.length, 'boards');
+    
+    // Build HTML from scratch with new design
+    let htmlOutput = '';
+    
+    reportData.cut_sequences.forEach(board => {
+        const tableId = `cutSequenceTable_${board.board_number}`;
+        
+        // Handle both 'steps' (new) and 'cut_sequence' (old) for backwards compatibility
+        const steps = board.steps || board.cut_sequence || [];
+        const stockSize = board.stock_size || board.stock_dimensions || 'N/A';
+        
+        console.log(`📋 Board ${board.board_number}: ${steps.length} steps`);
+        
+        // Create table with report design classes
+        htmlOutput += `
+            <div class="report-table-container" style="margin-bottom: 24px;">
+                <div class="report-table-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Sheet ${board.board_number}: ${escapeHtml(board.material)} - ${stockSize}</span>
+                </div>
+                <table id="${tableId}">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Operation</th>
+                            <th>Description</th>
+                            <th>Measurement</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+        
+        // Add rows
+        if (steps.length > 0) {
+            steps.forEach((step, index) => {
+                const operation = step.operation || step.type || 'N/A';
+                
+                htmlOutput += `
+                        <tr>
+                            <td>
+                                <span style="background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 500; display: inline-block;">${step.step}</span>
+                            </td>
+                            <td style="font-weight: 500;">${escapeHtml(operation)}</td>
+                            <td>${escapeHtml(step.description)}</td>
+                            <td>${escapeHtml(step.measurement)}</td>
+                        </tr>`;
+            });
+        } else {
+            htmlOutput += `
+                        <tr>
+                            <td colspan="4" style="padding: 20px; text-align: center; color: #64748b;">No cutting steps available</td>
+                        </tr>`;
+        }
+        
+        htmlOutput += `
+                    </tbody>
+                </table>
+            </div>`;
+    });
+    
+    // Set the HTML
+    container.innerHTML = htmlOutput;
+    
+    console.log('✅ Cut sequences rendered successfully with NEW DESIGN');
+    console.log('📊 Total boards rendered:', reportData.cut_sequences.length);
+}
+
+function renderOffcutsTable(reportData) {
+    const table = document.getElementById('offcutsTable');
+    if (!table || !reportData.usable_offcuts) {
+        return;
+    }
+    
+    const currentAreaUnitLabel = getAreaUnitLabel();
+    const reportUnits = window.reportUnits || window.currentUnits || 'mm';
+    
+    if (reportData.usable_offcuts.length === 0) {
+        table.innerHTML = `<thead><tr><th>Sheet #</th><th>Material</th><th>Width (${reportUnits})</th><th>Height (${reportUnits})</th><th>Area (${currentAreaUnitLabel})</th></tr></thead><tbody><tr><td colspan="5">No significant offcuts</td></tr></tbody>`;
+        return;
+    }
+    
+    let html = `<thead><tr><th>Sheet #</th><th>Material</th><th>Width (${reportUnits})</th><th>Height (${reportUnits})</th><th>Area (${currentAreaUnitLabel})</th></tr></thead><tbody>`;
+    
+    reportData.usable_offcuts.forEach(offcut => {
+        // Convert area from m² to current area units
+        const areaMM2 = offcut.area_m2 * 1000000; // Convert m² to mm²
+        const convertedArea = getAreaDisplay(areaMM2);
+        
+        // ✅ NEW: Convert dimensions from mm to current units
+        let width, height;
+        if (offcut.estimated_width_mm !== undefined && offcut.estimated_height_mm !== undefined) {
+            // Use separate fields if available
+            width = formatDimension(offcut.estimated_width_mm);
+            height = formatDimension(offcut.estimated_height_mm);
+        } else {
+            // Fallback: Parse the old format "1952 x 922mm"
+            const match = offcut.estimated_dimensions.match(/(\d+)\s*x\s*(\d+)/);
+            if (match) {
+                width = formatDimension(parseFloat(match[1]));
+                height = formatDimension(parseFloat(match[2]));
+            } else {
+                width = offcut.estimated_dimensions;
+                height = '';
+            }
+        }
+        
+        html += `<tr>
+            <td>${offcut.board_number}</td>
+            <td>${escapeHtml(offcut.material)}</td>
+            <td>${width}</td>
+            <td>${height}</td>
+            <td>${convertedArea}</td>
+        </tr>`;
+    });
+    
+    html += '</tbody>';
+    table.innerHTML = html;
+}
+
+// Draw crossed X pattern for offcuts area
+function drawCrossedOffcut(ctx, x, y, width, height) {
+    // Draw light green background
+    ctx.fillStyle = 'rgba(220, 252, 231, 0.2)';
+    ctx.fillRect(x, y, width, height);
+    
+    // Draw dashed border
+    ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(x, y, width, height);
+    ctx.setLineDash([]);
+    
+    // Draw X pattern (two diagonal lines)
+    ctx.strokeStyle = 'rgba(34, 197, 94, 0.3)';
+    ctx.lineWidth = 1.5;
+    
+    // First diagonal (top-left to bottom-right)
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + width, y + height);
+    ctx.stroke();
+    
+    // Second diagonal (top-right to bottom-left)
+    ctx.beginPath();
+    ctx.moveTo(x + width, y);
+    ctx.lineTo(x, y + height);
+    ctx.stroke();
+}
+
+// Professional monochrome color palette for materials
+// Maps material names to subtle, professional colors
+const MATERIAL_COLOR_PALETTE = {
+    // Greys (neutral/default)
+    'grey': '#D3D3D3',
+    'gray': '#D3D3D3',
+    'default': '#D3D3D3',
+    
+    // Light greys (plywood, standard materials)
+    'plywood': '#E8E8E8',
+    'mdf': '#E8E8E8',
+    'particle board': '#E8E8E8',
+    'chipboard': '#E8E8E8',
+    
+    // Medium greys (hardwoods, oak, maple)
+    'oak': '#C0C0C0',
+    'maple': '#C0C0C0',
+    'birch': '#C0C0C0',
+    'ash': '#C0C0C0',
+    'hardwood': '#C0C0C0',
+    
+    // Darker greys (walnut, dark woods)
+    'walnut': '#A9A9A9',
+    'cherry': '#A9A9A9',
+    'mahogany': '#A9A9A9',
+    'dark wood': '#A9A9A9',
+    'ebony': '#808080',
+    
+    // Light neutral (melamine, laminates)
+    'melamine': '#F0F0F0',
+    'laminate': '#F0F0F0',
+    'veneer': '#E0E0E0',
+    
+    // Slightly darker (composite, engineered)
+    'composite': '#D9D9D9',
+    'engineered': '#D9D9D9',
+    'mdf': '#D9D9D9',
+    
+    // Very light (white, light finishes)
+    'white': '#F5F5F5',
+    'light': '#F5F5F5',
+    'cream': '#F5F5F5',
+    'ivory': '#F5F5F5',
+    
+    // Very dark (black, dark finishes)
+    'black': '#4D4D4D',
+    'dark': '#4D4D4D',
+    'charcoal': '#4D4D4D',
+};
+
+function getMaterialColor(material) {
+    if (!material) return '#D3D3D3';
+    
+    const materialStr = String(material).toLowerCase().trim();
+    
+    // Direct match
+    if (MATERIAL_COLOR_PALETTE[materialStr]) {
+        return MATERIAL_COLOR_PALETTE[materialStr];
+    }
+    
+    // Partial match (check if material name contains any key)
+    for (const [key, color] of Object.entries(MATERIAL_COLOR_PALETTE)) {
+        if (materialStr.includes(key) || key.includes(materialStr)) {
+            return color;
+        }
+    }
+    
+    // Handle RGB color strings (e.g., "171,171,171")
+    if (/^\d+,\d+,\d+$/.test(materialStr)) {
+        const parts = materialStr.split(',').map(p => parseInt(p.trim()));
+        if (parts.length === 3) {
+            const [r, g, b] = parts;
+            // Convert RGB to hex
+            const hex = '#' + [r, g, b].map(x => {
+                const hex = x.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('').toUpperCase();
+            
+            // Map to monochrome equivalent based on brightness
+            const brightness = (r + g + b) / 3;
+            if (brightness > 200) return '#F0F0F0';      // Very light
+            if (brightness > 170) return '#E0E0E0';      // Light
+            if (brightness > 140) return '#D3D3D3';      // Medium-light
+            if (brightness > 110) return '#C0C0C0';      // Medium
+            if (brightness > 80) return '#A9A9A9';       // Medium-dark
+            if (brightness > 50) return '#808080';       // Dark
+            return '#4D4D4D';                             // Very dark
+        }
+    }
+    
+    // Default fallback
+    return '#D3D3D3';
+}
+
+function hslToRgb(hslString) {
+    // Handle hex color strings (like #D3D3D3)
+    if (hslString.startsWith('#')) {
+        return parseInt(hslString.substring(1), 16);
+    }
+    
+    const match = hslString.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+    if (!match) return 0xD3D3D3; // Return grey as default
+    
+    let h = parseInt(match[1]) / 360;
+    let s = parseInt(match[2]) / 100;
+    let l = parseInt(match[3]) / 100;
+    
+    let r, g, b;
+    
+    if (s === 0) {
+        r = g = b = l;
+    } else {
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        };
+        
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+    
+    return (Math.round(r * 255) << 16) + (Math.round(g * 255) << 8) + Math.round(b * 255);
+}
+
+function drawPartWithGrain(ctx, x, y, width, height, part) {
+    const baseColor = getMaterialColor(part.material);
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(x, y, width, height);
+    
+    if (part.grain_direction && part.grain_direction !== 'Any') {
+        ctx.save();
+        ctx.globalAlpha = 0.25;
+        ctx.strokeStyle = '#6b4423';
+        ctx.lineWidth = 0.8;
+        
+        const spacing = 8;
+        if (part.grain_direction === 'L' || part.grain_direction === 'length') {
+            // Vertical grain lines
+            for (let i = x; i < x + width; i += spacing) {
+                ctx.beginPath();
+                ctx.moveTo(i, y);
+                ctx.lineTo(i, y + height);
+                ctx.stroke();
+            }
+        } else if (part.grain_direction === 'W' || part.grain_direction === 'width') {
+            // Horizontal grain lines
+            for (let i = y; i < y + height; i += spacing) {
+                ctx.beginPath();
+                ctx.moveTo(x, i);
+                ctx.lineTo(x + width, i);
+                ctx.lineTo(x + width, i); // Ensure proper line path
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    }
+}
+
+function drawGrainArrow(ctx, x, y, width, height, grainDirection) {
+    if (!grainDirection || grainDirection === 'Any') return;
+    
+    ctx.save();
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.fillStyle = '#1a1a1a';
+    ctx.lineWidth = 2.5;
+    
+    const centerX = x + width / 2;
+    const arrowSize = Math.min(width, height) * 0.15;
+    
+    if (grainDirection === 'L' || grainDirection === 'length') {
+        // Vertical arrow at top
+        const arrowY = y + 20;
+        const arrowEndY = arrowY + Math.max(arrowSize, 20);
+        
+        // Arrow line
+        ctx.beginPath();
+        ctx.moveTo(centerX, arrowY);
+        ctx.lineTo(centerX, arrowEndY);
+        ctx.stroke();
+        
+        // Arrow head (triangle)
+        ctx.beginPath();
+        ctx.moveTo(centerX, arrowY);
+        ctx.lineTo(centerX - 4, arrowY + 8);
+        ctx.lineTo(centerX + 4, arrowY + 8);
+        ctx.closePath();
+        ctx.fill();
+    } else if (grainDirection === 'W' || grainDirection === 'width') {
+        // Horizontal arrow at bottom
+        const arrowY = y + height - 20;
+        const arrowStartX = centerX - Math.max(arrowSize/2, 15);
+        const arrowEndX = centerX + Math.max(arrowSize/2, 15);
+        
+        // Arrow line
+        ctx.beginPath();
+        ctx.moveTo(arrowStartX, arrowY);
+        ctx.lineTo(arrowEndX, arrowY);
+        ctx.stroke();
+        
+        // Arrow head (triangle)
+        ctx.beginPath();
+        ctx.moveTo(arrowEndX, arrowY);
+        ctx.lineTo(arrowEndX - 8, arrowY - 4);
+        ctx.lineTo(arrowEndX - 8, arrowY + 4);
+        ctx.closePath();
+        ctx.fill();
+    }
+    
+    ctx.restore();
+}
+
+// Function to redraw a specific canvas diagram
+function redrawCanvasDiagram(canvas, board) {
+    if (canvas.drawCanvas) {
+        canvas.drawCanvas(); // Call the drawing function bound to the canvas
+    }
+}
+
+function getMaterialTexture(material) {
+    if (material.toLowerCase().includes('wood') || material.toLowerCase().includes('chestnut')) {
+        return 'repeating-linear-gradient(45deg, #8B4513, #8B4513 2px, #A0522D 2px, #A0522D 4px)';
+    } else if (material.includes('240,240,240')) {
+        return 'repeating-linear-gradient(90deg, #f0f0f0, #f0f0f0 3px, #e0e0e0 3px, #e0e0e0 6px)';
+    }
+    return getMaterialColor(material);
+}
+
+function scrollToDiagram(material) {
+    // Sanitize material name for ID matching
+    if (!material) {
+        console.warn('scrollToDiagram called with null/undefined material');
+        return;
+    }
+    const sanitizedMaterial = String(material).replace(/[^a-zA-Z0-9]/g, '_');
+    const diagrams = document.querySelectorAll(`[id^="diagram-${sanitizedMaterial}-"]`);
+    if (diagrams.length > 0) {
+        diagrams[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function handleCanvasClick(e, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    if (canvas.partData) {
+        for (let partData of canvas.partData) {
+            if (x >= partData.x && x <= partData.x + partData.width &&
+                y >= partData.y && y <= partData.y + partData.height) {
+                console.log(`🖱️ Clicked: ${partData.part.name}`);
+                highlightPartInAssemblyViewer(partData.part);
+                break;
+            }
+        }
+    }
+}
+
+function handleCanvasHover(e, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    let hovering = false;
+    if (canvas.partData) {
+        for (let partData of canvas.partData) {
+            if (x >= partData.x && x <= partData.x + partData.width &&
+                y >= partData.y && y <= partData.y + partData.height) {
+                hovering = true;
+                break;
+            }
+        }
+    }
+    canvas.style.cursor = hovering ? 'pointer' : 'default';
+}
+
+// Highlight part in the Report Assembly 3D Viewer
+function highlightPartInAssemblyViewer(part) {
+    console.log(`🎯 highlightPartInAssemblyViewer: ${part.name} (${part.part_unique_id})`);
+    
+    // CRITICAL FIX: Use centralized clear function
+    console.log('🧹 Clearing ALL highlights before 3D highlight');
+    
+    if (typeof window.clearAllHighlights === 'function') {
+        window.clearAllHighlights();
+    } else {
+        // Fallback to manual clearing
+        if (typeof window.clearAllSVGHighlights === 'function') {
+            window.clearAllSVGHighlights();
+        }
+        clearPieceHighlight();
+    }
+    
+    // Ensure the Assembly 3D Viewer is visible and initialized
+    const canvas = document.getElementById('reportAssembly3DCanvas');
+    const offScreen = document.getElementById('reportViewer3DOffScreen');
+    const controls = document.getElementById('reportViewControls');
+    const powerBtn = document.getElementById('reportViewer3DPowerBtn');
+    
+    if (!canvas) {
+        console.error('❌ Assembly 3D Viewer canvas not found');
+        return;
+    }
+    
+    // Turn on the viewer if it's off
+    if (canvas.style.display === 'none') {
+        canvas.style.display = 'block';
+        if (offScreen) offScreen.style.display = 'none';
+        if (controls) controls.style.display = 'flex';
+        if (powerBtn) powerBtn.style.background = 'rgba(76, 175, 80, 0.3)';
+        
+        // Initialize viewer if not already initialized
+        if (!window.reportAssemblyScene && window.reportAssemblyData) {
+            initReportAssemblyViewer();
+        }
+    }
+    
+    // Wait a moment for viewer to initialize if needed
+    setTimeout(() => {
+        selectPartInReportViewer(part);
+    }, 100);
+}
+
+// Select and highlight a part in the Report Assembly 3D Viewer
+function selectPartInReportViewer(part) {
+    if (!window.reportAssemblyGroups || window.reportAssemblyGroups.length === 0) {
+        console.warn('⚠️ No assembly groups available for highlighting');
+        return;
+    }
+    
+    // Get the unique ID for this part
+    const partUniqueId = part.part_unique_id || part.instance_id || part.part_number;
+    
+    // Reset all parts to default appearance
+    window.reportAssemblyGroups.forEach(group => {
+        group.traverse((child) => {
+            if (child.isMesh && child.material) {
+                // Reset to original material properties
+                const originalMat = group.userData.originalMaterial || {};
+                child.material.emissive.setHex(0x000000);
+                child.material.emissiveIntensity = 0;
+                child.material.color.setHex(originalMat.color || 0xcccccc);
+                child.material.opacity = originalMat.opacity || 0.85;
+                child.material.needsUpdate = true;
+            }
+            if (child.isLineSegments) {
+                // Reset edge color
+                child.material.color.setHex(group.userData.originalEdgeColor || 0x666666);
+                child.material.needsUpdate = true;
+            }
+        });
+    });
+    
+    // Find and highlight ONLY the exact matching part by unique ID
+    let foundCount = 0;
+    const matchedGroups = [];
+    
+    window.reportAssemblyGroups.forEach((group, index) => {
+        // CRITICAL FIX: Use unique ID as PRIMARY matching criterion
+        const groupUniqueId = group.userData.uniqueId || group.userData.partUniqueId;
+        
+        // EXACT ID MATCH - this is the most reliable way
+        if (groupUniqueId && partUniqueId && groupUniqueId === partUniqueId) {
+            console.log(`✅ Group ${index}: EXACT ID MATCH - ${groupUniqueId}`);
+            foundCount++;
+            matchedGroups.push({ group, index, reason: 'exact_id_match' });
+            
+            // Apply highlighting
+            group.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    // Store original color if not already stored
+                    if (!group.userData.originalMaterial.color) {
+                        group.userData.originalMaterial.color = child.material.color.getHex();
+                        group.userData.originalMaterial.opacity = child.material.opacity;
+                    }
+                    
+                    // Apply emissive glow (green highlight)
+                    child.material.emissive.setHex(0x00ff00);
+                    child.material.emissiveIntensity = 0.5;
+                    
+                    // Brighten the color
+                    const currentColor = child.material.color.getHex();
+                    const r = Math.min(255, ((currentColor >> 16) & 0xff) + 50);
+                    const g = Math.min(255, ((currentColor >> 8) & 0xff) + 50);
+                    const b = Math.min(255, (currentColor & 0xff) + 50);
+                    child.material.color.setRGB(r / 255, g / 255, b / 255);
+                    
+                    // Increase opacity slightly
+                    child.material.opacity = Math.min(1.0, child.material.opacity + 0.15);
+                    child.material.needsUpdate = true;
+                }
+                if (child.isLineSegments) {
+                    // Highlight edges in green
+                    child.material.color.setHex(0x00ff00);
+                    child.material.needsUpdate = true;
+                }
+            });
+            return; // Stop after first match (unique ID ensures only one match)
+        }
+    });
+    
+    if (foundCount > 0) {
+        console.log(`✅ Found exact match using unique ID`);
+        
+        // Focus camera on the matched part
+        if (window.reportCamera && window.reportControls && matchedGroups.length > 0) {
+            const firstMatch = matchedGroups[0].group;
+            const box = new THREE.Box3().setFromObject(firstMatch);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            
+            // Smoothly move camera to focus on this part
+            const distance = maxDim * 3;
+            const targetPos = new THREE.Vector3(
+                center.x + distance * 0.7,
+                center.y + distance * 0.5,
+                center.z + distance * 0.7
+            );
+            
+            console.log('📷 Focusing camera on matched part');
+            animateCameraToTarget(targetPos, center);
+        }
+    } else {
+        // Silently skip - not all parts have matches
+    }
+}
+
+// Animate camera movement to target position
+function animateCameraToTarget(targetPosition, targetLookAt) {
+    if (!window.reportCamera || !window.reportControls) return;
+    
+    const startPos = window.reportCamera.position.clone();
+    const startTarget = window.reportControls.target.clone();
+    const duration = 1000; // 1 second
+    const startTime = Date.now();
+    
+    function animate() {
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        
+        // Ease-in-out function
+        const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        
+        // Interpolate position
+        window.reportCamera.position.lerpVectors(startPos, targetPosition, eased);
+        window.reportControls.target.lerpVectors(startTarget, targetLookAt, eased);
+        window.reportControls.update();
+        
+        if (t < 1) {
+            requestAnimationFrame(animate);
+        }
+    }
+    
+    animate();
+}
+
+// Handle clicks on 3D viewer to highlight corresponding diagram parts
+function handle3DViewerClick(event, canvas) {
+    if (!window.reportCamera || !window.reportAssemblyGroups) return;
+    
+    // Calculate mouse position in normalized device coordinates (-1 to +1)
+    const rect = canvas.getBoundingClientRect();
+    const mouse = new THREE.Vector2();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    // Create raycaster
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, window.reportCamera);
+    
+    // Find intersected objects
+    const intersects = raycaster.intersectObjects(window.reportAssemblyScene.children, true);
+    
+    if (intersects.length > 0) {
+        // Find the first mesh intersection
+        for (let intersect of intersects) {
+            if (intersect.object.isMesh) {
+                // CRITICAL FIX: Drill down to the DEEPEST parent group with userData
+                // This matches what the backend does when extracting component geometry
+                let group = intersect.object;
+                let deepestGroup = null;
+                
+                // Walk up the parent chain and find the deepest group with partName
+                while (group) {
+                    if (group.userData && group.userData.partName) {
+                        deepestGroup = group;
+                        // Don't break - keep going up to find if there's a deeper parent
+                    }
+                    group = group.parent;
+                }
+                
+                // Now walk back down from the deepest group to find the actual deepest child
+                if (deepestGroup) {
+                    // Recursively drill down to find the deepest single child with userData
+                    let currentGroup = deepestGroup;
+                    let drillDepth = 0;
+                    
+                    while (true) {
+                        // Find children that are groups with userData
+                        const childGroups = currentGroup.children.filter(child => 
+                            child.type === 'Group' && child.userData && child.userData.partName
+                        );
+                        
+                        // If exactly one child group, drill down
+                        if (childGroups.length === 1) {
+                            currentGroup = childGroups[0];
+                            drillDepth++;
+                        } else {
+                            // Either no children or multiple - stop drilling
+                            break;
+                        }
+                    }
+                    
+                    if (drillDepth > 0) {
+                        console.log(`🔍 Drilled down ${drillDepth} level(s) to deepest part:`, currentGroup.userData.partName);
+                    }
+                    
+                    console.log('🖱️ 3D Viewer clicked:', currentGroup.userData.partName);
+                    
+                    // IMMEDIATE VISUAL FEEDBACK: Flash white for 150ms
+                    currentGroup.traverse((child) => {
+                        if (child.isMesh && child.material) {
+                            // Store original if not stored
+                            if (!currentGroup.userData.originalMaterial) {
+                                currentGroup.userData.originalMaterial = {
+                                    color: child.material.color.getHex(),
+                                    emissive: child.material.emissive.getHex(),
+                                    opacity: child.material.opacity
+                                };
+                            }
+                            // White flash
+                            child.material.emissive.setHex(0xFFFFFF);
+                            child.material.emissiveIntensity = 1.0;
+                            child.material.needsUpdate = true;
+                        }
+                    });
+                    
+                    // After 150ms, restore and highlight diagram
+                    setTimeout(() => {
+                        currentGroup.traverse((child) => {
+                            if (child.isMesh && child.material) {
+                                child.material.emissive.setHex(0x000000);
+                                child.material.emissiveIntensity = 0;
+                                child.material.needsUpdate = true;
+                            }
+                        });
+                        
+                        // Highlight the diagram
+                        highlightDiagramFromViewer(currentGroup.userData);
+                    }, 150);
+                    
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// Apply visual highlight to clicked 3D component
+function highlight3DViewerComponent(clickedGroup) {
+    // Reset all parts to default appearance first
+    window.reportAssemblyGroups.forEach(group => {
+        group.traverse((child) => {
+            if (child.isMesh && child.material) {
+                const originalMat = group.userData.originalMaterial || {};
+                child.material.emissive.setHex(0x000000);
+                child.material.emissiveIntensity = 0;
+                child.material.color.setHex(originalMat.color || 0xcccccc);
+                child.material.opacity = originalMat.opacity || 0.85;
+                child.material.needsUpdate = true;
+            }
+            if (child.isLineSegments) {
+                child.material.color.setHex(group.userData.originalEdgeColor || 0x666666);
+                child.material.needsUpdate = true;
+            }
+        });
+    });
+    
+    // Apply highlight to clicked component
+    clickedGroup.traverse((child) => {
+        if (child.isMesh && child.material) {
+            // Store original color if not already stored
+            if (!clickedGroup.userData.originalMaterial.color) {
+                clickedGroup.userData.originalMaterial.color = child.material.color.getHex();
+                clickedGroup.userData.originalMaterial.opacity = child.material.opacity;
+            }
+            
+            // Apply bright cyan/blue emissive glow for click feedback
+            child.material.emissive.setHex(0x00ffff);
+            child.material.emissiveIntensity = 0.6;
+            
+            // Brighten the color
+            const currentColor = child.material.color.getHex();
+            const r = Math.min(255, ((currentColor >> 16) & 0xff) + 60);
+            const g = Math.min(255, ((currentColor >> 8) & 0xff) + 60);
+            const b = Math.min(255, (currentColor & 0xff) + 60);
+            child.material.color.setRGB(r / 255, g / 255, b / 255);
+            
+            // Increase opacity
+            child.material.opacity = Math.min(1.0, child.material.opacity + 0.2);
+            child.material.needsUpdate = true;
+        }
+        if (child.isLineSegments) {
+            // Store original edge color
+            if (!clickedGroup.userData.originalEdgeColor) {
+                clickedGroup.userData.originalEdgeColor = child.material.color.getHex();
+            }
+            // Highlight edges in bright cyan
+            child.material.color.setHex(0x00ffff);
+            child.material.needsUpdate = true;
+        }
+    });
+    
+    console.log('✨ Applied visual highlight to:', clickedGroup.userData.partName);
+}
+
+// Highlight diagram part when 3D viewer part is clicked (reverse flow)
+function highlightDiagramFromViewer(partUserData) {
+    // CRITICAL FIX: Use unique ID as PRIMARY matching criterion
+    const uniqueId = partUserData.uniqueId || partUserData.partUniqueId;
+    const displayId = partUserData.displayId;
+    const partName = partUserData.partName;
+    const materialName = partUserData.materialName;
+    
+    // Validate we have a unique ID
+    if (!uniqueId) {
+        console.warn('⚠️ Cannot highlight - no unique ID found for 3D part:', partName);
+        return;
+    }
+    
+    console.log(`🔍 3D → SVG: Looking for part with unique_id=${uniqueId}, display_id=${displayId}`);
+    
+    // Search through all boards to find the EXACT matching part by unique ID
+    let foundPart = null;
+    let foundBoardIndex = -1;
+    
+    for (let boardIndex = 0; boardIndex < g_boardsData.length; boardIndex++) {
+        const board = g_boardsData[boardIndex];
+        const parts = board.parts || [];
+        
+        for (let part of parts) {
+            // EXACT ID MATCH using persistent_id
+            const partUniqueId = part.unique_id || part.part_unique_id;
+            
+            if (uniqueId && partUniqueId && uniqueId === partUniqueId) {
+                foundPart = part;
+                foundBoardIndex = boardIndex;
+                console.log(`✅ Found exact match: ${part.name} on board ${boardIndex + 1}`);
+                break;
+            }
+        }
+        
+        if (foundPart) break;
+    }
+    
+    if (!foundPart) {
+        // Silently skip - not all 3D parts have diagram matches
+        console.log(`ℹ️ No diagram match for 3D part ${partName} (unique_id: ${uniqueId})`);
+        return;
+    }
+    
+    // Use display ID for highlighting (P1, P2, etc.)
+    const partId = displayId || foundPart.instance_id || foundPart.part_number || foundPart.name;
+    const boardNumber = foundBoardIndex + 1;
+    
+    console.log(`🎯 Highlighting diagram: ${partId} on board ${boardNumber}`);
+    
+    // Scroll to and highlight the diagram
+    scrollToPieceDiagram(partId, boardNumber);
+}
+
+// REMOVED: Old modal-based 3D viewer code (initPartViewer, displayPartViewerFallback, etc.)
+// Now using unified Assembly 3D Viewer with highlighting instead
+
+function renderAssemblyViews(assemblyData) {
+    const container = document.getElementById('assemblyViewsContainer');
+    if (!container || !assemblyData || !assemblyData.views) {
+        return;
+    }
+    
+    const views = assemblyData.views;
+    const entityName = assemblyData.entity_name || 'Assembly';
+    
+    console.log('DEBUG: Views keys:', Object.keys(views));
+    
+    // Build HTML for assembly views
+    let html = `
+    <div class="assembly-section" style="margin-top: 40px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h2 style="color: #00A5E3; border-bottom: 3px solid #00A5E3; padding-bottom: 10px;">Assembly: ${escapeHtml(entityName)}</h2>
+        
+        <h3 style="color: #555; margin-top: 20px;">Standard Views</h3>
+        <div class="assembly-views-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px;">
+    `;
+    
+    // Add each view - views are stored directly with view name as key and data URI as value
+    const viewNames = ['Front', 'Back', 'Left', 'Right', 'Top', 'Bottom'];
+    viewNames.forEach(viewName => {
+        const imageData = views[viewName];
+        console.log(`DEBUG: Looking for ${viewName}, found: ${!!imageData}`);
+        if (imageData && imageData.startsWith('data:image')) {
+            html += `
+            <div class="assembly-view-item" style="background: #f9f9f9; padding: 12px; border-radius: 6px; border: 1px solid #ddd; cursor: pointer; transition: transform 0.2s;" onclick="openImageModal(this.querySelector('img'))">
+                <h4 style="margin: 0 0 8px 0; color: #555; text-align: center; font-size: 13px;">${escapeHtml(viewName)}</h4>
+                <img src="${imageData}" style="width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px;" onerror="console.log('Image failed to load for ${viewName}'); this.style.display='none';" />
+            </div>
+            `;
+        }
+    });
+    
+    html += `
+        </div>
+        
+        <h3 style="color: #555; margin-top: 30px;">3D Interactive Model</h3>
+        <div style="background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; overflow: hidden;">
+            <div style="padding: 16px 20px; background: #2323FF; color: #ffffff; font-size: 16px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+                <span>3D Assembly Viewer</span>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="toggleReportGrid()" style="background: #1a8cff; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">GRID</button>
+                    <button onclick="toggleReportTexture()" style="background: #1a8cff; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">TEX</button>
+                    <button onclick="setReportView('iso')" style="background: #1a8cff; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">ISO</button>
+                    <button onclick="toggleReport3DViewer()" id="reportViewer3DPowerBtn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M12 2v10M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div style="background: #f0f0f0; position: relative; height: 500px;">
+                <canvas id="reportAssembly3DCanvas" style="display: none; width: 100%; height: 100%;"></canvas>
+                <div id="reportExplodeControls" style="display: none; position: absolute; right: 60px; top: 50%; transform: translateY(-50%); height: 60%; flex-direction: column; align-items: center; gap: 10px; z-index: 100; background: rgba(255, 255, 255, 0.9); padding: 15px 8px; border-radius: 30px;">
+                    <span style="writing-mode: vertical-rl; font-size: 11px; font-weight: 700; color: #4a4a4a;">EXPLODE</span>
+                    <input type="range" min="0" max="100" value="0" id="reportExplodeSlider" style="writing-mode: vertical-lr; direction: rtl; width: 6px; height: 100%; cursor: ns-resize;">
+                </div>
+                <div id="reportViewControls" style="display: none; position: absolute; right: 10px; top: 10px; flex-direction: column; gap: 4px; z-index: 100;">
+                    <button onclick="toggleReportProjection()" style="background: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 6px; opacity: 0.9; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,1)'" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.9)'" title="Toggle Perspective">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                    </button>
+                    <button onclick="setReportView('top')" style="background: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 6px; opacity: 0.9; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,1)'" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.9)'" title="Top View">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                    </button>
+                    <button onclick="setReportView('front')" style="background: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 6px; opacity: 0.9; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,1)'" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.9)'" title="Front View">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="1"/></svg>
+                    </button>
+                    <button onclick="setReportView('right')" style="background: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 6px; opacity: 0.9; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,1)'" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.9)'" title="Right View">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2"><rect x="8" y="3" width="8" height="18" rx="1"/></svg>
+                    </button>
+                    <button onclick="setReportView('iso')" style="background: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 6px; opacity: 0.9; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,1)'" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.9)'" title="Isometric View">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/><path d="M12 22V12M12 12L3 7M12 12l9-5"/></svg>
+                    </button>
+                </div>
+                <div id="reportViewer3DOffScreen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; color: #4a4a4a; padding: 40px; height: 100%;">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#4a4a4a" stroke-width="1.5" style="margin-bottom: 16px;">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/>
+                        <path d="M8 21h8M12 17v4"/>
+                    </svg>
+                    <p style="font-size: 14px; margin: 0;">3D Viewer is OFF</p>
+                    <p style="font-size: 12px; margin: 8px 0 0 0; opacity: 0.7;">Click power button to turn on</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        .assembly-view-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    </style>
+    `;
+    
+    container.innerHTML = html;
+    
+    // Initialize 3D viewer with assembly geometry data
+    if (assemblyData.geometry && assemblyData.geometry.parts) {
+        console.log('DEBUG: Initializing report 3D viewer with geometry data');
+        window.reportAssemblyData = assemblyData.geometry;
+    }
+}
+
+function openImageModal(imgElement) {
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        cursor: pointer;
+    `;
+    
+    // Create enlarged image container
+    const imageContainer = document.createElement('div');
+    imageContainer.style.cssText = `
+        position: relative;
+        max-width: 90vw;
+        max-height: 90vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    
+    // Create enlarged image
+    const enlargedImg = document.createElement('img');
+    enlargedImg.src = imgElement.src;
+    enlargedImg.style.cssText = `
+        max-width: 90vw;
+        max-height: 90vh;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    `;
+    
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.cssText = `
+        position: absolute;
+        top: -40px;
+        right: 0;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 40px;
+        cursor: pointer;
+        padding: 0;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s;
+    `;
+    closeBtn.onmouseover = () => closeBtn.style.transform = 'scale(1.2)';
+    closeBtn.onmouseout = () => closeBtn.style.transform = 'scale(1)';
+    closeBtn.onclick = (e) => {
+        e.stopPropagation();
+        modal.remove();
+    };
+    
+    imageContainer.appendChild(enlargedImg);
+    imageContainer.appendChild(closeBtn);
+    modal.appendChild(imageContainer);
+    
+    // Close modal when clicking outside the image
+    modal.onclick = () => modal.remove();
+    
+    // Close modal on Escape key
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            modal.remove();
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+    
+    document.body.appendChild(modal);
+}
+
+// Report 3D Viewer Control Functions
+function toggleReport3DViewer() {
+    const canvas = document.getElementById('reportAssembly3DCanvas');
+    const offScreen = document.getElementById('reportViewer3DOffScreen');
+    const controls = document.getElementById('reportViewControls');
+    const explodeControls = document.getElementById('reportExplodeControls');
+    const powerBtn = document.getElementById('reportViewer3DPowerBtn');
+    
+    if (!canvas || !offScreen) return;
+    
+    const isOff = canvas.style.display === 'none';
+    
+    if (isOff) {
+        canvas.style.display = 'block';
+        offScreen.style.display = 'none';
+        if (controls) controls.style.display = 'flex';
+        if (explodeControls) explodeControls.style.display = 'flex';
+        if (powerBtn) powerBtn.style.background = 'rgba(76, 175, 80, 0.3)';
+        
+        if (!window.reportAssemblyScene && window.reportAssemblyData) {
+            initReportAssemblyViewer();
+        }
+    } else {
+        canvas.style.display = 'none';
+        offScreen.style.display = 'flex';
+        if (controls) controls.style.display = 'none';
+        if (explodeControls) explodeControls.style.display = 'none';
+        if (powerBtn) powerBtn.style.background = 'rgba(255,255,255,0.2)';
+    }
+}
+
+function toggleReportDimensions() {
+    if (window.reportShowDimensions !== undefined) {
+        window.reportShowDimensions = !window.reportShowDimensions;
+    }
+}
+
+function toggleReportRotation() {
+    if (window.reportAutoRotate !== undefined) {
+        window.reportAutoRotate = !window.reportAutoRotate;
+        if (window.reportControls) window.reportControls.autoRotate = window.reportAutoRotate;
+    }
+}
+
+function toggleReportGrid() {
+    if (window.reportShowGrid !== undefined) {
+        window.reportShowGrid = !window.reportShowGrid;
+        if (window.reportGridHelper) window.reportGridHelper.visible = window.reportShowGrid;
+    }
+}
+
+function toggleReportTexture() {
+    console.log('🎨 TEX button clicked');
+    console.log('🎨 Current reportShowTextures:', window.reportShowTextures);
+    console.log('🎨 reportAssemblyGroups count:', window.reportAssemblyGroups ? window.reportAssemblyGroups.length : 'undefined');
+    
+    if (window.reportShowTextures !== undefined) {
+        window.reportShowTextures = !window.reportShowTextures;
+        console.log('🎨 Toggled reportShowTextures to:', window.reportShowTextures);
+        
+        // Apply texture toggle to all meshes
+        if (window.reportAssemblyGroups) {
+            window.reportAssemblyGroups.forEach((group, idx) => {
+                group.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        const hasStoredTexture = child.userData.originalMaterial && child.userData.originalMaterial.map;
+                        console.log(`🎨 Group ${idx} mesh - has map:`, !!child.material.map, 'has stored texture:', hasStoredTexture);
+                        
+                        if (window.reportShowTextures) {
+                            // Show texture if available
+                            if (hasStoredTexture) {
+                                child.material.map = child.userData.originalMaterial.map;
+                                child.material.vertexColors = false;  // Disable vertex colors when showing texture
+                                child.material.color.setHex(0xFFFFFF);  // White to show texture properly
+                                child.material.needsUpdate = true;
+                                console.log(`✅ Enabled texture for group ${idx}`);
+                            } else {
+                                console.log(`⚠️ No texture available for group ${idx} - keeping vertex colors`);
+                            }
+                        } else {
+                            // Hide texture, show vertex colors
+                            child.material.map = null;
+                            child.material.vertexColors = true;  // Re-enable vertex colors to show face colors
+                            child.material.needsUpdate = true;
+                            console.log(`❌ Disabled texture for group ${idx} - showing vertex colors`);
+                        }
+                    }
+                });
+            });
+        } else {
+            console.log('❌ reportAssemblyGroups not found!');
+        }
+    } else {
+        console.log('❌ reportShowTextures is undefined!');
+    }
+}
+
+function toggleReportProjection() {
+    if (!window.reportCamera || !window.reportControls) return;
+    const canvas = document.getElementById('reportAssembly3DCanvas');
+    if (!canvas) return;
+    
+    // Store current position and target
+    const currentPos = window.reportCamera.position.clone();
+    const currentTarget = window.reportControls.target.clone();
+    
+    const aspect = canvas.clientWidth / canvas.clientHeight;
+    if (window.reportCamera.isPerspectiveCamera) {
+        const frustumSize = 1000;
+        window.reportCamera = new THREE.OrthographicCamera(frustumSize * aspect / -2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / -2, 1, 50000);
+    } else {
+        window.reportCamera = new THREE.PerspectiveCamera(75, aspect, 1, 50000);
+    }
+    
+    // Restore position and target
+    window.reportCamera.position.copy(currentPos);
+    window.reportControls.object = window.reportCamera;
+    window.reportControls.target.copy(currentTarget);
+    window.reportControls.update();
+}
+
+function setReportView(view) {
+    if (!window.reportCamera || !window.reportControls || !window.reportAssemblyBounds) return;
+    
+    const distance = window.reportAssemblyBounds.size * 1.8; // Reduced from 2.5 to bring camera closer
+    const center = window.reportAssemblyBounds.center;
+    
+    switch(view) {
+        case 'top':
+            window.reportCamera.position.set(center.x, distance, center.z);
+            break;
+        case 'front':
+            window.reportCamera.position.set(center.x, center.y, distance);
+            break;
+        case 'right':
+            window.reportCamera.position.set(distance, center.y, center.z);
+            break;
+        case 'iso':
+            // Reduced multipliers to bring ISO view much closer
+            window.reportCamera.position.set(distance * 0.5, distance * 0.4, distance * 0.5);
+            break;
+    }
+    
+    window.reportControls.target.copy(center);
+    window.reportControls.update();
+}
+
+// Explode functionality for 3D viewer
+function initReportExplodeSlider() {
+    const slider = document.getElementById('reportExplodeSlider');
+    const explodeControls = document.getElementById('reportExplodeControls');
+    
+    if (!slider) {
+        console.warn('Explode slider not found');
+        return;
+    }
+    
+    // Show explode controls when 3D viewer is active
+    if (explodeControls) {
+        explodeControls.style.display = 'flex';
+    }
+    
+    // Store original positions and calculate explode vectors
+    if (window.reportAssemblyGroups && window.reportAssemblyGroups.length > 0) {
+        window.reportAssemblyGroups.forEach((group, index) => {
+            // Store original position (already centered at 0,0,0)
+            if (!group.userData.originalPosition) {
+                group.userData.originalPosition = group.position.clone();
+            }
+            
+            // Calculate explode vector from center
+            const partCenter = new THREE.Box3().setFromObject(group).getCenter(new THREE.Vector3());
+            let explodeVector = partCenter.clone().sub(new THREE.Vector3(0, 0, 0));
+            
+            // Fallback for parts exactly at center
+            if (explodeVector.length() === 0) {
+                explodeVector = new THREE.Vector3(0, 1, 0);
+            }
+            
+            explodeVector.normalize();
+            
+            // Store explode vector and distance factor
+            group.userData.explodeVector = explodeVector;
+            
+            // Calculate distance factor based on assembly size
+            if (window.reportAssemblyBounds) {
+                group.userData.distanceFactor = window.reportAssemblyBounds.size / 2;
+            } else {
+                group.userData.distanceFactor = 500; // Default fallback
+            }
+        });
+    }
+    
+    // Wire slider to explode function
+    slider.addEventListener('input', function(e) {
+        const percentage = parseFloat(e.target.value) / 100.0;
+        updateReportExplode(percentage);
+    });
+    
+    console.log('✓ Explode slider initialized');
+}
+
+function updateReportExplode(percentage) {
+    if (!window.reportAssemblyGroups || window.reportAssemblyGroups.length === 0) {
+        return;
+    }
+    
+    window.reportAssemblyGroups.forEach((group) => {
+        if (!group.userData.originalPosition || !group.userData.explodeVector) {
+            return;
+        }
+        
+        // Calculate translation distance
+        const translationDist = group.userData.distanceFactor * percentage;
+        
+        // Create move vector
+        const moveVector = group.userData.explodeVector.clone();
+        moveVector.multiplyScalar(translationDist);
+        
+        // Apply transformation relative to original position
+        group.position.copy(group.userData.originalPosition).add(moveVector);
+    });
+}
+
+function initReportAssemblyViewer() {
+    const canvas = document.getElementById('reportAssembly3DCanvas');
+    if (!canvas || !window.reportAssemblyData) return;
+    console.log('Initializing report assembly viewer...');
+    
+    // Initialize THREE.js scene with LIGHT background
+    window.reportAssemblyScene = new THREE.Scene();
+    window.reportAssemblyScene.background = new THREE.Color(0xf0f0f0); // Light gray background
+    
+    window.reportCamera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 1, 50000);
+    window.reportCamera.position.set(500, 500, 500);
+    
+    window.reportRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+    window.reportRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    window.reportRenderer.setPixelRatio(window.devicePixelRatio);
+    
+    window.reportControls = new THREE.OrbitControls(window.reportCamera, canvas);
+    window.reportControls.enableDamping = true;
+    window.reportControls.dampingFactor = 0.1;
+    
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    window.reportAssemblyScene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(100, 100, 100);
+    window.reportAssemblyScene.add(directionalLight);
+    
+    window.reportGridHelper = new THREE.GridHelper(2000, 20, 0xcccccc, 0xe0e0e0); // Light grid colors
+    window.reportAssemblyScene.add(window.reportGridHelper);
+    
+    window.reportShowGrid = true;
+    window.reportShowTextures = true;
+    window.reportShowDimensions = false;
+    window.reportAutoRotate = false;
+    
+    window.reportAssemblyGroups = [];
+    
+    // Render assembly using EXACT same logic as config tab
+    const geometryData = window.reportAssemblyData;
+    if (!geometryData || !geometryData.parts || geometryData.parts.length === 0) {
+        console.warn('No geometry parts to render');
+        return;
+    }
+    
+    console.log('Rendering assembly:', geometryData.parts.length, 'components');
+    
+    let allBounds = null;
+    
+    // Render each component as separate mesh
+    geometryData.parts.forEach((partData, partIndex) => {
+        const faces = partData.faces || [];
+        if (faces.length === 0) return;
+        
+        const positions = [];
+        const uvs = [];
+        const colors = [];
+        let hasTexture = false;
+        let texturePath = null;
+        
+        // Check if any face has a texture
+        faces.forEach(face => {
+            if (face.texture) {
+                hasTexture = true;
+                texturePath = face.texture;
+            }
+        });
+        
+        faces.forEach(face => {
+            const vertices = face.vertices;
+            const faceUVs = face.uvs;
+            
+            // CRITICAL: SketchUp's mesh API already triangulated the face
+            // Each face is now a triangle (3 vertices) - render directly!
+            if (!vertices || vertices.length !== 3) {
+                console.warn('Expected triangle (3 vertices), got:', vertices ? vertices.length : 0);
+                return;
+            }
+            
+            // Get face color (hex integer from Ruby)
+            const faceColor = face.color || 0xcccccc;
+            
+            // Convert hex color to RGB components (0-1 range for Three.js)
+            const r = ((faceColor >> 16) & 0xFF) / 255;
+            const g = ((faceColor >> 8) & 0xFF) / 255;
+            const b = (faceColor & 0xFF) / 255;
+            
+            // Render triangle directly (no triangulation needed!)
+            positions.push(vertices[0].x, vertices[0].z, -vertices[0].y);
+            positions.push(vertices[1].x, vertices[1].z, -vertices[1].y);
+            positions.push(vertices[2].x, vertices[2].z, -vertices[2].y);
+            
+            // Push vertex colors
+            colors.push(r, g, b);
+            colors.push(r, g, b);
+            colors.push(r, g, b);
+            
+            // Push UVs
+            if (faceUVs && faceUVs.length === 3) {
+                uvs.push(faceUVs[0].x, faceUVs[0].y);
+                uvs.push(faceUVs[1].x, faceUVs[1].y);
+                uvs.push(faceUVs[2].x, faceUVs[2].y);
+            } else {
+                uvs.push(0, 0);
+                uvs.push(0.5, 0);
+                uvs.push(0.5, 0.5);
+            }
+        });
+        
+        if (positions.length === 0) return;
+        
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        
+        // CRITICAL FIX: Add vertex colors to geometry (used when no texture or texture disabled)
+        if (colors.length > 0) {
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        }
+        
+        if (uvs.length > 0) {
+            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        }
+        geometry.computeVertexNormals();
+        
+        // CRITICAL: Use vertex colors by default, but textures will override when loaded
+        const material = new THREE.MeshStandardMaterial({ 
+            color: 0xcccccc,  // Fallback grey color if vertex colors fail
+            vertexColors: colors.length > 0,  // Only enable if we have color data
+            metalness: 0.1,
+            roughness: 0.6,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.85,
+            emissive: 0x000000,
+            emissiveIntensity: 0.0
+        });
+        
+        const mesh = new THREE.Mesh(geometry, material);
+        
+        const edges = new THREE.EdgesGeometry(geometry, 15);
+        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x666666 });
+        const wireframe = new THREE.LineSegments(edges, edgeMaterial);
+        
+        const group = new THREE.Group();
+        group.add(mesh);
+        group.add(wireframe);
+        
+        // CRITICAL FIX: Store the viewer_unique_id for reliable matching
+        const viewerUniqueId = partData.viewer_unique_id || `3D_${partIndex + 1}`;
+        
+        group.userData = {
+            partName: partData.name,
+            materialName: partData.material || "Default Material",
+            width: partData.width || 0,
+            height: partData.height || 0,
+            thickness: partData.thickness || 0,
+            originalMaterial: {
+                color: 0xcccccc,
+                opacity: 0.85,
+                transparent: true,
+                map: null
+            },
+            originalEdgeColor: 0x666666,
+            texturePath: texturePath,
+            viewerUniqueId: viewerUniqueId,  // CRITICAL: Add unique ID for matching
+            uniqueId: null  // Will be set by ID mapping
+        };
+        
+        // Load texture if available
+        if (hasTexture && texturePath) {
+            console.log(`Loading texture for ${partData.name}: ${texturePath}`);
+            const loader = new THREE.TextureLoader();
+            loader.load(
+                texturePath,
+                (texture) => {
+                    console.log(`✓ Texture loaded for ${partData.name}`);
+                    texture.wrapS = THREE.RepeatWrapping;
+                    texture.wrapT = THREE.RepeatWrapping;
+                    
+                    // When texture is loaded, disable vertex colors and use texture
+                    mesh.material.map = texture;
+                    mesh.material.vertexColors = false;  // Disable vertex colors when texture is active
+                    mesh.material.color.setHex(0xFFFFFF);  // White color to show texture properly
+                    mesh.material.needsUpdate = true;
+                    
+                    // Store texture in BOTH group userData AND mesh userData for toggle
+                    group.userData.originalMaterial.map = texture;
+                    mesh.userData.originalMaterial = mesh.userData.originalMaterial || {};
+                    mesh.userData.originalMaterial.map = texture;
+                    
+                    console.log(`✓ Stored texture in userData for ${partData.name}`);
+                },
+                undefined,
+                (error) => {
+                    console.error(`✗ Failed to load texture for ${partData.name}:`, error);
+                }
+            );
+        }
+        
+        if (partIndex === 0) {
+            console.log(`First part material:`, partData.material);
+            console.log(`First part has texture:`, hasTexture);
+        }
+        
+        window.reportAssemblyScene.add(group);
+        window.reportAssemblyGroups.push(group);
+        
+        const box = new THREE.Box3().setFromObject(group);
+        if (!allBounds) {
+            allBounds = box;
+        } else {
+            allBounds.union(box);
+        }
+    });
+    
+    if (window.reportAssemblyGroups.length === 0) {
+        console.warn('No valid parts rendered');
+        return;
+    }
+    
+    // Center camera on all parts
+    const center = allBounds.getCenter(new THREE.Vector3());
+    const size = allBounds.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    
+    // Center all parts and store their centered position as the original
+    window.reportAssemblyGroups.forEach(group => {
+        group.position.sub(center);
+    });
+    
+    const distance = maxDim * 2.5;
+    window.reportCamera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
+    window.reportCamera.lookAt(0, 0, 0);
+    window.reportControls.target.set(0, 0, 0);
+    window.reportControls.update();
+    
+    // Store bounds for view functions
+    window.reportAssemblyBounds = {
+        min: allBounds.min,
+        max: allBounds.max,
+        center: new THREE.Vector3(0, 0, 0),
+        size: maxDim
+    };
+    
+    console.log('Assembly rendered:', window.reportAssemblyGroups.length, 'components');
+    
+    // Add click handler for 3D viewer to highlight diagram parts
+    canvas.addEventListener('click', (event) => {
+        handle3DViewerClick(event, canvas);
+    });
+    
+    function animate() {
+        requestAnimationFrame(animate);
+        window.reportControls.update();
+        window.reportRenderer.render(window.reportAssemblyScene, window.reportCamera);
+    }
+    animate();
+    
+    // CRITICAL FIX: Create ID mapping between 3D viewer parts and diagram parts
+    // This must be done AFTER all parts are loaded
+    createPartIdMapping(geometryData);
+    
+    // Initialize explode slider
+    initReportExplodeSlider();
+    
+    console.log('Report assembly viewer initialized');
+}
+
+// CRITICAL: Direct ID mapping using backend-provided unique IDs
+// No matching needed - backend provides the SAME persistent_id for both 3D viewer and diagram parts
+function createPartIdMapping(geometryData) {
+    if (!window.reportAssemblyGroups || !g_boardsData || !geometryData) {
+        console.warn('⚠️ Cannot create ID mapping - missing data');
+        return;
+    }
+    
+    console.log('🔗 Creating ID mapping using backend unique IDs...');
+    
+    // Extract all parts from all boards
+    const diagramParts = [];
+    g_boardsData.forEach(board => {
+        if (board.parts && Array.isArray(board.parts)) {
+            board.parts.forEach(part => {
+                diagramParts.push(part);
+            });
+        }
+    });
+    
+    console.log(`📊 Found ${diagramParts.length} diagram parts across ${g_boardsData.length} boards`);
+    console.log(`🎨 Found ${window.reportAssemblyGroups.length} 3D viewer parts`);
+    
+    // Create a lookup map of diagram parts by their unique_id
+    const diagramPartsMap = new Map();
+    
+    // DEBUG: Log first diagram part structure
+    if (diagramParts.length > 0) {
+        console.log('🔍 DEBUG: First diagram part structure:', Object.keys(diagramParts[0]));
+        console.log('🔍 DEBUG: First diagram part:', JSON.stringify(diagramParts[0], null, 2));
+    }
+    
+    diagramParts.forEach(part => {
+        // Backend sends part_unique_id (persistent_id) and instance_id (P1, P2, etc.)
+        const uniqueId = part.part_unique_id || part.unique_id;
+        const displayId = part.instance_id;
+        
+        if (uniqueId && displayId) {
+            diagramPartsMap.set(uniqueId, displayId); // Map persistent_id -> display ID (P1, P2, etc.)
+        }
+    });
+    
+    console.log(`📋 Created diagram lookup map with ${diagramPartsMap.size} entries`);
+    
+    // DEBUG: Log first few entries in the map
+    let mapEntries = 0;
+    diagramPartsMap.forEach((value, key) => {
+        if (mapEntries < 3) {
+            console.log(`  Map entry: unique_id=${key} -> diagram_id=${value}`);
+            mapEntries++;
+        }
+    });
+    
+    // Match each 3D viewer part using its viewer_unique_id
+    let matchCount = 0;
+    const unmatchedParts = [];
+    
+    console.log(`🔍 DEBUG: Starting matching loop with ${window.reportAssemblyGroups.length} groups and ${geometryData.parts.length} geometry parts`);
+    
+    window.reportAssemblyGroups.forEach((group, index) => {
+        console.log(`🔍 DEBUG: Processing group ${index}`);
+        
+        // CRITICAL FIX: Get viewer_unique_id from geometryData.parts, NOT from group.userData
+        const partData = geometryData.parts[index];
+        if (!partData) {
+            console.warn(`⚠️ Group ${index}: No part data found`);
+            return;
+        }
+        
+        console.log(`🔍 DEBUG: Group ${index} partData:`, partData.name, 'viewer_unique_id:', partData.viewer_unique_id);
+        
+        const viewerUniqueId = partData.viewer_unique_id; // Backend provides this in geometryData
+        
+        if (!viewerUniqueId) {
+            console.warn(`⚠️ Group ${index}: No viewer_unique_id found in part data`);
+            unmatchedParts.push({
+                name: partData.name || group.userData.partName,
+                reason: 'No viewer_unique_id from backend'
+            });
+            return;
+        }
+        
+        // Direct lookup using the unique ID
+        const diagramId = diagramPartsMap.get(viewerUniqueId);
+        
+        if (diagramId) {
+            // PERFECT MATCH using backend IDs!
+            // CRITICAL FIX: Store BOTH the persistent_id AND display_id
+            group.userData.uniqueId = viewerUniqueId;      // Store persistent_id (1343129)
+            group.userData.partUniqueId = viewerUniqueId;  // Store persistent_id (1343129)
+            group.userData.displayId = diagramId;          // Store display_id (P7)
+            matchCount++;
+            console.log(`✅ Group ${index}: Matched ${partData.name} -> ${diagramId} (unique_id: ${viewerUniqueId})`);
+        } else {
+            // No diagram part with this unique_id (part might not be in cut list)
+            unmatchedParts.push({
+                name: partData.name,
+                unique_id: viewerUniqueId,
+                reason: 'Not found in diagram parts (may not be a sheet good)'
+            });
+        }
+    });
+    
+    console.log(`🎯 ID Mapping complete: ${matchCount}/${window.reportAssemblyGroups.length} parts matched`);
+    
+    if (unmatchedParts.length > 0) {
+        console.log(`ℹ️ ${unmatchedParts.length} 3D parts not matched (expected for non-sheet-good parts):`);
+        unmatchedParts.slice(0, 5).forEach(p => {
+            console.log(`  - ${p.name} | ${p.reason}`);
+        });
+        if (unmatchedParts.length > 5) {
+            console.log(`  ... and ${unmatchedParts.length - 5} more`);
+        }
+    }
+}
+
+function initAssemblyViewer(geometryData) {
+    const container = document.getElementById('assemblyViewer');
+    if (!container) {
+        console.warn('Assembly viewer container not found');
+        return;
+    }
+    
+    // Check if THREE.js is available
+    if (typeof THREE === 'undefined') {
+        console.warn('THREE.js not available - 3D viewer disabled in exported HTML');
+        container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px; background: #f5f5f5; border-radius: 8px;">3D viewer not available in exported report. View assembly images above.</p>';
+        return;
+    }
+    
+    try {
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f0);
+        
+        const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 10000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+        
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.1;
+        
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        scene.add(ambientLight);
+        
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        keyLight.position.set(5, 10, 7);
+        scene.add(keyLight);
+        
+        const group = new THREE.Group();
+        const mergedGeometry = new THREE.BufferGeometry();
+        const positions = [];
+        
+        if (geometryData.faces && geometryData.faces.length > 0) {
+            geometryData.faces.forEach(face => {
+                const vertices = face.vertices;
+                if (vertices.length < 3) return;
+                
+                for (let i = 1; i < vertices.length - 1; i++) {
+                    positions.push(vertices[0].x, vertices[0].z, -vertices[0].y);
+                    positions.push(vertices[i].x, vertices[i].z, -vertices[i].y);
+                    positions.push(vertices[i + 1].x, vertices[i + 1].z, -vertices[i + 1].y);
+                }
+            });
+        }
+        
+        if (positions.length > 0) {
+            mergedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            mergedGeometry.computeVertexNormals();
+            
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0xcccccc,
+                metalness: 0.1,
+                roughness: 0.6,
+                side: THREE.DoubleSide
+            });
+            const mesh = new THREE.Mesh(mergedGeometry, material);
+            
+            const edges = new THREE.EdgesGeometry(mergedGeometry, 15);
+            const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x666666 });
+            const wireframe = new THREE.LineSegments(edges, edgeMaterial);
+            
+            group.add(mesh);
+            group.add(wireframe);
+        }
+        
+        scene.add(group);
+        
+        const box = new THREE.Box3().setFromObject(group);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        
+        group.position.sub(center);
+        
+        const distance = maxDim * 2.5;
+        camera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+        controls.update();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+        
+    } catch (error) {
+        console.error('Error initializing assembly viewer:', error);
+        container.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">3D viewer initialization failed</p>';
+    }
+}
+
+async function captureDiagramImages() {
+    console.log('🎬 captureDiagramImages: Starting diagram capture for PDF');
+    
+    // CRITICAL FIX: Use centralized clear function before capturing
+    console.log('🧹 Clearing all highlights before PDF capture');
+    
+    if (typeof window.clearAllHighlights === 'function') {
+        window.clearAllHighlights();
+    } else {
+        // Fallback to manual clearing
+        if (typeof window.clearAllSVGHighlights === 'function') {
+            window.clearAllSVGHighlights();
+        }
+        clearPieceHighlight();
+        if (window.reportAssemblyGroups && window.reportAssemblyGroups.length > 0) {
+            window.reportAssemblyGroups.forEach(group => {
+                group.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        const originalMat = group.userData.originalMaterial || {};
+                        child.material.emissive.setHex(0x000000);
+                        child.material.emissiveIntensity = 0;
+                        child.material.color.setHex(originalMat.color || 0xcccccc);
+                        child.material.opacity = originalMat.opacity || 0.85;
+                        child.material.needsUpdate = true;
+                    }
+                    if (child.isLineSegments) {
+                        child.material.color.setHex(group.userData.originalEdgeColor || 0x666666);
+                        child.material.needsUpdate = true;
+                    }
+                });
+            });
+        }
+    }
+    
+    const diagrams = [];
+    const canvases = Array.from(document.querySelectorAll('.diagram-canvas')).filter(el => el.tagName === 'CANVAS');
+    const svgs = document.querySelectorAll('svg.diagram-canvas');
+    
+    console.log(`📊 Found ${canvases.length} canvas diagrams and ${svgs.length} SVG diagrams`);
+    
+    // Set flag to enable high-resolution rendering for PDF capture
+    window.capturingForPDF = true;
+    
+    // Redraw all canvases at high resolution (without highlights)
+    canvases.forEach(canvas => {
+        if (canvas.drawCanvas) {
+            canvas.drawCanvas();
+        }
+    });
+    
+    // Capture canvas diagrams (synchronous)
+    canvases.forEach((canvas, index) => {
+        try {
+            const dataURL = canvas.toDataURL('image/png', 1.0);
+            diagrams.push({
+                index: index,
+                image: dataURL,
+                board: canvas.boardData
+            });
+            console.log(`✅ Captured canvas diagram ${index + 1}`);
+        } catch (e) {
+            console.error('Failed to capture canvas diagram:', e);
+        }
+    });
+    
+    // Capture SVG diagrams by converting to PNG at high resolution for print (asynchronous)
+    const svgPromises = Array.from(svgs).map((svg, index) => {
+        return new Promise((resolve, reject) => {
+            try {
+                // Clone SVG to avoid modifying the original
+                const svgClone = svg.cloneNode(true);
+                
+                // Remove any highlight classes from the clone
+                svgClone.querySelectorAll('.highlighted').forEach(el => {
+                    el.classList.remove('highlighted');
+                });
+                
+                // CRITICAL: Use viewBox dimensions (actual board size), not display size
+                const viewBox = svg.getAttribute('viewBox');
+                let svgWidth, svgHeight;
+                
+                if (viewBox) {
+                    const [x, y, w, h] = viewBox.split(' ').map(parseFloat);
+                    svgWidth = w;
+                    svgHeight = h;
+                    console.log(`📐 SVG ${index + 1} viewBox dimensions: ${svgWidth}x${svgHeight}`);
+                } else {
+                    // Fallback to display size if no viewBox
+                    const bbox = svg.getBoundingClientRect();
+                    svgWidth = bbox.width;
+                    svgHeight = bbox.height;
+                    console.warn(`⚠️ SVG ${index + 1} has no viewBox, using display size: ${svgWidth}x${svgHeight}`);
+                }
+                
+                const svgData = new XMLSerializer().serializeToString(svgClone);
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                // CRITICAL FIX: Use 3x resolution for PRINT QUALITY (300 DPI equivalent)
+                // This ensures crisp, sharp details for printing
+                const printScale = 3;
+                canvas.width = svgWidth * printScale;
+                canvas.height = svgHeight * printScale;
+                
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(svgBlob);
+                
+                img.onload = function() {
+                    try {
+                        // Scale context for high-resolution rendering
+                        ctx.scale(printScale, printScale);
+                        ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
+                        
+                        // Use maximum quality (1.0) for print
+                        const dataURL = canvas.toDataURL('image/png', 1.0);
+                        URL.revokeObjectURL(url);
+                        
+                        console.log(`✅ Captured SVG diagram ${index + 1} at ${printScale}x for print (${canvas.width}x${canvas.height})`);
+                        resolve({
+                            index: canvases.length + index,
+                            image: dataURL,
+                            board: svg.boardData,
+                            width: svgWidth,
+                            height: svgHeight
+                        });
+                    } catch (err) {
+                        URL.revokeObjectURL(url);
+                        reject(err);
+                    }
+                };
+                
+                img.onerror = function(err) {
+                    URL.revokeObjectURL(url);
+                    console.error(`Failed to load SVG diagram ${index + 1}:`, err);
+                    reject(err);
+                };
+                
+                img.src = url;
+            } catch (e) {
+                console.error('Failed to capture SVG diagram:', e);
+                reject(e);
+            }
+        });
+    });
+    
+    // Wait for all SVG captures to complete
+    try {
+        const svgDiagrams = await Promise.all(svgPromises);
+        diagrams.push(...svgDiagrams);
+        console.log(`✅ All SVG diagrams captured: ${svgDiagrams.length}`);
+    } catch (error) {
+        console.error('Error capturing SVG diagrams:', error);
+    }
+    
+    // Reset flag and redraw at normal resolution for display
+    window.capturingForPDF = false;
+    canvases.forEach(canvas => {
+        if (canvas.drawCanvas) {
+            canvas.drawCanvas();
+        }
+    });
+    
+    console.log(`✅ Captured ${diagrams.length} total diagrams for PDF`);
+    return diagrams;
+}
+
+async function exportInteractiveHTML() {
+    console.log('=== exportInteractiveHTML START ===');
+    console.log('g_reportData:', !!g_reportData);
+    console.log('g_boardsData:', !!g_boardsData);
+    console.log('window.assemblyData:', window.assemblyData);
+    console.log('window.assemblyData type:', typeof window.assemblyData);
+    console.log('window.assemblyData keys:', window.assemblyData ? Object.keys(window.assemblyData) : 'null');
+    
+    if (!g_reportData || !g_boardsData) {
+        alert('No report data available for HTML export.');
+        return;
+    }
+    
+    showProgressOverlay('Preparing interactive HTML export...', 10);
+    
+    // CRITICAL FIX: Await the async diagram capture
+    const diagramImages = await captureDiagramImages();
+    console.log(`📸 Captured ${diagramImages.length} diagram images for HTML export`);
+    
+    const reportDataJSON = JSON.stringify({
+        diagrams: g_boardsData,
+        diagram_images: diagramImages,
+        report: g_reportData,
+        original_components: window.originalComponents || [],
+        hierarchy_tree: window.hierarchyTree || [],
+        assembly_data: window.assemblyData || null
+    });
+    
+    const parsedData = JSON.parse(reportDataJSON);
+    console.log('reportDataJSON assembly_data:', parsedData.assembly_data);
+    console.log('reportDataJSON assembly_data type:', typeof parsedData.assembly_data);
+    if (parsedData.assembly_data) {
+        console.log('reportDataJSON assembly_data keys:', Object.keys(parsedData.assembly_data));
+        console.log('reportDataJSON assembly_data.views count:', parsedData.assembly_data.views ? Object.keys(parsedData.assembly_data.views).length : 'no views');
+    }
+    console.log('=== exportInteractiveHTML END - calling Ruby ===');
+    
+    if (typeof callRuby === 'function') {
+        callRuby('export_interactive_html', reportDataJSON);
+        setTimeout(() => {
+            hideProgressOverlay();
+        }, 1000);
+    } else {
+        hideProgressOverlay();
+        alert('Export function not available');
+    }
+}
+
+function attachPartTableClickHandlers() {
+    // No additional styling needed - buttons are styled via CSS
+}
+
+function scrollToPieceDiagram(partId, boardNumber) {
+    console.log('scrollToPieceDiagram called:', partId, boardNumber);
+    console.log('g_boardsData:', g_boardsData);
+    
+    // Find the board diagram that contains this piece
+    const boardIndex = boardNumber - 1; // Convert to 0-based index
+    
+    if (!g_boardsData || g_boardsData.length === 0) {
+        console.warn('g_boardsData is empty or not loaded');
+        return;
+    }
+    
+    if (boardIndex < 0 || boardIndex >= g_boardsData.length) {
+        console.warn(`Board ${boardNumber} not found. Available boards: ${g_boardsData.length}`);
+        return;
+    }
+    
+    const board = g_boardsData[boardIndex];
+    const diagramContainer = document.getElementById('diagramsContainer');
+    
+    if (!diagramContainer) {
+        console.warn('Diagrams container not found');
+        return;
+    }
+    
+    // Find the diagram card for this board
+    const diagrams = diagramContainer.querySelectorAll('.diagram-card');
+    let targetCard = null;
+    
+    if (boardIndex < diagrams.length) {
+        targetCard = diagrams[boardIndex];
+    }
+    
+    if (!targetCard) {
+        console.warn(`Diagram card for board ${boardNumber} not found`);
+        return;
+    }
+    
+    // Check if it's SVG or canvas
+    const svg = targetCard.querySelector('svg.diagram-canvas');
+    const canvas = targetCard.querySelector('canvas.diagram-canvas');
+    
+    if (svg) {
+        // Use SVG highlighting
+        if (typeof window.highlightPartInSVGDiagram === 'function') {
+            window.highlightPartInSVGDiagram(partId, boardNumber);
+        } else {
+            console.warn('highlightPartInSVGDiagram function not available');
+        }
+    } else if (canvas) {
+        // Use canvas highlighting (legacy)
+        handleCanvasHighlight(partId, boardNumber, canvas, targetCard);
+    } else {
+        console.warn(`No diagram (SVG or canvas) found for board ${boardNumber}`);
+    }
+}
+
+// Legacy canvas highlighting function
+function handleCanvasHighlight(partId, boardNumber, targetCanvas, targetCard) {
+    console.log(`🎯 handleCanvasHighlight: ${partId} on board ${boardNumber}`);
+    
+    // CRITICAL FIX: Use centralized clear function
+    console.log('🧹 Clearing ALL highlights before new highlight');
+    
+    // Check if this is the EXACT same piece (same partId AND same canvas) - only then toggle off
+    const isSamePiece = (currentHighlightedPiece === partId && currentHighlightedCanvas === targetCanvas);
+    
+    // Clear all highlights using centralized function
+    if (typeof window.clearAllHighlights === 'function') {
+        window.clearAllHighlights();
+    } else {
+        // Fallback to manual clearing
+        if (typeof window.clearAllSVGHighlights === 'function') {
+            window.clearAllSVGHighlights();
+        }
+        clearPieceHighlight();
+        if (window.reportAssemblyGroups && window.reportAssemblyGroups.length > 0) {
+            window.reportAssemblyGroups.forEach(group => {
+                group.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        const originalMat = group.userData.originalMaterial || {};
+                        child.material.emissive.setHex(0x000000);
+                        child.material.emissiveIntensity = 0;
+                        child.material.color.setHex(originalMat.color || 0xcccccc);
+                        child.material.opacity = originalMat.opacity || 0.85;
+                        child.material.needsUpdate = true;
+                    }
+                    if (child.isLineSegments) {
+                        child.material.color.setHex(group.userData.originalEdgeColor || 0x666666);
+                        child.material.needsUpdate = true;
+                    }
+                });
+            });
+        }
+    }
+    
+    // If same piece clicked again, we're done (toggle off)
+    if (isSamePiece) {
+        console.log('✅ Same piece clicked - toggled off');
+        return;
+    }
+    
+    // Find and highlight the new piece in the canvas
+    if (targetCanvas.partData) {
+        for (let partData of targetCanvas.partData) {
+            const partLabel = String(partData.part.part_unique_id || partData.part.part_number || partData.part.instance_id || `P${partData.part.index || 0}`);
+            if (partLabel === partId) {
+                // Highlight this piece on the canvas
+                highlightPieceOnCanvas(targetCanvas, partData);
+                currentHighlightedPiece = partId;
+                currentHighlightedCanvas = targetCanvas;
+                console.log('✅ Highlighted canvas piece:', partId, 'on board', boardNumber);
+                break;
+            }
+        }
+    }
+    
+    // Scroll the diagram card into view
+    if (targetCard) {
+        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+function highlightPieceOnCanvas(canvas, partData) {
+    // Redraw the canvas to get a fresh state
+    if (canvas.drawCanvas) {
+        canvas.drawCanvas();
+    }
+    
+    // Add a visual highlight by drawing a border around the piece
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#007bff';
+    ctx.lineWidth = 4;
+    ctx.shadowColor = 'rgba(0, 123, 255, 0.5)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Draw highlight border with glow effect
+    ctx.strokeRect(
+        partData.x - 3,
+        partData.y - 3,
+        partData.width + 6,
+        partData.height + 6
+    );
+    
+    // Reset shadow
+    ctx.shadowColor = 'transparent';
+}
+
+function copyTableAsMarkdown(tableId) {
+    const tableContainer = document.getElementById(tableId);
+    if (!tableContainer) {
+        console.error(`Table or container with ID '${tableId}' not found.`);
+        return;
+    }
+    
+    const table = tableContainer.tagName === 'TABLE' ? tableContainer : tableContainer.querySelector('table');
+    if (!table) {
+        console.error(`No table found within container '${tableId}'.`);
+        return;
+    }
+    
+    let markdown = '';
+    const rows = table.querySelectorAll('tr');
+    
+    if (rows.length === 0) {
+        alert('No table data to copy.');
+        return;
+    }
+    
+    rows.forEach((row, index) => {
+        const cells = row.querySelectorAll('th, td');
+        const rowData = Array.from(cells).map(cell => {
+            let text = cell.textContent.trim();
+            text = text.replace(/\|/g, '\\|');
+            return text;
+        }).join(' | ');
+        markdown += '| ' + rowData + ' |\n';
+        
+        if (index === 0 && row.querySelector('th')) {
+            const separator = Array.from(cells).map(() => '---').join(' | ');
+            markdown += '| ' + separator + ' |\n';
+        }
+    });
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(markdown).then(() => {
+            showCopyFeedback();
+        }).catch(() => fallbackCopyToClipboard(markdown));
+    } else {
+        fallbackCopyToClipboard(markdown);
+    }
+}
+
+function showCopyFeedback() {
+    const button = event?.target?.closest('.icon-btn');
+    if (button) {
+        const originalHTML = button.innerHTML;
+        button.innerHTML = 'Ô£à';
+        button.style.background = '#28a745';
+        button.style.color = 'white';
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+            button.style.background = '';
+            button.style.color = '';
+        }, 1500);
+    } else {
+        alert('Table copied as Markdown!');
+    }
+}
+
+function fallbackCopyToClipboard(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    
+    try {
+        document.execCommand('copy');
+        alert('Table copied as Markdown!');
+    } catch (err) {
+        alert('Copy not supported.');
+    } finally {
+        document.body.removeChild(textArea);
+    }
+}
+
+function copyCutSequenceAsMarkdown() {
+    const container = document.getElementById('cutSequenceContainer');
+    if (!container) return;
+    
+    let markdown = '# Cut Sequences\n\n';
+    const boards = container.querySelectorAll('.cut-sequence-board');
+    
+    boards.forEach(board => {
+        const title = board.querySelector('h4');
+        const table = board.querySelector('table');
+        
+        if (title) markdown += `## ${title.textContent}\n\n`;
+        if (table) {
+            const rows = table.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                const cells = row.querySelectorAll('th, td');
+                const rowData = Array.from(cells).map(cell => cell.textContent.trim()).join(' | ');
+                markdown += '| ' + rowData + ' |\n';
+                
+                if (index === 0) {
+                    const separator = Array.from(cells).map(() => '---').join(' | ');
+                    markdown += '| ' + separator + ' |\n';
+                }
+            });
+            markdown += '\n';
+        }
+    });
+    
+    navigator.clipboard.writeText(markdown).then(() => {
+        alert('Cut sequences copied as Markdown!');
+    }).catch(() => fallbackCopyToClipboard(markdown));
+}
+
+function clearPieceHighlight() {
+    if (currentHighlightedCanvas && currentHighlightedCanvas.boardData) {
+        // Redraw the canvas to remove highlight
+        redrawCanvasDiagram(currentHighlightedCanvas, currentHighlightedCanvas.boardData);
+        currentHighlightedCanvas = null;
+        currentHighlightedPiece = null;
+    }
+}
+
+function copyFullReportAsMarkdown() {
+    if (!g_reportData || !g_boardsData) {
+        alert('No report data available to copy.');
+        return;
+    }
+    
+    // Use globals from app.js
+    const reportUnits = window.currentUnits || 'mm';
+    const reportPrecision = window.currentPrecision ?? 1;
+    const currency = g_reportData.summary.currency || window.defaultCurrency || 'USD';
+    const currencySymbol = window.currencySymbols[currency] || currency;
+    const currentAreaUnitLabel = getAreaUnitLabel();
+    
+    let markdown = `# AutoNestCut Report\n\n`;
+    markdown += `**Generated:** ${new Date().toLocaleString()}\n\n`;
+    
+    // Project Information
+    if (g_reportData.summary.project_name && g_reportData.summary.project_name !== 'Untitled Project') {
+        markdown += `**Project:** ${g_reportData.summary.project_name}\n`;
+    }
+    if (g_reportData.summary.client_name) {
+        markdown += `**Client:** ${g_reportData.summary.client_name}\n`;
+    }
+    if (g_reportData.summary.prepared_by) {
+        markdown += `**Prepared by:** ${g_reportData.summary.prepared_by}\n`;
+    }
+    markdown += `\n---\n\n`;
+    
+    // Overall Summary
+    markdown += `## Overall Summary\n\n`;
+    markdown += `| Metric | Value |\n`;
+    markdown += `|--------|-------|\n`;
+    markdown += `| Total Parts Instances | ${g_reportData.summary.total_parts_instances || 0} |\n`;
+    markdown += `| Total Unique Part Types | ${g_reportData.summary.total_unique_part_types || 0} |\n`;
+    markdown += `| Total Boards | ${g_reportData.summary.total_boards || 0} |\n`;
+    markdown += `| Overall Efficiency | ${formatNumber(g_reportData.summary.overall_efficiency || 0, reportPrecision)}% |\n`;
+    markdown += `| Total Project Weight | ${formatNumber(g_reportData.summary.total_project_weight_kg || 0, 2)} kg |\n`;
+    markdown += `| **Total Project Cost** | **${currencySymbol}${formatNumber(g_reportData.summary.total_project_cost || 0, 2)}** |\n\n`;
+    
+    // Materials Used
+    if (g_reportData.unique_board_types && g_reportData.unique_board_types.length > 0) {
+        markdown += `## Materials Used\n\n`;
+        markdown += `| Material | Price per Sheet |\n`;
+        markdown += `|----------|----------------|\n`;
+        g_reportData.unique_board_types.forEach(board_type => {
+            const boardCurrency = board_type.currency || currency;
+            const boardSymbol = window.currencySymbols[boardCurrency] || boardCurrency;
+            markdown += `| ${board_type.material} | ${boardSymbol}${formatNumber(board_type.price_per_sheet || 0, 2)} |\n`;
+        });
+        markdown += `\n`;
+    }
+    
+    // Unique Part Types
+    if (g_reportData.unique_part_types && g_reportData.unique_part_types.length > 0) {
+        markdown += `## Unique Part Types\n\n`;
+        markdown += `| Name | Width (${reportUnits}) | Height (${reportUnits}) | Thickness (${reportUnits}) | Material | Grain | Edge Banding | Qty | Total Area (${currentAreaUnitLabel}) | Weight (kg) |\n`;
+        markdown += `|------|--------|---------|-----------|----------|-------|--------------|-----|-------------|-------------|\n`;
+        
+        g_reportData.unique_part_types.forEach(part_type => {
+            const width = (part_type.width || 0) / window.unitFactors[reportUnits];
+            const height = (part_type.height || 0) / window.unitFactors[reportUnits];
+            const thickness = (part_type.thickness || 0) / window.unitFactors[reportUnits];
+            const edgeBandingDisplay = typeof part_type.edge_banding === 'object' && part_type.edge_banding.type ? part_type.edge_banding.type : (part_type.edge_banding || 'None');
+            
+            markdown += `| ${part_type.name} | ${formatNumber(width, reportPrecision)} | ${formatNumber(height, reportPrecision)} | ${formatNumber(thickness, reportPrecision)} | ${part_type.material} | ${part_type.grain_direction || 'Any'} | ${edgeBandingDisplay} | ${part_type.total_quantity} | ${getAreaDisplay(part_type.total_area)} | ${formatNumber(part_type.total_weight_kg || 0, 2)} |\n`;
+        });
+        markdown += `\n`;
+    }
+    
+    // Sheet Inventory Summary
+    if (g_reportData.unique_board_types && g_reportData.unique_board_types.length > 0) {
+        markdown += `## Sheet Inventory Summary\n\n`;
+        markdown += `| Material | Dimensions (${reportUnits}) | Count | Total Area (${currentAreaUnitLabel}) | Price/Sheet | Total Cost |\n`;
+        markdown += `|----------|-------------|-------|-------------|-------------|------------|\n`;
+        
+        g_reportData.unique_board_types.forEach(board_type => {
+            const boardCurrency = board_type.currency || currency;
+            const boardSymbol = window.currencySymbols[boardCurrency] || boardCurrency;
+            const width = parseFloat(board_type.stock_width) / window.unitFactors[reportUnits];
+            const height = parseFloat(board_type.stock_height) / window.unitFactors[reportUnits];
+            const dimensionsStr = `${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)}`;
+            
+            markdown += `| ${board_type.material} | ${dimensionsStr} | ${board_type.count} | ${getAreaDisplay(board_type.total_area)} | ${boardSymbol}${formatNumber(board_type.price_per_sheet || 0, 2)} | ${boardSymbol}${formatNumber(board_type.total_cost || 0, 2)} |\n`;
+        });
+        markdown += `\n`;
+    }
+    
+    // Boards Summary with Parts
+    markdown += `## Boards Summary\n\n`;
+    g_boardsData.forEach((board, index) => {
+        const width = (board.stock_width || 0) / window.unitFactors[reportUnits];
+        const height = (board.stock_height || 0) / window.unitFactors[reportUnits];
+        
+        markdown += `### Board ${index + 1}: ${board.material}\n\n`;
+        markdown += `- **Size:** ${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)} ${reportUnits}\n`;
+        markdown += `- **Parts:** ${board.parts ? board.parts.length : 0}\n`;
+        markdown += `- **Efficiency:** ${formatNumber(board.efficiency_percentage, 1)}%\n`;
+        markdown += `- **Waste:** ${formatNumber(board.waste_percentage, 1)}%\n\n`;
+        
+        if (board.parts && board.parts.length > 0) {
+            markdown += `**Parts on this board:**\n\n`;
+            markdown += `| Part ID | Name | Dimensions (${reportUnits}) | Material | Grain | Edge Banding |\n`;
+            markdown += `|---------|------|-------------|----------|-------|-------------|\n`;
+            
+            board.parts.forEach(part => {
+                const partW = (part.width || 0) / window.unitFactors[reportUnits];
+                const partH = (part.height || 0) / window.unitFactors[reportUnits];
+                const partId = part.part_unique_id || part.part_number || part.instance_id || '-';
+                const edgeBandingDisplay = typeof part.edge_banding === 'object' && part.edge_banding.type ? part.edge_banding.type : (part.edge_banding || 'None');
+                
+                markdown += `| ${partId} | ${part.name} | ${formatNumber(partW, reportPrecision)} × ${formatNumber(partH, reportPrecision)} | ${part.material} | ${part.grain_direction || 'Any'} | ${edgeBandingDisplay} |\n`;
+            });
+            markdown += `\n`;
+        }
+    });
+    
+    // Cut Sequences
+    if (g_reportData.cut_sequences && g_reportData.cut_sequences.length > 0) {
+        markdown += `## Cut Sequences\n\n`;
+        
+        g_reportData.cut_sequences.forEach(board => {
+            markdown += `### Sheet ${board.board_number}: ${board.material}\n\n`;
+            const stockSize = board.stock_size || board.stock_dimensions || 'N/A';
+            markdown += `**Stock Size:** ${stockSize}\n\n`;
+            markdown += `| Step | Operation | Description | Measurement |\n`;
+            markdown += `|------|-----------|-------------|-------------|\n`;
+            
+            // Handle both 'steps' (new) and 'cut_sequence' (old)
+            const steps = board.steps || board.cut_sequence || [];
+            steps.forEach(step => {
+                const operation = step.operation || step.type || 'N/A';
+                markdown += `| ${step.step} | ${operation} | ${step.description} | ${step.measurement} |\n`;
+            });
+            markdown += `\n`;
+        });
+    }
+    
+    // Usable Offcuts
+    if (g_reportData.usable_offcuts && g_reportData.usable_offcuts.length > 0) {
+        const currentAreaUnitLabel = getAreaUnitLabel();
+        const reportUnits = window.reportUnits || window.currentUnits || 'mm';
+        markdown += `## Usable Offcuts\n\n`;
+        markdown += `| Sheet # | Material | Width (${reportUnits}) | Height (${reportUnits}) | Area (${currentAreaUnitLabel}) |\n`;
+        markdown += `|---------|----------|------------|-------------|----------|\n`;
+        
+        g_reportData.usable_offcuts.forEach(offcut => {
+            // Convert area from m² to current area units
+            const areaMM2 = offcut.area_m2 * 1000000;
+            const convertedArea = getAreaDisplay(areaMM2);
+            
+            // ✅ NEW: Convert dimensions from mm to current units
+            let width, height;
+            if (offcut.estimated_width_mm !== undefined && offcut.estimated_height_mm !== undefined) {
+                width = formatDimension(offcut.estimated_width_mm);
+                height = formatDimension(offcut.estimated_height_mm);
+            } else {
+                // Fallback: Parse the old format
+                const match = offcut.estimated_dimensions.match(/(\d+)\s*x\s*(\d+)/);
+                if (match) {
+                    width = formatDimension(parseFloat(match[1]));
+                    height = formatDimension(parseFloat(match[2]));
+                } else {
+                    width = offcut.estimated_dimensions;
+                    height = '';
+                }
+            }
+            
+            markdown += `| ${offcut.board_number} | ${offcut.material} | ${width} | ${height} | ${convertedArea} |\n`;
+        });
+        markdown += `\n`;
+    }
+    
+    // Detailed Parts List
+    const parts_list = g_reportData.parts_placed || g_reportData.parts || [];
+    if (parts_list.length > 0) {
+        markdown += `## Cut List & Part Details\n\n`;
+        markdown += `| ID | Name | Dimensions (${reportUnits}) | Material | Grain | Edge Banding | Board # |\n`;
+        markdown += `|----|------|-------------|----------|-------|--------------|--------|\n`;
+        
+        parts_list.forEach(part => {
+            const partId = part.part_unique_id || part.part_number || '-';
+            const width = (part.width || 0) / window.unitFactors[reportUnits];
+            const height = (part.height || 0) / window.unitFactors[reportUnits];
+            const dimensionsStr = `${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)}`;
+            const edgeBandingDisplay = typeof part.edge_banding === 'object' && part.edge_banding.type ? part.edge_banding.type : (part.edge_banding || 'None');
+            
+            markdown += `| ${partId} | ${part.name} | ${dimensionsStr} | ${part.material} | ${part.grain_direction || 'Any'} | ${edgeBandingDisplay} | ${part.board_number} |\n`;
+        });
+        markdown += `\n`;
+    }
+    
+    // Cost Breakdown
+    if (g_reportData.unique_board_types && g_reportData.unique_board_types.length > 0) {
+        markdown += `## Cost Breakdown\n\n`;
+        markdown += `| Material | Sheets Required | Unit Cost | Total Cost |\n`;
+        markdown += `|----------|----------------|-----------|------------|\n`;
+        
+        g_reportData.unique_board_types.forEach(board_type => {
+            const boardCurrency = board_type.currency || currency;
+            const boardSymbol = window.currencySymbols[boardCurrency] || boardCurrency;
+            markdown += `| ${board_type.material} | ${board_type.count} | ${boardSymbol}${formatNumber(board_type.price_per_sheet || 0, 2)} | ${boardSymbol}${formatNumber(board_type.total_cost || 0, 2)} |\n`;
+        });
+        markdown += `\n`;
+    }
+    
+    markdown += `---\n\n`;
+    markdown += `*Report generated by AutoNestCut*\n`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(markdown).then(() => {
+        const btn = document.getElementById('copyMarkdownButton');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = 'Copied!';
+        btn.style.background = '#28a745';
+        btn.style.borderColor = '#28a745';
+        btn.style.color = 'white';
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.style.background = '';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy to clipboard:', err);
+        alert('Failed to copy to clipboard. Please try again.');
+    });
+}
+
+function toggleTreeView() {
+    const treeContainer = document.getElementById('treeStructure');
+    const searchContainer = document.getElementById('treeSearchContainer');
+    const button = document.getElementById('treeToggle');
+    
+    if (treeContainer.style.display === 'none' || treeContainer.style.display === '') {
+        renderTreeStructure();
+        treeContainer.style.display = 'block';
+        searchContainer.style.display = 'flex';
+        button.textContent = 'Hide Tree Structure';
+    } else {
+        treeContainer.style.display = 'none';
+        searchContainer.style.display = 'none';
+        button.textContent = 'Show Tree Structure';
+    }
+}
+
+function renderTreeStructure() {
+    const container = document.getElementById('treeStructure');
+    
+    console.log('TREE DEBUG:', {
+        hasTree: !!window.hierarchyTree,
+        treeLength: window.hierarchyTree ? window.hierarchyTree.length : 0,
+        treeData: window.hierarchyTree
+    });
+    
+    if (!window.hierarchyTree || window.hierarchyTree.length === 0) {
+        container.innerHTML = '<p style="padding: 20px; text-align: center; color: #656d76;">No component hierarchy available</p>';
+        return;
+    }
+    
+    let html = '<div class="tree-view">';
+    window.hierarchyTree.forEach(component => {
+        html += renderTreeNode(component, 0);
+    });
+    html += '</div>';
+    
+    console.log('Generated tree HTML:', html.substring(0, 200));
+    container.innerHTML = html;
+    console.log('Tree rendered, container has', container.children.length, 'children');
+    
+    // Auto-expand first level
+    setTimeout(() => {
+        document.querySelectorAll('.tree-children').forEach((el, index) => {
+            if (el.parentElement.querySelector('.tree-node').style.marginLeft === '0px') {
+                el.style.display = 'block';
+                const expandIcon = el.parentElement.querySelector('.tree-expand');
+                if (expandIcon) expandIcon.textContent = 'Ôû╝';
+            }
+        });
+    }, 50);
+}
+
+function renderTreeNode(node, level) {
+    const indent = level * 24;
+    const hasChildren = node.children && node.children.length > 0;
+    const expandIcon = hasChildren ? '▼' : '•';
+    
+    let html = `<div class="tree-node" style="margin-left: ${indent}px; padding: 10px 8px; border-bottom: 1px solid #e1e4e8; transition: background 0.15s;" onmouseover="this.style.background='#f6f8fa'" onmouseout="this.style.background='transparent'">
+        <span class="tree-expand" onclick="toggleNode(this)" style="display: inline-block; width: 24px; cursor: ${hasChildren ? 'pointer' : 'default'}; user-select: none; color: #0366d6; font-size: 12px; font-weight: bold;">${expandIcon}</span>
+        <span class="tree-name" style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 600; color: #24292e; font-size: 14px;">${escapeHtml(node.name || 'Unnamed')}</span>
+        <span class="tree-info" style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #586069; margin-left: 12px; font-size: 13px; font-style: italic;">${escapeHtml(node.material || 'No material')}</span>
+    </div>`;
+    
+    if (hasChildren) {
+        html += '<div class="tree-children" style="display: none;">';
+        node.children.forEach(child => {
+            html += renderTreeNode(child, level + 1);
+        });
+        html += '</div>';
+    }
+    
+    return html;
+}
+
+function toggleNode(element) {
+    const children = element.parentElement.nextElementSibling;
+    if (children && children.classList.contains('tree-children')) {
+        const isHidden = children.style.display === 'none';
+        children.style.display = isHidden ? 'block' : 'none';
+        element.textContent = isHidden ? 'Ôû╝' : 'ÔûÂ';
+    }
+}
+
+function filterTree() {
+    const search = document.getElementById('treeSearch').value.toLowerCase();
+    const nodes = document.querySelectorAll('.tree-node');
+    nodes.forEach(node => {
+        const text = node.textContent.toLowerCase();
+        node.style.display = text.includes(search) ? 'block' : 'none';
+    });
+}
+
+function clearTreeSearch() {
+    document.getElementById('treeSearch').value = '';
+    filterTree();
+}
+
+function expandAll() {
+    document.querySelectorAll('.tree-children').forEach(el => el.style.display = 'block');
+    document.querySelectorAll('.tree-expand').forEach(el => {
+        const hasChildren = el.parentElement.nextElementSibling && el.parentElement.nextElementSibling.classList.contains('tree-children');
+        if (hasChildren) el.textContent = 'Ôû╝';
+    });
+}
+
+function collapseAll() {
+    document.querySelectorAll('.tree-children').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tree-expand').forEach(el => {
+        const hasChildren = el.parentElement.nextElementSibling && el.parentElement.nextElementSibling.classList.contains('tree-children');
+        if (hasChildren) el.textContent = 'ÔûÂ';
+    });
+}
+
+function initResizer() {
+    const resizer = document.getElementById('resizer');
+    const leftSide = document.getElementById('diagramsContainer');
+    const rightSide = document.getElementById('reportContainer');
+    
+    if (!resizer || !leftSide || !rightSide) return;
+    
+    let isResizing = false;
+    
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        
+        const container = document.querySelector('.container');
+        const containerRect = container.getBoundingClientRect();
+        const newLeftWidth = e.clientX - containerRect.left;
+        const totalWidth = containerRect.width;
+        
+        if (newLeftWidth > 300 && totalWidth - newLeftWidth > 400) {
+            leftSide.style.flex = `0 0 ${newLeftWidth}px`;
+            rightSide.style.flex = `1 1 auto`;
+        }
+    });
+    
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        }
+    });
+}
+
+
+// ========================================
+// MAXIMIZE DIAGRAM VIEW
+// ========================================
+
+function openMaximizedView(sourceCanvas, board, boardIndex, reportUnits, reportPrecision) {
+    const overlay = document.createElement('div');
+    overlay.className = 'sheet-maximize-overlay';
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.15); backdrop-filter: blur(2px);
+        z-index: 9999; display: flex; align-items: center; justify-content: center;
+        padding: 40px; animation: fadeIn 0.2s ease-out;
+    `;
+    
+    const canvasContainer = document.createElement('div');
+    canvasContainer.style.cssText = `
+        background: white; border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column;
+        overflow: hidden; animation: slideUp 0.3s ease-out; margin: auto;
+    `;
+    
+    const header = document.createElement('div');
+    header.style.cssText = `
+        padding: 16px 24px; border-bottom: 1px solid #e2e8f0;
+        display: flex; justify-content: space-between; align-items: center;
+        background: #f8fafc;
+    `;
+    
+    const headerInfo = document.createElement('div');
+    headerInfo.style.cssText = `display: flex; gap: 20px; align-items: center; flex-wrap: wrap;`;
+    
+    const title = document.createElement('h3');
+    title.style.cssText = `margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;`;
+    title.textContent = `Board ${boardIndex + 1}`;
+    
+    const material = document.createElement('span');
+    material.style.cssText = `
+        font-size: 14px; color: #64748b; padding: 4px 12px;
+        background: white; border-radius: 6px; border: 1px solid #e2e8f0;
+    `;
+    material.textContent = board.material || 'Unknown Material';
+    
+    const dimensions = document.createElement('span');
+    dimensions.style.cssText = `
+        font-size: 14px; color: #64748b; padding: 4px 12px;
+        background: white; border-radius: 6px; border: 1px solid #e2e8f0;
+    `;
+    const width = board.stock_width / window.unitFactors[reportUnits];
+    const height = board.stock_height / window.unitFactors[reportUnits];
+    dimensions.textContent = `${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)} ${reportUnits}`;
+    
+    const efficiency = document.createElement('span');
+    efficiency.style.cssText = `
+        font-size: 14px; font-weight: 600; padding: 4px 12px;
+        background: ${board.efficiency_percentage >= 80 ? '#d4edda' : board.efficiency_percentage >= 60 ? '#fff3cd' : '#f8d7da'};
+        color: ${board.efficiency_percentage >= 80 ? '#155724' : board.efficiency_percentage >= 60 ? '#856404' : '#721c24'};
+        border-radius: 6px;
+    `;
+    efficiency.textContent = `${formatNumber(board.efficiency_percentage || 0, 1)}% Efficiency`;
+    
+    headerInfo.appendChild(title);
+    headerInfo.appendChild(material);
+    headerInfo.appendChild(dimensions);
+    headerInfo.appendChild(efficiency);
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.style.cssText = `
+        background: transparent; border: none; cursor: pointer; padding: 8px;
+        border-radius: 6px; display: flex; align-items: center; justify-content: center;
+        transition: background 0.2s;
+    `;
+    closeBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+    `;
+    closeBtn.onmouseover = () => closeBtn.style.background = '#f1f5f9';
+    closeBtn.onmouseout = () => closeBtn.style.background = 'transparent';
+    closeBtn.onclick = (e) => {
+        e.stopPropagation(); // Prevent event bubbling to overlay
+        closeMaximizedView(overlay);
+    };
+    
+    header.appendChild(headerInfo);
+    header.appendChild(closeBtn);
+    
+    const canvasWrapper = document.createElement('div');
+    canvasWrapper.style.cssText = `
+        padding: 24px; overflow: auto; flex: 1; display: flex;
+        align-items: center; justify-content: center; background: #fafafa; min-height: 0;
+    `;
+    
+    const maxCanvas = document.createElement('canvas');
+    maxCanvas.style.cssText = `
+        max-width: 100%; max-height: 100%;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-radius: 8px; background: white;
+    `;
+    
+    drawMaximizedBoard(maxCanvas, board, reportUnits, reportPrecision);
+    
+    canvasWrapper.appendChild(maxCanvas);
+    canvasContainer.appendChild(header);
+    canvasContainer.appendChild(canvasWrapper);
+    overlay.appendChild(canvasContainer);
+    document.body.appendChild(overlay);
+    
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeMaximizedView(overlay);
+    });
+    
+    const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+            closeMaximizedView(overlay);
+            document.removeEventListener('keydown', escapeHandler);
+        }
+    };
+    document.addEventListener('keydown', escapeHandler);
+    
+    if (!document.getElementById('maximize-animations')) {
+        const style = document.createElement('style');
+        style.id = 'maximize-animations';
+        style.textContent = `
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes slideUp {
+                from { opacity: 0; transform: translateY(20px) scale(0.95); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+function closeMaximizedView(overlay) {
+    overlay.style.animation = 'fadeOut 0.2s ease-out';
+    overlay.querySelector('div').style.animation = 'slideDown 0.2s ease-out';
+    
+    if (!document.getElementById('maximize-exit-animations')) {
+        const style = document.createElement('style');
+        style.id = 'maximize-exit-animations';
+        style.textContent = `
+            @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+            @keyframes slideDown {
+                from { opacity: 1; transform: translateY(0) scale(1); }
+                to { opacity: 0; transform: translateY(20px) scale(0.95); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    setTimeout(() => overlay.remove(), 200);
+}
+
+function drawMaximizedBoard(canvas, board, reportUnits, reportPrecision) {
+    const ctx = canvas.getContext('2d');
+    const padding = 60;
+    const boardWidth = parseFloat(board.stock_width) || 1000;
+    const boardHeight = parseFloat(board.stock_height) || 1000;
+    
+    const targetWidth = Math.min(Math.max(800, window.innerWidth * 0.7), window.innerWidth * 0.85);
+    const maxHeight = window.innerHeight * 0.65;
+    
+    let scale = (targetWidth - 2 * padding) / boardWidth;
+    const calculatedHeight = boardHeight * scale + 2 * padding;
+    
+    if (calculatedHeight > maxHeight) {
+        scale = (maxHeight - 2 * padding) / boardHeight;
+    }
+    
+    const dpr = Math.min(window.devicePixelRatio * 1.5, 3);
+    canvas.width = (boardWidth * scale + 2 * padding) * dpr;
+    canvas.height = (boardHeight * scale + 2 * padding) * dpr;
+    canvas.style.width = (boardWidth * scale + 2 * padding) + 'px';
+    canvas.style.height = (boardHeight * scale + 2 * padding) + 'px';
+    ctx.scale(dpr, dpr);
+    
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(padding, padding, boardWidth * scale, boardHeight * scale);
+    
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(padding, padding, boardWidth * scale, boardHeight * scale);
+    
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = `600 ${Math.max(15, 17 * scale)}px 'Inter', -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    const displayWidth = boardWidth / window.unitFactors[reportUnits];
+    ctx.fillText(`${formatNumber(displayWidth, reportPrecision)} ${reportUnits}`, padding + (boardWidth * scale) / 2, padding - 15);
+    
+    ctx.save();
+    ctx.translate(padding - 25, padding + (boardHeight * scale) / 2);
+    ctx.rotate(-Math.PI / 2);
+    const displayHeight = boardHeight / window.unitFactors[reportUnits];
+    ctx.fillText(`${formatNumber(displayHeight, reportPrecision)} ${reportUnits}`, 0, 0);
+    ctx.restore();
+    
+    const parts = board.parts || [];
+    const offcuts = board.offcuts || [];
+    
+    if (offcuts && offcuts.length > 0) {
+        offcuts.forEach((offcut) => {
+            const offcutX = padding + (offcut.x || 0) * scale;
+            const offcutY = padding + (offcut.y || 0) * scale;
+            const offcutWidth = (offcut.width || offcut.w || 0) * scale;
+            const offcutHeight = (offcut.height || offcut.h || 0) * scale;
+            
+            if (offcutWidth > 0 && offcutHeight > 0) {
+                drawCrossedOffcut(ctx, offcutX, offcutY, offcutWidth, offcutHeight);
+            }
+        });
+    }
+    
+    parts.forEach((part, partIndex) => {
+        const partPosX = parseFloat(part.x) || 0;
+        const partPosY = parseFloat(part.y) || 0;
+        const partW = parseFloat(part.width) || 10;
+        const partH = parseFloat(part.height) || 10;
+        
+        const partX = padding + partPosX * scale;
+        const partY = padding + partPosY * scale;
+        const partWidth = partW * scale;
+        const partHeight = partH * scale;
+        
+        drawPartWithGrain(ctx, partX, partY, partWidth, partHeight, part);
+        
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 1.8;
+        ctx.strokeRect(partX, partY, partWidth, partHeight);
+        
+        drawGrainArrow(ctx, partX, partY, partWidth, partHeight, part.grain_direction);
+        
+        if (partWidth > 60) {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = `500 ${Math.max(13, 15 * scale)}px 'Inter', -apple-system, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            const partDisplayW = partW / window.unitFactors[reportUnits];
+            ctx.fillText(`${formatNumber(partDisplayW, reportPrecision)}`, partX + partWidth / 2, partY + 8);
+        }
+        
+        if (partHeight > 60) {
+            ctx.save();
+            ctx.translate(partX + 8, partY + partHeight / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = `500 ${Math.max(13, 15 * scale)}px 'Inter', -apple-system, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            const partDisplayH = partH / window.unitFactors[reportUnits];
+            ctx.fillText(`${formatNumber(partDisplayH, reportPrecision)}`, 0, 0);
+            ctx.restore();
+        }
+        
+        if (partWidth > 40 && partHeight > 30) {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = `700 ${Math.max(17, 20 * scale)}px 'Inter', -apple-system, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const labelContent = String(part.part_unique_id || part.part_number || part.instance_id || `P${partIndex + 1}`);
+            const maxChars = Math.max(6, Math.floor(partWidth / 10));
+            const displayLabel = labelContent.length > maxChars ? labelContent.slice(0, maxChars - 1) + '…' : labelContent;
+            ctx.fillText(displayLabel, partX + partWidth / 2, partY + partHeight / 2);
+        }
+    });
+}

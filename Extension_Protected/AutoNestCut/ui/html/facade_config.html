@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AutoNestCut - Facade Materials Calculator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>AutoNestCut - Facade Materials Calculator</h1>
+        
+        <div class="buttons-top">
+            <button type="button" onclick="calculateMaterials()" class="primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                    <path d="M9 11H5a2 2 0 0 0-2 2v3c0 1.1.9 2 2 2h4m-4-6l4-4 4 4m-4-4v12"/>
+                </svg>
+                Calculate Materials
+            </button>
+            <button type="button" onclick="exportReport()" class="secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14,2 14,8 20,8"/>
+                </svg>
+                Export Report
+            </button>
+            <button type="button" onclick="window.close()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                Close
+            </button>
+        </div>
+        
+        <div class="section">
+            <h2>Surface Analysis</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalSurfaces">0</div>
+                    <div class="stat-label">Surfaces Selected</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalArea">0 m²</div>
+                    <div class="stat-label">Total Area</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="surfaceTypes">-</div>
+                    <div class="stat-label">Surface Types</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Cladding Material Selection</h2>
+            <div class="preset-selection" id="presetGrid">
+                <!-- Presets will be loaded here -->
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Calculation Settings</h2>
+            <div class="form-group">
+                <label for="wasteFactor">Waste Factor (%):</label>
+                <input type="number" id="wasteFactor" value="10" min="5" max="25">
+            </div>
+            <div class="form-group">
+                <label for="materialCost">Material Cost per Piece:</label>
+                <input type="number" id="materialCost" value="0" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label for="jointCost">Joint Material Cost per m³:</label>
+                <input type="number" id="jointCost" value="0" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label for="currency">Currency:</label>
+                <select id="currency">
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                    <option value="SAR">SAR (ر.س)</option>
+                    <option value="AED">AED (د.إ)</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="results" class="section" style="display: none;">
+            <h2>Material Calculation Results</h2>
+            <div class="results-summary">
+                <div class="result-group">
+                    <h3>Quantities Required</h3>
+                    <p><strong>Total Pieces:</strong> <span id="totalPieces">-</span></p>
+                    <p><strong>Waste Allowance:</strong> <span id="wastePieces">-</span> pieces</p>
+                    <p><strong>Joint Material:</strong> <span id="jointVolume">-</span> m³</p>
+                </div>
+                <div class="result-group">
+                    <h3>Cost Estimation</h3>
+                    <p><strong>Material Cost:</strong> <span id="materialCostTotal">-</span></p>
+                    <p><strong>Joint Cost:</strong> <span id="jointCostTotal">-</span></p>
+                    <p><strong>Total Project Cost:</strong> <span id="totalCost">-</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedPreset = null;
+        let surfaceData = null;
+        
+        function loadPresets() {
+            sketchup.get_facade_presets();
+        }
+        
+        function displayPresets(presets) {
+            const grid = document.getElementById('presetGrid');
+            grid.innerHTML = presets.map(preset => `
+                <div class="material-option" onclick="selectPreset('${preset.name}')">
+                    <div class="material-name">${preset.name}</div>
+                    <div class="material-details">${preset.dimensions}</div>
+                    <div class="material-pattern">${preset.pattern}</div>
+                </div>
+            `).join('');
+        }
+        
+        function selectPreset(presetName) {
+            selectedPreset = presetName;
+            document.querySelectorAll('.material-option').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.target.closest('.material-option').classList.add('selected');
+        }
+        
+        function updateSurfaceInfo(data) {
+            surfaceData = data;
+            document.getElementById('totalSurfaces').textContent = data.count;
+            document.getElementById('totalArea').textContent = data.area + ' m²';
+            document.getElementById('surfaceTypes').textContent = data.types;
+        }
+        
+        function calculateMaterials() {
+            if (!selectedPreset) {
+                alert('Please select a cladding preset');
+                return;
+            }
+            
+            const settings = {
+                preset: selectedPreset,
+                waste_factor: parseFloat(document.getElementById('wasteFactor').value) / 100,
+                material_cost: parseFloat(document.getElementById('materialCost').value),
+                joint_cost: parseFloat(document.getElementById('jointCost').value),
+                currency: document.getElementById('currency').value
+            };
+            
+            sketchup.calculate_facade_materials(JSON.stringify(settings));
+        }
+        
+        function displayResults(results) {
+            document.getElementById('totalPieces').textContent = results.total_pieces;
+            document.getElementById('wastePieces').textContent = results.waste_pieces;
+            document.getElementById('jointVolume').textContent = results.joint_volume;
+            document.getElementById('materialCostTotal').textContent = results.material_cost + ' ' + results.currency;
+            document.getElementById('jointCostTotal').textContent = results.joint_cost + ' ' + results.currency;
+            document.getElementById('totalCost').textContent = results.total_cost + ' ' + results.currency;
+            
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function exportReport() {
+            if (!selectedPreset) {
+                alert('Please calculate materials first');
+                return;
+            }
+            sketchup.export_facade_report();
+        }
+        
+        // Load presets and surface data on page load
+        window.onload = function() {
+            loadPresets();
+            sketchup.analyze_selected_surfaces();
+        };
+    </script>
+</body>
+</html>

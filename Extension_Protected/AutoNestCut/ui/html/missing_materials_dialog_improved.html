@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Missing Materials - AutoNestCut</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f8f9fa;
+            font-size: 14px;
+            color: #1a1a1a;
+            line-height: 1.5;
+        }
+        
+        .dialog-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: #ffffff;
+        }
+        
+        .dialog-header {
+            background: #2323FF;
+            color: #ffffff;
+            padding: 20px 24px;
+            flex-shrink: 0;
+        }
+        
+        .dialog-header h2 {
+            margin: 0 0 8px 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .dialog-header p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        /* Bulk Actions Toolbar */
+        .bulk-actions-bar {
+            background: #f6f8fa;
+            border-bottom: 1px solid #d0d7de;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .bulk-actions-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .select-all-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+        
+        .select-all-checkbox input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .selection-count {
+            color: #656d76;
+            font-size: 13px;
+        }
+        
+        .bulk-actions-right {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn-bulk {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #d0d7de;
+            background: #ffffff;
+            color: #1a1a1a;
+        }
+        
+        .btn-bulk:hover:not(:disabled) {
+            background: #f6f8fa;
+            border-color: #8c959f;
+        }
+        
+        .btn-bulk:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-bulk-primary {
+            background: #2323FF;
+            color: #ffffff;
+            border-color: #2323FF;
+        }
+        
+        .btn-bulk-primary:hover:not(:disabled) {
+            background: #1a1acc;
+            border-color: #1a1acc;
+        }
+        
+        /* Main Content Area */
+        .dialog-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+        
+        .material-card {
+            background: #ffffff;
+            border: 2px solid #d0d7de;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all 0.2s;
+        }
+        
+        .material-card.selected {
+            border-color: #2323FF;
+            background: #f0f4ff;
+        }
+        
+        .material-card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .material-checkbox {
+            margin-top: 4px;
+        }
+        
+        .material-checkbox input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .material-main-info {
+            flex: 1;
+        }
+        
+        .material-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .material-title-row h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        
+        .material-badges {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge-missing {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-thickness {
+            background: #e6f0ff;
+            color: #0969da;
+        }
+        
+        .material-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: #f6f8fa;
+            border-radius: 6px;
+        }
+        
+        .meta-item {
+            font-size: 13px;
+        }
+        
+        .meta-label {
+            color: #656d76;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        
+        .meta-value {
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+        
+        .component-list {
+            margin-top: 12px;
+            padding: 12px;
+            background: #ffffff;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        
+        .component-item {
+            font-size: 12px;
+            color: #1a1a1a;
+            padding: 6px 0;
+            border-bottom: 1px solid #f6f8fa;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .component-item:last-child {
+            border-bottom: none;
+        }
+        
+        .component-name {
+            font-weight: 600;
+            color: #0969da;
+        }
+        
+        .component-dims {
+            color: #656d76;
+            font-size: 11px;
+        }
+        
+        /* Option Selection */
+        .option-selector {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #d0d7de;
+        }
+        
+        .option-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+        
+        .option-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .option-btn {
+            flex: 1;
+            min-width: 180px;
+            padding: 12px 16px;
+            border: 2px solid #d0d7de;
+            border-radius: 6px;
+            background: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        
+        .option-btn:hover {
+            border-color: #2323FF;
+            background: #f0f4ff;
+        }
+        
+        .option-btn.active {
+            border-color: #2323FF;
+            background: #e6f0ff;
+        }
+        
+        .option-btn-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+        
+        .option-btn-desc {
+            font-size: 12px;
+            color: #656d76;
+        }
+        
+        /* Material Preview Panel */
+        .material-preview {
+            margin-top: 12px;
+            padding: 16px;
+            background: #e6f0ff;
+            border: 1px solid #2323FF;
+            border-radius: 6px;
+            display: none;
+        }
+        
+        .material-preview.visible {
+            display: block;
+        }
+        
+        .preview-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .preview-field {
+            background: #ffffff;
+            padding: 10px 12px;
+            border-radius: 4px;
+        }
+        
+        .preview-field-label {
+            font-size: 11px;
+            color: #656d76;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .preview-field-value {
+            font-size: 14px;
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+        
+        .preview-field input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #d0d7de;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .favorite-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: #ffffff;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .favorite-toggle input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .favorite-toggle label {
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0;
+        }
+        
+        /* Footer */
+        .dialog-footer {
+            padding: 20px 24px;
+            background: #f6f8fa;
+            border-top: 1px solid #d0d7de;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .footer-info {
+            font-size: 13px;
+            color: #656d76;
+        }
+        
+        .footer-info strong {
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+        
+        .footer-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        
+        .btn-cancel {
+            background: #ffffff;
+            color: #1a1a1a;
+            border: 1px solid #d0d7de;
+        }
+        
+        .btn-cancel:hover {
+            background: #f6f8fa;
+            border-color: #8c959f;
+        }
+        
+        .btn-primary {
+            background: #2323FF;
+            color: #ffffff;
+        }
+        
+        .btn-primary:hover {
+            background: #1a1acc;
+        }
+        
+        .btn-primary:disabled {
+            background: #d0d7de;
+            cursor: not-allowed;
+        }
+        
+        /* Utility Classes */
+        .info-box {
+            background: #e6f0ff;
+            border-left: 4px solid #2323FF;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .info-box p {
+            margin: 0;
+            font-size: 13px;
+            color: #1a1a1a;
+        }
+        
+        .star-icon {
+            color: #fbbf24;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dialog-container">
+        <div class="dialog-header">
+            <h2>Missing Materials Found</h2>
+            <p>Select materials and apply actions in bulk, or configure individually</p>
+        </div>
+        
+        <!-- Bulk Actions Toolbar -->
+        <div class="bulk-actions-bar">
+            <div class="bulk-actions-left">
+                <div class="select-all-checkbox">
+                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                    <label for="selectAll">Select All</label>
+                </div>
+                <span class="selection-count" id="selectionCount">0 selected</span>
+            </div>
+            <div class="bulk-actions-right">
+                <button class="btn-bulk" id="bulkExistingBtn" onclick="showBulkAction('existing')" disabled>
+                    Use Existing Material
+                </button>
+                <button class="btn-bulk" id="bulkStandardBtn" onclick="showBulkAction('standard')" disabled>
+                    Create Standard Sheet
+                </button>
+                <button class="btn-bulk" id="bulkCustomBtn" onclick="showBulkAction('custom')" disabled>
+                    Create Custom Parts
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="dialog-content" id="materialsContainer">
+            <!-- Materials will be dynamically inserted here -->
+        </div>
+        
+        <!-- Footer -->
+        <div class="dialog-footer">
+            <div class="footer-info">
+                <strong id="materialCount">0</strong> material(s) to resolve • 
+                <strong id="resolvedCount">0</strong> resolved
+            </div>
+            <div class="footer-buttons">
+                <button class="btn btn-cancel" onclick="cancelDialog()">Cancel</button>
+                <button class="btn btn-primary" id="continueBtn" onclick="continueProcess()" disabled>Continue</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bulk Action Modal -->
+    <div id="bulkActionModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 8px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h3 style="margin: 0 0 16px 0; font-size: 18px;">Apply Action to Selected Materials</h3>
+            <div id="bulkActionContent"></div>
+            <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end;">
+                <button class="btn btn-cancel" onclick="closeBulkModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="applyBulkAction()">Apply to Selected</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let missingMaterials = [];
+        let availableMaterials = [];
+        let userChoices = {};
+        let selectedMaterials = new Set();
+        let currentBulkAction = null;
+        
+        // Notify Ruby that dialog is ready
+        window.location = 'skp:ready@';
+        
+        // Initialize dialog with data from Ruby
+        function initializeDialog(materials, available) {
+            missingMaterials = materials;
+            availableMaterials = available;
+            
+            // Initialize default choices
+            missingMaterials.forEach((material, index) => {
+                userChoices[index] = {
+                    type: 'standard',
+                    width: 2440,
+                    height: 1220,
+                    saveToDb: true,
+                    addToFavorites: false,
+                    materialName: material.name,
+                    thickness: material.thickness,
+                    price: 0
+                };
+            });
+            
+            renderMaterials();
+            updateCounts();
+        }
+        
+        function renderMaterials() {
+            const container = document.getElementById('materialsContainer');
+            container.innerHTML = '';
+            
+            if (missingMaterials.length === 0) {
+                container.innerHTML = '<div class="info-box"><p>No missing materials found.</p></div>';
+                return;
+            }
+            
+            missingMaterials.forEach((material, index) => {
+                const card = createMaterialCard(material, index);
+                container.appendChild(card);
+            });
+        }
+        
+        function createMaterialCard(material, index) {
+            const card = document.createElement('div');
+            card.className = 'material-card';
+            card.id = `material-${index}`;
+            
+            const matchingMaterials = availableMaterials.filter(m => 
+                Math.abs(m.thickness - material.thickness) < 0.1
+            );
+            
+            const choice = userChoices[index];
+            
+            card.innerHTML = `
+                <div class="material-card-header">
+                    <div class="material-checkbox">
+                        <input type="checkbox" id="checkbox-${index}" onchange="toggleMaterialSelection(${index})">
+                    </div>
+                    <div class="material-main-info">
+                        <div class="material-title-row">
+                            <h3>${escapeHtml(material.name)}</h3>
+                            <div class="material-badges">
+                                <span class="badge badge-thickness">${material.thickness}mm</span>
+                                <span class="badge badge-missing">Missing</span>
+                            </div>
+                        </div>
+                        
+                        <div class="material-meta">
+                            <div class="meta-item">
+                                <div class="meta-label">Components</div>
+                                <div class="meta-value">${material.component_count}</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Thickness</div>
+                                <div class="meta-value">${material.thickness}mm</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Available Stock</div>
+                                <div class="meta-value">${matchingMaterials.length} options</div>
+                            </div>
+                        </div>
+                        
+                        <details>
+                            <summary style="cursor: pointer; font-size: 13px; color: #0969da; font-weight: 600; margin-top: 8px;">
+                                View ${material.component_count} component(s)
+                            </summary>
+                            <div class="component-list">
+                                ${material.components.map(comp => `
+                                    <div class="component-item">
+                                        <span class="component-name">${escapeHtml(comp.name || 'Unnamed')}</span>
+                                        <span class="component-dims">${comp.width}×${comp.height}mm</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </details>
+                        
+                        <div class="option-selector">
+                            <div class="option-label">Choose action for this material:</div>
+                            <div class="option-buttons">
+                                <div class="option-btn ${choice.type === 'existing' ? 'active' : ''}" onclick="selectOption(${index}, 'existing')">
+                                    <div class="option-btn-title">📦 Use Existing</div>
+                                    <div class="option-btn-desc">Map to stock material</div>
+                                </div>
+                                <div class="option-btn ${choice.type === 'standard' ? 'active' : ''}" onclick="selectOption(${index}, 'standard')">
+                                    <div class="option-btn-title">📋 Standard Sheet</div>
+                                    <div class="option-btn-desc">Create new sheet material</div>
+                                </div>
+                                <div class="option-btn ${choice.type === 'custom' ? 'active' : ''}" onclick="selectOption(${index}, 'custom')">
+                                    <div class="option-btn-title">✂️ Custom Part</div>
+                                    <div class="option-btn-desc">Exact dimensions only</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="material-preview ${choice.type !== 'none' ? 'visible' : ''}" id="preview-${index}">
+                            ${renderPreview(material, index, choice, matchingMaterials)}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        function renderPreview(material, index, choice, matchingMaterials) {
+            if (choice.type === 'existing') {
+                return `
+                    <div class="preview-title">
+                        <span>📦 Material Mapping Preview</span>
+                    </div>
+                    <div class="preview-grid">
+                        <div class="preview-field">
+                            <div class="preview-field-label">Select Stock Material</div>
+                            <select id="existing-select-${index}" onchange="updateExistingChoice(${index})" style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 4px;">
+                                <option value="">-- Select material --</option>
+                                ${matchingMaterials.map(m => `
+                                    <option value="${escapeHtml(m.name)}" ${choice.existingMaterial === m.name ? 'selected' : ''}>
+                                        ${escapeHtml(m.name)} (${m.width}×${m.height}×${m.thickness}mm)
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    ${matchingMaterials.length === 0 ? '<div class="info-box" style="margin-top: 12px;"><p>⚠️ No matching materials found with ${material.thickness}mm thickness</p></div>' : ''}
+                `;
+            } else if (choice.type === 'standard') {
+                return `
+                    <div class="preview-title">
+                        <span>📋 New Standard Sheet Material</span>
+                    </div>
+                    <div class="preview-grid">
+                        <div class="preview-field">
+                            <div class="preview-field-label">Material Name</div>
+                            <input type="text" id="name-${index}" value="${escapeHtml(choice.materialName)}" onchange="updateStandardChoice(${index})">
+                        </div>
+                        <div class="preview-field">
+                            <div class="preview-field-label">Thickness</div>
+                            <div class="preview-field-value">${material.thickness}mm</div>
+                        </div>
+                        <div class="preview-field">
+                            <div class="preview-field-label">Width (mm)</div>
+                            <input type="number" id="width-${index}" value="${choice.width}" onchange="updateStandardChoice(${index})">
+                        </div>
+                        <div class="preview-field">
+                            <div class="preview-field-label">Height (mm)</div>
+                            <input type="number" id="height-${index}" value="${choice.height}" onchange="updateStandardChoice(${index})">
+                        </div>
+                        <div class="preview-field">
+                            <div class="preview-field-label">Price per Sheet</div>
+                            <input type="number" id="price-${index}" value="${choice.price}" step="0.01" onchange="updateStandardChoice(${index})">
+                        </div>
+                    </div>
+                    <div class="favorite-toggle" onclick="toggleFavorite(${index})">
+                        <input type="checkbox" id="favorite-${index}" ${choice.addToFavorites ? 'checked' : ''}>
+                        <label for="favorite-${index}">⭐ Add to Favorites</label>
+                    </div>
+                    <div class="favorite-toggle" onclick="toggleSaveToDb(${index})">
+                        <input type="checkbox" id="savedb-${index}" ${choice.saveToDb ? 'checked' : ''}>
+                        <label for="savedb-${index}">💾 Save to Database</label>
+                    </div>
+                `;
+            } else if (choice.type === 'custom') {
+                return `
+                    <div class="preview-title">
+                        <span>✂️ Custom Cut-to-Size Parts</span>
+                    </div>
+                    <div class="info-box">
+                        <p><strong>Material:</strong> ${escapeHtml(material.name)}</p>
+                        <p><strong>Thickness:</strong> ${material.thickness}mm</p>
+                        <p><strong>Parts:</strong> ${material.component_count} component(s) will be created with exact dimensions</p>
+                        <p style="margin-top: 8px; color: #656d76;">⚠️ This material will NOT be saved to the database</p>
+                    </div>
+                `;
+            }
+            return '';
+        }
+        
+        function selectOption(index, type) {
+            userChoices[index].type = type;
+            
+            // Update preview
+            const preview = document.getElementById(`preview-${index}`);
+            const material = missingMaterials[index];
+            const matchingMaterials = availableMaterials.filter(m => 
+                Math.abs(m.thickness - material.thickness) < 0.1
+            );
+            
+            preview.innerHTML = renderPreview(material, index, userChoices[index], matchingMaterials);
+            preview.classList.add('visible');
+            
+            // Update active state
+            const card = document.getElementById(`material-${index}`);
+            const buttons = card.querySelectorAll('.option-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            buttons[type === 'existing' ? 0 : type === 'standard' ? 1 : 2].classList.add('active');
+            
+            updateCounts();
+        }
+        
+        function updateExistingChoice(index) {
+            const select = document.getElementById(`existing-select-${index}`);
+            userChoices[index].existingMaterial = select.value;
+            updateCounts();
+        }
+        
+        function updateStandardChoice(index) {
+            const name = document.getElementById(`name-${index}`).value;
+            const width = document.getElementById(`width-${index}`).value;
+            const height = document.getElementById(`height-${index}`).value;
+            const price = document.getElementById(`price-${index}`).value;
+            
+            userChoices[index].materialName = name;
+            userChoices[index].width = parseFloat(width);
+            userChoices[index].height = parseFloat(height);
+            userChoices[index].price = parseFloat(price);
+            
+            updateCounts();
+        }
+        
+        function toggleFavorite(index) {
+            const checkbox = document.getElementById(`favorite-${index}`);
+            userChoices[index].addToFavorites = checkbox.checked;
+        }
+        
+        function toggleSaveToDb(index) {
+            const checkbox = document.getElementById(`savedb-${index}`);
+            userChoices[index].saveToDb = checkbox.checked;
+        }
+        
+        // Selection Management
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            selectedMaterials.clear();
+            
+            if (selectAll.checked) {
+                missingMaterials.forEach((_, index) => {
+                    selectedMaterials.add(index);
+                    document.getElementById(`checkbox-${index}`).checked = true;
+                    document.getElementById(`material-${index}`).classList.add('selected');
+                });
+            } else {
+                missingMaterials.forEach((_, index) => {
+                    document.getElementById(`checkbox-${index}`).checked = false;
+                    document.getElementById(`material-${index}`).classList.remove('selected');
+                });
+            }
+            
+            updateSelectionUI();
+        }
+        
+        function toggleMaterialSelection(index) {
+            const checkbox = document.getElementById(`checkbox-${index}`);
+            const card = document.getElementById(`material-${index}`);
+            
+            if (checkbox.checked) {
+                selectedMaterials.add(index);
+                card.classList.add('selected');
+            } else {
+                selectedMaterials.delete(index);
+                card.classList.remove('selected');
+            }
+            
+            updateSelectionUI();
+        }
+        
+        function updateSelectionUI() {
+            const count = selectedMaterials.size;
+            document.getElementById('selectionCount').textContent = `${count} selected`;
+            
+            const bulkButtons = ['bulkExistingBtn', 'bulkStandardBtn', 'bulkCustomBtn'];
+            bulkButtons.forEach(btnId => {
+                document.getElementById(btnId).disabled = count === 0;
+            });
+            
+            // Update select all checkbox
+            const selectAll = document.getElementById('selectAll');
+            selectAll.checked = count === missingMaterials.length && count > 0;
+            selectAll.indeterminate = count > 0 && count < missingMaterials.length;
+        }
+        
+        // Bulk Actions
+        function showBulkAction(type) {
+            currentBulkAction = type;
+            const modal = document.getElementById('bulkActionModal');
+            const content = document.getElementById('bulkActionContent');
+            
+            const selectedCount = selectedMaterials.size;
+            const selectedList = Array.from(selectedMaterials).map(i => missingMaterials[i].name).join(', ');
+            
+            if (type === 'existing') {
+                const allMatchingMaterials = availableMaterials;
+                content.innerHTML = `
+                    <p style="margin-bottom: 16px;">Apply "Use Existing Material" to <strong>${selectedCount}</strong> selected material(s):</p>
+                    <div style="background: #f6f8fa; padding: 12px; border-radius: 6px; margin-bottom: 16px; max-height: 100px; overflow-y: auto; font-size: 13px;">
+                        ${selectedList}
+                    </div>
+                    <div class="form-group">
+                        <label>Select stock material to map all selected materials to:</label>
+                        <select id="bulkExistingSelect" style="width: 100%; padding: 10px; border: 1px solid #d0d7de; border-radius: 4px;">
+                            <option value="">-- Select a material --</option>
+                            ${allMatchingMaterials.map(m => `
+                                <option value="${escapeHtml(m.name)}">
+                                    ${escapeHtml(m.name)} (${m.width}×${m.height}×${m.thickness}mm)
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="info-box" style="margin-top: 16px;">
+                        <p>⚠️ Note: Materials with different thicknesses will be mapped to the same stock material. Verify compatibility.</p>
+                    </div>
+                `;
+            } else if (type === 'standard') {
+                content.innerHTML = `
+                    <p style="margin-bottom: 16px;">Apply "Create Standard Sheet" to <strong>${selectedCount}</strong> selected material(s):</p>
+                    <div style="background: #f6f8fa; padding: 12px; border-radius: 6px; margin-bottom: 16px; max-height: 100px; overflow-y: auto; font-size: 13px;">
+                        ${selectedList}
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                        <div class="form-group">
+                            <label>Width (mm):</label>
+                            <input type="number" id="bulkWidth" value="2440" style="width: 100%; padding: 10px; border: 1px solid #d0d7de; border-radius: 4px;">
+                        </div>
+                        <div class="form-group">
+                            <label>Height (mm):</label>
+                            <input type="number" id="bulkHeight" value="1220" style="width: 100%; padding: 10px; border: 1px solid #d0d7de; border-radius: 4px;">
+                        </div>
+                        <div class="form-group">
+                            <label>Price per Sheet:</label>
+                            <input type="number" id="bulkPrice" value="0" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #d0d7de; border-radius: 4px;">
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="bulkSaveToDb" checked style="width: 18px; height: 18px;">
+                            <span>💾 Save all to database</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="bulkAddToFavorites" style="width: 18px; height: 18px;">
+                            <span>⭐ Add all to favorites</span>
+                        </label>
+                    </div>
+                `;
+            } else if (type === 'custom') {
+                content.innerHTML = `
+                    <p style="margin-bottom: 16px;">Apply "Create Custom Parts" to <strong>${selectedCount}</strong> selected material(s):</p>
+                    <div style="background: #f6f8fa; padding: 12px; border-radius: 6px; margin-bottom: 16px; max-height: 100px; overflow-y: auto; font-size: 13px;">
+                        ${selectedList}
+                    </div>
+                    <div class="info-box">
+                        <p><strong>Action:</strong> All selected materials will be created as custom cut-to-size parts with exact component dimensions.</p>
+                        <p style="margin-top: 8px;"><strong>Note:</strong> These materials will NOT be saved to the database.</p>
+                    </div>
+                `;
+            }
+            
+            modal.style.display = 'flex';
+        }
+        
+        function closeBulkModal() {
+            document.getElementById('bulkActionModal').style.display = 'none';
+            currentBulkAction = null;
+        }
+        
+        function applyBulkAction() {
+            if (!currentBulkAction) return;
+            
+            selectedMaterials.forEach(index => {
+                if (currentBulkAction === 'existing') {
+                    const material = document.getElementById('bulkExistingSelect').value;
+                    userChoices[index] = {
+                        type: 'existing',
+                        existingMaterial: material,
+                        materialName: missingMaterials[index].name,
+                        thickness: missingMaterials[index].thickness
+                    };
+                } else if (currentBulkAction === 'standard') {
+                    const width = parseFloat(document.getElementById('bulkWidth').value);
+                    const height = parseFloat(document.getElementById('bulkHeight').value);
+                    const price = parseFloat(document.getElementById('bulkPrice').value);
+                    const saveToDb = document.getElementById('bulkSaveToDb').checked;
+                    const addToFavorites = document.getElementById('bulkAddToFavorites').checked;
+                    
+                    userChoices[index] = {
+                        type: 'standard',
+                        width: width,
+                        height: height,
+                        price: price,
+                        saveToDb: saveToDb,
+                        addToFavorites: addToFavorites,
+                        materialName: missingMaterials[index].name,
+                        thickness: missingMaterials[index].thickness
+                    };
+                } else if (currentBulkAction === 'custom') {
+                    userChoices[index] = {
+                        type: 'custom',
+                        materialName: missingMaterials[index].name,
+                        thickness: missingMaterials[index].thickness
+                    };
+                }
+            });
+            
+            // Re-render all materials to show updated choices
+            renderMaterials();
+            
+            // Clear selection
+            selectedMaterials.clear();
+            document.getElementById('selectAll').checked = false;
+            updateSelectionUI();
+            
+            closeBulkModal();
+            updateCounts();
+        }
+        
+        // Validation and Counts
+        function updateCounts() {
+            document.getElementById('materialCount').textContent = missingMaterials.length;
+            
+            let resolvedCount = 0;
+            for (let i = 0; i < missingMaterials.length; i++) {
+                const choice = userChoices[i];
+                if (choice && choice.type !== 'none') {
+                    if (choice.type === 'existing' && choice.existingMaterial) {
+                        resolvedCount++;
+                    } else if (choice.type === 'standard' || choice.type === 'custom') {
+                        resolvedCount++;
+                    }
+                }
+            }
+            
+            document.getElementById('resolvedCount').textContent = resolvedCount;
+            document.getElementById('continueBtn').disabled = resolvedCount !== missingMaterials.length;
+        }
+        
+        function continueProcess() {
+            // Validate all choices
+            let allValid = true;
+            for (let i = 0; i < missingMaterials.length; i++) {
+                const choice = userChoices[i];
+                if (!choice || choice.type === 'none') {
+                    allValid = false;
+                    break;
+                }
+                if (choice.type === 'existing' && !choice.existingMaterial) {
+                    allValid = false;
+                    break;
+                }
+            }
+            
+            if (!allValid) {
+                alert('Please resolve all materials before continuing.');
+                return;
+            }
+            
+            // Send choices back to Ruby
+            window.location = 'skp:material_choices@' + JSON.stringify(userChoices);
+        }
+        
+        function cancelDialog() {
+            window.location = 'skp:cancel_dialog@';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

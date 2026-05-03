@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AutoNestCut</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: #ffffff; color: #24292e; font-size: 14px; }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        
+        .section {
+            background: #ffffff;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            margin-bottom: 40px;
+        }
+        .section-header {
+            padding: 14px 18px;
+            background: #f6f8fa;
+            border-bottom: 1px solid #d0d7de;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .section-header:hover { background: #f1f5f9; }
+        .section-title { font-size: 15px; font-weight: 600; color: #24292e; }
+        .section-toggle { font-size: 13px; color: #656d76; }
+        .section-content { 
+            padding: 20px; 
+            overflow: hidden;
+            max-height: 1000px;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+        }
+        .section.collapsed .section-content { 
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        .section.collapsed .section-toggle::before { content: '▶'; }
+        .section-toggle::before { content: '▼'; }
+        
+        .form-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 14px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 13px; font-weight: 500; color: #656d76; }
+        .form-group input, .form-group select { 
+            padding: 8px 10px; 
+            border: 1px solid #d0d7de; 
+            border-radius: 5px; 
+            font-size: 14px;
+            background: #ffffff;
+        }
+        .form-group input:focus, .form-group select:focus { 
+            outline: none; 
+            border-color: #2323FF; 
+        }
+        
+        /* Selection Status Tree */
+        .status-tree {
+            background: #f8fafc;
+            border: 1px solid #d0d7de;
+            border-radius: 5px;
+            padding: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 13px;
+        }
+        
+        /* Components Summary */
+        .components-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-radius: 5px;
+            margin-bottom: 12px;
+        }
+        .component-count {
+            font-size: 14px;
+            font-weight: 600;
+            color: #24292e;
+        }
+        
+        /* Parts Preview - Horizontal Layout */
+        .parts-preview-wrapper {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        /* Table Container */
+        .parts-table-container {
+            flex: 1;
+            background: #ffffff;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .parts-table-header {
+            padding: 16px 20px;
+            background: #2323FF;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .parts-table-scroll {
+            overflow-y: auto;
+            max-height: 600px;
+        }
+        
+        /* Canvas Container */
+        .parts-canvas-container {
+            flex: 1;
+            background: #ffffff;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .canvas-header {
+            padding: 16px 20px;
+            background: #2323FF;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .canvas-viewport {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fafbfc;
+            position: relative;
+            min-height: 500px;
+        }
+        #parts3DCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            display: none;
+        }
+        #parts3DCanvas:active { cursor: grabbing; }
+        #canvasPlaceholder {
+            text-align: center;
+            color: #656d76;
+            padding: 40px;
+            max-width: 300px;
+        }
+        #canvasPlaceholder p {
+            font-size: 14px;
+            line-height: 1.8;
+            margin: 0;
+        }
+        .canvas-info {
+            padding: 16px 20px;
+            background: #f6f8fa;
+            border-top: 1px solid #d0d7de;
+            font-size: 12px;
+            color: #656d76;
+        }
+        .canvas-info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 6px 0;
+        }
+        .canvas-info-label { font-weight: 500; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { 
+            background: #f6f8fa; 
+            padding: 12px 14px; 
+            text-align: left; 
+            font-weight: 600; 
+            font-size: 12px; 
+            color: #656d76; 
+            text-transform: uppercase;
+            border-bottom: 1px solid #d0d7de;
+            letter-spacing: 0.3px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        td { 
+            padding: 11px 14px; 
+            border-bottom: 1px solid #f1f5f9;
+            color: #24292e;
+            cursor: pointer;
+        }
+        tr:hover { background: #f8fafc; }
+        tr.selected { background: #e3f2fd; border-left: 3px solid #2323FF; }
+        th:nth-child(n+2), td:nth-child(n+2) { text-align: right; }
+        
+        /* Materials Section */
+        .materials-toolbar {
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e1e5e9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toolbar-left { display: flex; gap: 8px; }
+        .toolbar-right { display: flex; gap: 10px; align-items: center; }
+        .btn-sm { 
+            padding: 7px 12px; 
+            font-size: 13px; 
+            border: 1px solid #d0d7de; 
+            background: #ffffff;
+            border-radius: 5px;
+            cursor: pointer;
+            color: #24292e;
+        }
+        .btn-sm:hover { background: #f6f8fa; }
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 13px;
+            color: #656d76;
+            cursor: pointer;
+        }
+        input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+        }
+        select.compact {
+            padding: 6px 10px;
+            font-size: 13px;
+            border: 1px solid #d0d7de;
+            border-radius: 5px;
+            background: #ffffff;
+        }
+        
+        .status { 
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-used { background: #28a745; }
+        .status-unused { background: #d0d7de; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <!-- Project Configuration -->
+        <div class="section collapsed">
+            <div class="section-header" onclick="toggleSection(this)">
+                <span class="section-title">Project Configuration</span>
+                <span class="section-toggle"></span>
+            </div>
+            <div class="section-content">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Project Name</label>
+                        <input type="text" id="project_name" placeholder="Enter project name">
+                    </div>
+                    <div class="form-group">
+                        <label>Client Name</label>
+                        <input type="text" id="client_name" placeholder="Enter client name">
+                    </div>
+                    <div class="form-group">
+                        <label>Prepared By</label>
+                        <input type="text" id="prepared_by" value="Int. Arch. M.Shkeir">
+                    </div>
+                    <div class="form-group">
+                        <label>Kerf Width (mm)</label>
+                        <input type="number" id="kerf_width" value="3.0" step="0.1">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="allow_rotation" checked>
+                        <span style="font-size: 14px; color: #24292e;">Allow part rotation</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Selection Status -->
+        <div class="section collapsed">
+            <div class="section-header" onclick="toggleSection(this)">
+                <span class="section-title">Selection Status</span>
+                <span class="section-toggle"></span>
+            </div>
+            <div class="section-content">
+                <div id="selectionStatusTree" class="status-tree">
+                    <p style="color: #656d76; font-size: 13px;">No selection detected. Please select components in SketchUp.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Components Found -->
+        <div class="section collapsed">
+            <div class="section-header" onclick="toggleSection(this)">
+                <span class="section-title">Components Found (<span id="totalComponentsCount">0</span>)</span>
+                <span class="section-toggle"></span>
+            </div>
+            <div class="section-content">
+                <div style="overflow-y: auto; max-height: 400px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>Width (mm)</th>
+                                <th>Height (mm)</th>
+                                <th>Thickness (mm)</th>
+                                <th>Material</th>
+                            </tr>
+                        </thead>
+                        <tbody id="componentsTableBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: #656d76; padding: 20px;">No components found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PARTS PREVIEW - Horizontal Layout -->
+        <div class="parts-preview-wrapper">
+            <!-- Table Container -->
+            <div class="parts-table-container">
+                <div class="parts-table-header">
+                    Parts Preview
+                </div>
+                <div class="parts-table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Component Name</th>
+                                <th>Width (mm)</th>
+                                <th>Height (mm)</th>
+                                <th>Thickness (mm)</th>
+                                <th>Material</th>
+                                <th>Qty</th>
+                                <th>Area (m²)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="partsTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: #656d76; padding: 20px;">No parts to display</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Canvas Container -->
+            <div class="parts-canvas-container">
+                <div class="canvas-header">
+                    3D Component Viewer
+                </div>
+                <div class="canvas-viewport">
+                    <canvas id="parts3DCanvas"></canvas>
+                    <div id="canvasPlaceholder">
+                        <p style="margin-bottom: 8px;">Click any component to view in 3D</p>
+                        <p style="opacity: 0.7;">Rotate: Left Click + Drag<br>Zoom: Scroll</p>
+                    </div>
+                </div>
+                <div class="canvas-info">
+                    <div class="canvas-info-row">
+                        <span class="canvas-info-label">Selected:</span>
+                        <span id="selectedPartName">None</span>
+                    </div>
+                    <div class="canvas-info-row">
+                        <span class="canvas-info-label">Dimensions:</span>
+                        <span id="selectedPartDims">-</span>
+                    </div>
+                    <div class="canvas-info-row">
+                        <span class="canvas-info-label">Volume:</span>
+                        <span id="selectedPartVolume">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stock Materials & Pricing -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <span class="section-title">Stock Materials & Pricing</span>
+                <span class="section-toggle"></span>
+            </div>
+            <div class="section-content">
+                <div class="materials-toolbar">
+                    <div class="toolbar-left">
+                        <button class="btn-sm" onclick="addMaterial()">Add Material</button>
+                        <button class="btn-sm" onclick="loadDefaults()">Load Defaults</button>
+                        <button class="btn-sm" onclick="importCSV()">Import CSV</button>
+                        <button class="btn-sm" onclick="exportDatabase()">Export Database</button>
+                    </div>
+                    <div class="toolbar-right">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="usedOnlyToggle" checked onchange="displayMaterials()">
+                            <span>Used Only</span>
+                        </label>
+                        <select class="compact" id="sortBy" onchange="displayMaterials()">
+                            <option value="alphabetical">Sort: A-Z</option>
+                            <option value="usage">Sort: Used First</option>
+                            <option value="mostUsed">Sort: Most Used</option>
+                        </select>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Material Name</th>
+                            <th>Width (mm)</th>
+                            <th>Height (mm)</th>
+                            <th>Thickness (mm)</th>
+                            <th>Density (kg/m³)</th>
+                            <th>Price per Sheet</th>
+                            <th style="text-align: center;">Actions</th>
+                            <th style="text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="materials_tbody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: #656d76; padding: 20px;">No materials available</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Communication with parent window
+        function notifyParent(action, data) {
+            if (window.parent !== window) {
+                window.parent.postMessage({ action, data }, '*');
+            } else if (typeof callRuby === 'function') {
+                callRuby(action, JSON.stringify(data));
+            }
+        }
+
+        // Receive data from parent
+        window.addEventListener('message', function(event) {
+            if (event.data.action === 'loadData') {
+                loadConfigData(event.data.data);
+            }
+        });
+
+        function loadConfigData(data) {
+            if (data.project_name) document.getElementById('project_name').value = data.project_name;
+            if (data.client_name) document.getElementById('client_name').value = data.client_name;
+            if (data.prepared_by) document.getElementById('prepared_by').value = data.prepared_by;
+            if (data.kerf_width) document.getElementById('kerf_width').value = data.kerf_width;
+            if (data.allow_rotation !== undefined) document.getElementById('allow_rotation').checked = data.allow_rotation;
+            
+            if (data.materials) displayMaterials(data.materials);
+            if (data.parts) displayParts(data.parts);
+            if (data.components) updateComponentsList(data.components);
+            if (data.selectionStatus) updateSelectionStatus(data.selectionStatus);
+        }
+
+        function toggleSection(header) {
+            header.parentElement.classList.toggle('collapsed');
+        }
+        
+        function updateComponentsList(components) {
+            const tbody = document.getElementById('componentsTableBody');
+            const count = document.getElementById('totalComponentsCount');
+            count.textContent = components.length;
+            
+            if (components.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #656d76; padding: 20px;">No components found</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            components.forEach(comp => {
+                html += `<tr>
+                    <td>${comp.name || 'Unnamed'}</td>
+                    <td>${comp.width || 0}</td>
+                    <td>${comp.height || 0}</td>
+                    <td>${comp.thickness || 0}</td>
+                    <td>${comp.material || 'No Material'}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function updateSelectionStatus(status) {
+            const tree = document.getElementById('selectionStatusTree');
+            tree.innerHTML = status || '<p style="color: #656d76; font-size: 13px;">No selection detected.</p>';
+        }
+
+        function displayParts(parts) {
+            const tbody = document.getElementById('partsTableBody');
+            if (!parts || parts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #656d76; padding: 20px;">No parts to display</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            parts.forEach(part => {
+                html += `<tr onclick="selectPart(this, '${part.name}', ${part.width}, ${part.height}, ${part.thickness})">
+                    <td>${part.name}</td>
+                    <td>${part.width}</td>
+                    <td>${part.height}</td>
+                    <td>${part.thickness}</td>
+                    <td>${part.material}</td>
+                    <td>${part.quantity}</td>
+                    <td>${part.area}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function displayMaterials(materials) {
+            const tbody = document.getElementById('materials_tbody');
+            if (!materials || materials.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #656d76; padding: 20px;">No materials available</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            materials.forEach(mat => {
+                const statusClass = mat.used ? 'status-used' : 'status-unused';
+                const statusText = mat.used ? 'Used' : 'Unused';
+                html += `<tr>
+                    <td>${mat.name}</td>
+                    <td>${mat.width}</td>
+                    <td>${mat.height}</td>
+                    <td>${mat.thickness}</td>
+                    <td>${mat.density}</td>
+                    <td>$${mat.price}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-sm" style="padding: 5px 10px; font-size: 12px;" onclick="editMaterial('${mat.id}')">Edit</button>
+                        <button class="btn-sm" style="padding: 5px 10px; font-size: 12px;" onclick="deleteMaterial('${mat.id}')">Delete</button>
+                    </td>
+                    <td style="text-align: center;"><span class="status ${statusClass}"></span>${statusText}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // 3D Canvas
+        let scene, camera, renderer, currentMesh;
+        
+        function init3DCanvas() {
+            const canvas = document.getElementById('parts3DCanvas');
+            const container = canvas.parentElement;
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xfafbfc);
+            
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
+            camera.position.set(1000, 800, 1000);
+            camera.lookAt(0, 0, 0);
+            
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(500, 1000, 500);
+            scene.add(directionalLight);
+            
+            const gridHelper = new THREE.GridHelper(2000, 20, 0xcccccc, 0xeeeeee);
+            scene.add(gridHelper);
+            
+            animate();
+        }
+        
+        function selectPart(row, name, width, height, thickness) {
+            document.querySelectorAll('#partsTableBody tr').forEach(r => r.classList.remove('selected'));
+            row.classList.add('selected');
+            
+            document.getElementById('canvasPlaceholder').style.display = 'none';
+            document.getElementById('parts3DCanvas').style.display = 'block';
+            
+            document.getElementById('selectedPartName').textContent = name;
+            document.getElementById('selectedPartDims').textContent = `${width} × ${height} × ${thickness} mm`;
+            const volume = (width * height * thickness / 1000000000).toFixed(4);
+            document.getElementById('selectedPartVolume').textContent = `${volume} m³`;
+            
+            if (currentMesh) scene.remove(currentMesh);
+            
+            const geometry = new THREE.BoxGeometry(width, thickness, height);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0x2323FF, 
+                transparent: true, 
+                opacity: 0.8,
+                side: THREE.DoubleSide
+            });
+            currentMesh = new THREE.Mesh(geometry, material);
+            
+            const edges = new THREE.EdgesGeometry(geometry);
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+            const wireframe = new THREE.LineSegments(edges, lineMaterial);
+            currentMesh.add(wireframe);
+            
+            scene.add(currentMesh);
+            
+            const maxDim = Math.max(width, height, thickness);
+            camera.position.set(maxDim * 1.5, maxDim * 1.2, maxDim * 1.5);
+            camera.lookAt(0, 0, 0);
+            
+            const container = document.getElementById('parts3DCanvas').parentElement;
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            if (currentMesh) {
+                currentMesh.rotation.y += 0.005;
+            }
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('load', () => {
+            init3DCanvas();
+        });
+        
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('parts3DCanvas');
+            const container = canvas.parentElement;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // Material actions
+        function addMaterial() { notifyParent('addMaterial'); }
+        function loadDefaults() { notifyParent('loadDefaults'); }
+        function importCSV() { notifyParent('importCSV'); }
+        function exportDatabase() { notifyParent('exportDatabase'); }
+        function editMaterial(id) { notifyParent('editMaterial', { id }); }
+        function deleteMaterial(id) { notifyParent('deleteMaterial', { id }); }
+    </script>
+</body>
+</html>

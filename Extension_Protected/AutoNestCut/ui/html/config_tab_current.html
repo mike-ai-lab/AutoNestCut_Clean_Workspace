@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Configuration Tab</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        .config-container { max-width: 900px; margin: 0 auto; padding: 24px; }
+    </style>
+</head>
+<body>
+    <div class="config-container">
+        <!-- Project Configuration -->
+        <div class="section">
+            <h2>Project Configuration</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <div>
+                    <div class="form-group">
+                        <label for="project_name">Project Name:</label>
+                        <input type="text" id="project_name" name="project_name" placeholder="Enter project name">
+                    </div>
+                    <div class="form-group">
+                        <label for="client_name">Client Name:</label>
+                        <input type="text" id="client_name" name="client_name" placeholder="Enter client name">
+                    </div>
+                    <div class="form-group">
+                        <label for="prepared_by">Prepared by:</label>
+                        <input type="text" id="prepared_by" name="prepared_by" placeholder="Enter preparer name" value="Int. Arch. M.Shkeir">
+                    </div>
+                    <div class="form-group">
+                        <label for="kerf_width">Kerf Width (mm):</label>
+                        <input type="number" id="kerf_width" name="kerf_width" step="0.1" min="0" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="allow_rotation">
+                            <input type="checkbox" id="allow_rotation" name="allow_rotation"> Allow part rotation
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <h3 style="margin: 0 0 12px 0; font-size: 17px; font-weight: 600; color: #24292e;">Selection Status</h3>
+                    <div id="selectionStatusTree" style="background: #ffffff; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px; max-height: 400px; overflow-y: auto; font-family: 'Inter', sans-serif; font-size: 17px;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Components Found -->
+        <div class="section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h2 style="margin: 0;">Components Found (<span id="totalComponentsCount">0</span>)</h2>
+                <button type="button" onclick="toggleComponentsList()" class="icon-btn" id="componentsToggleBtn" style="min-width: auto;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="componentsList" style="display: none; max-height: 300px; overflow-y: auto; border: 1px solid #d0d7de; border-radius: 6px; background: #f8fafc;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 17px;">
+                    <thead style="position: sticky; top: 0; background: #f5f5f5; z-index: 1;">
+                        <tr>
+                            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #d0d7de;">Component</th>
+                            <th style="padding: 8px; text-align: right; border-bottom: 1px solid #d0d7de;">Width</th>
+                            <th style="padding: 8px; text-align: right; border-bottom: 1px solid #d0d7de;">Height</th>
+                            <th style="padding: 8px; text-align: right; border-bottom: 1px solid #d0d7de;">Thickness</th>
+                            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #d0d7de;">Material</th>
+                        </tr>
+                    </thead>
+                    <tbody id="componentsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Parts Preview -->
+        <div class="section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h2 style="margin: 0;">Parts Preview</h2>
+                <div style="font-size: 14px; color: #656d76;">
+                    <span id="partsComponentCount">0</span> Components | 
+                    <span id="partsMaterialCount">0</span> Materials | 
+                    <span id="partsTotalArea">0</span> m² Total Area
+                </div>
+            </div>
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <div id="parts_preview"></div>
+                </div>
+                <div style="flex: 1; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; overflow: hidden;">
+                    <div style="padding: 16px 20px; background: #2323FF; color: #ffffff; font-size: 16px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+                        <span>3D Component Viewer</span>
+                        <button onclick="toggle3DViewer()" id="viewer3DPowerBtn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Power On/Off">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M12 2v10M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="viewer3DScreen" style="min-height: 500px; background: #1a1a1a; display: flex; align-items: center; justify-content: center; position: relative;">
+                        <canvas id="parts3DCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none;"></canvas>
+                        <div id="viewer3DOffScreen" style="text-align: center; color: #4a4a4a; padding: 40px;">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#4a4a4a" stroke-width="1.5" style="margin-bottom: 16px;">
+                                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                                <path d="M8 21h8M12 17v4"/>
+                            </svg>
+                            <p style="font-size: 14px; margin: 0;">3D Viewer is OFF</p>
+                            <p style="font-size: 12px; margin: 8px 0 0 0; opacity: 0.7;">Click power button to turn on</p>
+                        </div>
+                        <div id="canvasPlaceholder" style="display: none; text-align: center; color: #656d76; padding: 40px;">
+                            <p style="font-size: 14px; margin: 0;">Click any component to view in 3D</p>
+                            <p style="font-size: 12px; margin: 8px 0 0 0; opacity: 0.7;">Rotate: Left Click + Drag | Zoom: Scroll</p>
+                        </div>
+                    </div>
+                    <div style="padding: 16px 20px; background: #f6f8fa; border-top: 1px solid #d0d7de; font-size: 12px; color: #656d76;">
+                        <div style="display: flex; justify-content: space-between; margin: 6px 0;">
+                            <span style="font-weight: 500;">Selected:</span>
+                            <span id="selectedPartName">None</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin: 6px 0;">
+                            <span style="font-weight: 500;">Dimensions:</span>
+                            <span id="selectedPartDims">-</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin: 6px 0;">
+                            <span style="font-weight: 500;">Volume:</span>
+                            <span id="selectedPartVolume">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stock Materials & Pricing -->
+        <div class="section" style="background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px;">
+            <div class="section-header" onclick="toggleMaterialsSection(this)" style="padding: 14px 18px; background: #f6f8fa; border-bottom: 1px solid #d0d7de; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                <span style="font-size: 15px; font-weight: 600; color: #24292e;">Stock Materials & Pricing</span>
+                <span class="section-toggle" style="font-size: 13px; color: #656d76;">▼</span>
+            </div>
+            <div class="section-content" style="overflow: hidden; max-height: 2000px; transition: max-height 0.3s ease-out, padding 0.3s ease-out;">
+                <div style="padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid #e1e5e9; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" onclick="addMaterial()" style="padding: 7px 12px; font-size: 13px; border: 1px solid #d0d7de; background: #ffffff; border-radius: 5px; cursor: pointer; color: #24292e;">Add Material</button>
+                        <button type="button" onclick="loadDefaults()" style="padding: 7px 12px; font-size: 13px; border: 1px solid #d0d7de; background: #ffffff; border-radius: 5px; cursor: pointer; color: #24292e;">Load Defaults</button>
+                        <button type="button" onclick="importCSV()" style="padding: 7px 12px; font-size: 13px; border: 1px solid #d0d7de; background: #ffffff; border-radius: 5px; cursor: pointer; color: #24292e;">Import CSV</button>
+                        <button type="button" onclick="exportDatabase()" style="padding: 7px 12px; font-size: 13px; border: 1px solid #d0d7de; background: #ffffff; border-radius: 5px; cursor: pointer; color: #24292e;">Export Database</button>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 7px; font-size: 13px; color: #656d76; cursor: pointer;">
+                            <input type="checkbox" id="usedOnlyToggle" checked style="width: 15px; height: 15px; cursor: pointer;">
+                            <span>Used Only</span>
+                        </label>
+                        <select id="sortBy" onchange="displayMaterials()" style="padding: 6px 10px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 5px; background: #ffffff;">
+                            <option value="alphabetical">Sort: A-Z</option>
+                            <option value="usage">Sort: Used First</option>
+                            <option value="mostUsed">Sort: Most Used</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="overflow-x: auto; max-height: 500px;">
+                    <table id="materialsTable" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                        <thead>
+                            <tr>
+                                <th style="background: #f6f8fa; padding: 12px 14px; text-align: left; font-weight: 600; font-size: 12px; color: #656d76; text-transform: uppercase; border-bottom: 1px solid #d0d7de; letter-spacing: 0.3px; position: sticky; top: 0; z-index: 10;">Material Name</th>
+                                <th style="background: #f6f8fa; padding: 12px 14px; text-align: right; font-weight: 600; font-size: 12px; color: #656d76; text-transform: uppercase; border-bottom: 1px solid #d0d7de; letter-spacing: 0.3px; position: sticky; top: 0; z-index: 10;">Width (mm)</th>
+                                <th style="background: #f6f8fa; padding: 12px 14px; text-align: right; font-weight: 600; font-size: 12px; color: #656d76; text-transform: uppercase; border-bottom: 1px solid #d0d7de; letter-spacing: 0.3px; position: sticky; top: 0; z-index: 10;">Height (mm)</th>
+                                <th style="background: #f6f8fa; padding: 12px 14px; text-align: right; font-weight: 600; font-size: 12px; color: #656d76; text-transform: uppercase; border-bottom: 1px solid #d0d7de; letter-spacing: 0.3px; position: sticky; top: 0; z-index: 10;">Thickness (mm)</th>
+                                <th style="background: #f6f8fa; padding: 12px 14px; text-align: right; font-weight: 600; font-size: 12px; color: #656d76; text-transform: uppercase; border-bottom: 1px solid #d0d7de; letter-spacing: 0.3px; position: sticky; top: 0; z-index: 10;">Density (kg/m³)</th>
+                                <th style="background: #f6f8fa; padding: 12px 14px; text-align: right; font-weight: 600; font-size: 12px; color: #656d76; text-transform: uppercase; border-bottom: 1px solid #d0d7de; letter-spacing: 0.3px; position: sticky; top: 0; z-index: 10;">Price per Sheet</th>
+                                <th style="background: #f6f8fa; padding: 12px 14px; text-align: center; font-weight: 600; font-size: 12px; color: #656d76; text-transform: uppercase; border-bottom: 1px solid #d0d7de; letter-spacing: 0.3px; position: sticky; top: 0; z-index: 10;">Actions</th>
+                                <th style="background: #f6f8fa; padding: 12px 14px; text-align: center; font-weight: 600; font-size: 12px; color: #656d76; text-transform: uppercase; border-bottom: 1px solid #d0d7de; letter-spacing: 0.3px; position: sticky; top: 0; z-index: 10;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="materials_tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Communication with parent window
+        function notifyParent(action, data) {
+            if (window.parent !== window) {
+                window.parent.postMessage({ action, data }, '*');
+            } else if (typeof callRuby === 'function') {
+                callRuby(action, JSON.stringify(data));
+            }
+        }
+
+        // Receive data from parent
+        window.addEventListener('message', function(event) {
+            if (event.data.action === 'loadData') {
+                loadConfigData(event.data.data);
+            }
+        });
+
+        function loadConfigData(data) {
+            // Populate form fields
+            if (data.project_name) document.getElementById('project_name').value = data.project_name;
+            if (data.client_name) document.getElementById('client_name').value = data.client_name;
+            if (data.prepared_by) document.getElementById('prepared_by').value = data.prepared_by;
+            if (data.kerf_width) document.getElementById('kerf_width').value = data.kerf_width;
+            if (data.allow_rotation !== undefined) document.getElementById('allow_rotation').checked = data.allow_rotation;
+            
+            // Load materials, parts, etc.
+            if (data.materials) displayMaterials(data.materials);
+            if (data.parts) displayParts(data.parts);
+            if (data.components) updateComponentsList(data.components);
+        }
+
+        function toggleComponentsList() {
+            const list = document.getElementById('componentsList');
+            const btn = document.getElementById('componentsToggleBtn');
+            const isVisible = list.style.display !== 'none';
+            list.style.display = isVisible ? 'none' : 'block';
+            btn.querySelector('svg').style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+
+        function toggleMaterialsSection(header) {
+            const section = header.parentElement;
+            const content = section.querySelector('.section-content');
+            const toggle = header.querySelector('.section-toggle');
+            const isCollapsed = content.style.maxHeight === '0px';
+            
+            if (isCollapsed) {
+                content.style.maxHeight = '2000px';
+                toggle.textContent = '▼';
+            } else {
+                content.style.maxHeight = '0px';
+                toggle.textContent = '▶';
+            }
+        }
+
+        function updateComponentsList(components) {
+            const tbody = document.getElementById('componentsTableBody');
+            const count = document.getElementById('totalComponentsCount');
+            count.textContent = components.length;
+            
+            let html = '';
+            components.forEach(comp => {
+                html += `<tr style="border-bottom: 1px solid #e1e5e9;">
+                    <td style="padding: 8px;">${comp.name || 'Unnamed'}</td>
+                    <td style="padding: 8px; text-align: right;">${comp.width || 0}</td>
+                    <td style="padding: 8px; text-align: right;">${comp.height || 0}</td>
+                    <td style="padding: 8px; text-align: right;">${comp.thickness || 0}</td>
+                    <td style="padding: 8px;">${comp.material || 'No Material'}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function displayMaterials(materials) {
+            // Implementation from app.js
+            notifyParent('displayMaterials', materials);
+        }
+
+        function displayParts(parts) {
+            // Update summary counts
+            if (parts && parts.length > 0) {
+                const componentCount = parts.length;
+                const materials = [...new Set(parts.map(p => p.material).filter(m => m))];
+                const materialCount = materials.length;
+                const totalArea = parts.reduce((sum, p) => sum + (p.area || 0), 0).toFixed(2);
+                
+                document.getElementById('partsComponentCount').textContent = componentCount;
+                document.getElementById('partsMaterialCount').textContent = materialCount;
+                document.getElementById('partsTotalArea').textContent = totalArea;
+            }
+            
+            // Implementation from app.js
+            notifyParent('displayParts', parts);
+        }
+
+        function addMaterial() { notifyParent('addMaterial'); }
+        function loadDefaults() { notifyParent('loadDefaults'); }
+        function importCSV() { notifyParent('importCSV'); }
+        function exportDatabase() { notifyParent('exportDatabase'); }
+        function toggleFold() { notifyParent('toggleFold'); }
+        function clearHighlight() { notifyParent('clearHighlight'); }
+
+        // 3D Viewer Control
+        let viewer3DActive = false;
+        let scene, camera, renderer, currentMesh;
+
+        function toggle3DViewer() {
+            viewer3DActive = !viewer3DActive;
+            const canvas = document.getElementById('parts3DCanvas');
+            const offScreen = document.getElementById('viewer3DOffScreen');
+            const placeholder = document.getElementById('canvasPlaceholder');
+            const screen = document.getElementById('viewer3DScreen');
+            const powerBtn = document.getElementById('viewer3DPowerBtn');
+            
+            if (viewer3DActive) {
+                offScreen.style.display = 'none';
+                placeholder.style.display = 'block';
+                screen.style.background = '#fafbfc';
+                powerBtn.style.background = 'rgba(76, 175, 80, 0.3)';
+                powerBtn.style.borderColor = 'rgba(76, 175, 80, 0.5)';
+                if (!renderer) init3DCanvas();
+            } else {
+                canvas.style.display = 'none';
+                placeholder.style.display = 'none';
+                offScreen.style.display = 'block';
+                screen.style.background = '#1a1a1a';
+                powerBtn.style.background = 'rgba(255,255,255,0.2)';
+                powerBtn.style.borderColor = 'rgba(255,255,255,0.4)';
+                if (currentMesh && scene) scene.remove(currentMesh);
+                document.getElementById('selectedPartName').textContent = 'None';
+                document.getElementById('selectedPartDims').textContent = '-';
+                document.getElementById('selectedPartVolume').textContent = '-';
+            }
+        }
+
+        function init3DCanvas() {
+            const canvas = document.getElementById('parts3DCanvas');
+            const container = document.getElementById('viewer3DScreen');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xfafbfc);
+            
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
+            camera.position.set(1000, 800, 1000);
+            camera.lookAt(0, 0, 0);
+            
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(500, 1000, 500);
+            scene.add(directionalLight);
+            
+            const gridHelper = new THREE.GridHelper(2000, 20, 0xcccccc, 0xeeeeee);
+            scene.add(gridHelper);
+            
+            animate3D();
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if (currentMesh) currentMesh.rotation.y += 0.005;
+            if (renderer) renderer.render(scene, camera);
+        }
+
+        function selectPart3D(name, width, height, thickness) {
+            if (!viewer3DActive) return;
+            
+            document.getElementById('canvasPlaceholder').style.display = 'none';
+            document.getElementById('parts3DCanvas').style.display = 'block';
+            
+            document.getElementById('selectedPartName').textContent = name;
+            document.getElementById('selectedPartDims').textContent = `${width} × ${height} × ${thickness} mm`;
+            const volume = (width * height * thickness / 1000000000).toFixed(4);
+            document.getElementById('selectedPartVolume').textContent = `${volume} m³`;
+            
+            if (currentMesh) scene.remove(currentMesh);
+            
+            const geometry = new THREE.BoxGeometry(width, thickness, height);
+            const material = new THREE.MeshPhongMaterial({ color: 0x2323FF, transparent: true, opacity: 0.8 });
+            currentMesh = new THREE.Mesh(geometry, material);
+            
+            const edges = new THREE.EdgesGeometry(geometry);
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+            const wireframe = new THREE.LineSegments(edges, lineMaterial);
+            currentMesh.add(wireframe);
+            
+            scene.add(currentMesh);
+            
+            const maxDim = Math.max(width, height, thickness);
+            camera.position.set(maxDim * 1.5, maxDim * 1.2, maxDim * 1.5);
+            camera.lookAt(0, 0, 0);
+        }
+    </script>
+</body>
+</html>

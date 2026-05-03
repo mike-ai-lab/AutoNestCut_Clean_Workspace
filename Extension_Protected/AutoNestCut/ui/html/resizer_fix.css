@@ -1,0 +1,50 @@
+/* Resizer Fix CSS */
+#resizer {
+    width: 8px;
+    background: #d0d7de;
+    cursor: col-resize;
+    user-select: none;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    border-left: 1px solid #d0d7de;
+    border-right: 1px solid #d0d7de;
+    min-height: 100%;
+}
+
+#resizer:hover {
+    background: #8c959f;
+}
+
+#resizer:active {
+    background: #656d76;
+}
+
+/* Ensure container layout works properly */
+.container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.diagrams-container {
+    flex: 1;
+    min-width: 300px;
+    padding: 16px;
+    background: #ffffff;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 16px;
+}
+
+.report-container {
+    flex: 1;
+    min-width: 400px;
+    padding: 20px;
+    padding-right: 30px;
+    background: #ffffff;
+    overflow-y: auto;
+    box-sizing: border-box;
+}

@@ -1,0 +1,3387 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AutoNestCut</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="diagrams_style.css">
+    <link rel="stylesheet" href="resizer_fix.css">
+    <style>
+        .currency-conversion {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .currency-conversion label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .currency-conversion select,
+        .currency-conversion input {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        .currency-conversion button {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #007cba;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .currency-conversion button:hover {
+            background: #005a87;
+        }
+        /* Icon button specific styling, ensure it's clean and consistent */
+        .icon-btn, .material-icon-btn {
+            padding: 5px; /* Adjust padding as needed for icon size */
+            background: #ffffff; /* Default background */
+            color: #24292e; /* Default icon color */
+            border: 1px solid #d0d7de; /* Default border */
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .icon-btn:hover, .material-icon-btn:hover {
+            background: #f6f8fa;
+            border-color: #8c959f;
+        }
+        /* Override for header action buttons for primary blue look */
+        .header-controls .action-buttons .tab-button.icon-btn {
+            background: #007cba;
+            color: white;
+            border: none; /* No border for these primary action icons */
+        }
+        .header-controls .action-buttons .tab-button.icon-btn:hover {
+            background: #005a87;
+            border-color: transparent;
+        }
+        .icon-btn svg, .material-icon-btn svg {
+            stroke: currentColor; /* Ensure SVG uses button's text color */
+            stroke-width: 2;
+            width: 16px;
+            height: 16px;
+        }
+        #settingsModal {
+            z-index: 1000;
+        }
+        #settingsModal .modal-content {
+            z-index: 1001;
+        }
+    </style>
+    <script src="languages.js"></script>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1 data-translate="app_title">AutoNestCut</h1>
+            <p class="developer-credit" data-translate="developer_credit">by Int. Arch. M.Shkeir</p>
+        </div>
+        <div class="header-controls">
+            <!-- Settings Button - Always visible -->
+            <button class="settings-btn icon-btn" onclick="openSettings()" title="Settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m21-7h-6M7 5H1m21 7h-6M7 19H1"/>
+                </svg>
+            </button>
+            <div class="action-buttons">
+                <!-- Configuration Tab Buttons -->
+                <button class="tab-button" id="generateCutListButton" onclick="processNesting()" data-translate="generate_cut_list">Generate Cut List</button>
+                <button class="tab-button" id="refreshSelectionButton" onclick="refreshConfiguration()" data-translate="refresh_selection">Refresh Selection</button>
+                <button class="tab-button" id="cancelButton" onclick="window.close()" data-translate="cancel">Cancel</button>
+
+                <!-- Report Tab Buttons - Hidden by default -->
+                <button class="tab-button icon-btn report-action-btn" id="refreshReportButton" onclick="refreshReportWithFeedback()" data-translate="refresh_report" style="display: none;" title="Refresh Report">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                        <path d="M21 3v5h-5"/>
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                        <path d="M3 21v-5h5"/>
+                    </svg>
+                </button>
+                <button class="tab-button icon-btn report-action-btn" id="printButton" data-translate="print_save_pdf" style="display: none;" title="Print / Save PDF">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6,9 6,2 18,2 18,9"/>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                        <polyline points="6,14 6,22 18,22 18,14"/>
+                    </svg>
+                </button>
+                <button class="tab-button icon-btn report-action-btn" id="exportCsvButton" data-translate="export_csv_report" style="display: none;" title="Export CSV Report">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                        <polyline points="14,2 14,8 20,8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <line x1="10" y1="9" x2="8" y2="9"/>
+                    </svg>
+                </button>
+                <button class="tab-button icon-btn report-action-btn" id="exportHtmlButton" data-translate="export_interactive_html" style="display: none;" title="Export Interactive HTML">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="16 18 22 12 16 6"/>
+                        <polyline points="8 6 2 12 8 18"/>
+                    </svg>
+                </button>
+                <button class="tab-button icon-btn report-action-btn" id="copyMarkdownButton" data-translate="copy_markdown_report" style="display: none;" title="Copy Markdown Report">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="tabs">
+                <button class="tab-button active" onclick="showTab('config')" data-translate="configuration">Configuration</button>
+                <button class="tab-button" id="reportTab" onclick="showTab('report')" disabled data-translate="report">Report</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Tab -->
+    <div id="configTab" class="tab-content active">
+        <div class="config-container">
+            <div class="section">
+                <h2 data-translate="project_configuration">Project Configuration</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <div>
+                        <div class="form-group">
+                            <label for="project_name">Project Name:</label>
+                            <input type="text" id="project_name" name="project_name" placeholder="Enter project name">
+                        </div>
+                        <div class="form-group">
+                            <label for="client_name">Client Name:</label>
+                            <input type="text" id="client_name" name="client_name" placeholder="Enter client name">
+                        </div>
+                        <div class="form-group">
+                            <label for="prepared_by">Prepared by:</label>
+                            <input type="text" id="prepared_by" name="prepared_by" placeholder="Enter preparer name" value="Int. Arch. M.Shkeir">
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label for="kerf_width" data-translate="kerf_width">Kerf Width (mm):</label>
+                            <input type="number" id="kerf_width" name="kerf_width" step="0.1" min="0" max="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="allow_rotation">
+                                <input type="checkbox" id="allow_rotation" name="allow_rotation"> <span data-translate="allow_rotation">Allow part rotation</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2 data-translate="parts_preview">Parts Preview</h2>
+                <div id="parts_preview"></div>
+            </div>
+            
+            <div class="section">
+                <h2 data-translate="stock_materials_pricing">Stock Materials & Pricing</h2>
+                <div class="materials-controls-single-row" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+                    <button type="button" onclick="addMaterial()" class="material-icon-btn" title="Add Material">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                    <button type="button" onclick="loadDefaults()" class="material-icon-btn" title="Load Defaults">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+                    </button>
+                    <button type="button" onclick="importCSV()" class="material-icon-btn" title="Import CSV">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </button>
+                    <button type="button" onclick="exportDatabase()" class="material-icon-btn" title="Export Database">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <button type="button" id="foldToggle" onclick="toggleFold()" class="material-icon-btn" title="Toggle Used Materials Only">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        <span class="visually-hidden">Toggle Used Materials Only</span>
+                    </button>
+                    <button type="button" onclick="clearHighlight()" class="material-icon-btn" title="Clear Highlight">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.67 1.33a2 2 0 0 0-2.83 0L13.5 6.67l-3.8-3.8a2 2 0 0 0-2.83 0L1.33 6.17a2 2 0 0 0 0 2.83l5.5 5.5c.39.39 1.02.39 1.41 0l3.8-3.8 5.83 5.83c.39.39 1.02.39 1.41 0l2.83-2.83a2 2 0 0 0 0-2.83z"/><path d="M2 19h10"/></svg>
+                    </button>
+                    <select id="sortBy" onchange="displayMaterials()" class="sort-select">
+                        <option value="alphabetical">Sort: A-Z</option>
+                        <option value="usage">Sort: Used First</option>
+                        <option value="mostUsed">Sort: Most Used</option>
+                    </select>
+                </div>
+                <div class="materials-header">
+                    <span data-translate="material_name">Material Name</span>
+                    <span data-translate="width_mm">Width (mm)</span>
+                    <span data-translate="height_mm">Height (mm)</span>
+                    <span data-translate="thickness_mm">Thickness (mm)</span>
+                    <span data-translate="price">Price</span>
+                    <span data-translate="actions">Actions</span>
+                    <span data-translate="status">Status</span>
+                </div>
+                <div id="materials_list" class="materials-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Tab -->
+    <div id="reportTabContent" class="tab-content">
+        <div class="container">
+            <div id="diagramsContainer" class="diagrams-container">
+                <p>Generate a report to view diagrams...</p>
+            </div>
+            <div class="resizer" id="resizer"></div>
+            <div id="reportContainer" class="report-container">
+
+                <h2 data-translate="materials_used">Materials Used</h2>
+                <div class="table-with-controls">
+                    <div class="table-controls">
+                        <button class="icon-btn" onclick="openTableCustomization('materialsUsedTable')" title="Customize Table">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <path d="M9 9h6v6H9z"/>
+                                <path d="M9 3v6M15 3v6M21 9H3M21 15H3"/>
+                            </svg>
+                        </button>
+                        <button class="icon-btn" onclick="copyTableAsMarkdown('materialsUsedTable')" title="Copy Markdown">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <table id="materialsUsedTable"></table>
+                </div>
+
+                <h2 data-translate="overall_summary">Overall Summary</h2>
+                <div class="table-with-controls">
+                    <div class="table-controls">
+                        <button class="icon-btn" onclick="openTableCustomization('summaryTable')" title="Customize Table">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <path d="M9 9h6v6H9z"/>
+                                <path d="M9 3v6M15 3v6M21 9H3M21 15H3"/>
+                            </svg>
+                        </button>
+                        <button class="icon-btn" onclick="copyTableAsMarkdown('summaryTable')" title="Copy Markdown">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <table id="summaryTable"></table>
+                </div>
+
+                <h2 data-translate="unique_part_types">Unique Part Types</h2>
+                <div class="table-with-controls">
+                    <div class="table-controls">
+                        <button class="icon-btn" onclick="openTableCustomization('uniquePartTypesTable')" title="Customize Table">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <path d="M9 9h6v6H9z"/>
+                                <path d="M9 3v6M15 3v6M21 9H3M21 15H3"/>
+                            </svg>
+                        </button>
+                        <button class="icon-btn" onclick="copyTableAsMarkdown('uniquePartTypesTable')" title="Copy Markdown">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <table id="uniquePartTypesTable"></table>
+                </div>
+
+                <h2>Sheet Inventory Summary</h2>
+                <div class="table-with-controls">
+                    <div class="table-controls">
+                        <button class="icon-btn" onclick="openTableCustomization('sheetInventoryTable')" title="Customize Table">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <path d="M9 9h6v6H9z"/>
+                                <path d="M9 3v6M15 3v6M21 9H3M21 15H3"/>
+                            </svg>
+                        </button>
+                        <button class="icon-btn" onclick="copyTableAsMarkdown('sheetInventoryTable')" title="Copy Markdown">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <table id="sheetInventoryTable"></table>
+                </div>
+                
+                <h2>Cut Sequences</h2>
+                <div id="cutSequenceContainer"></div>
+                
+
+                
+                <h2>Usable Offcuts</h2>
+                <div class="table-with-controls">
+                    <div class="table-controls">
+                        <button class="icon-btn" onclick="openTableCustomization('offcutsTable')" title="Customize Table">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <path d="M9 9h6v6H9z"/>
+                                <path d="M9 3v6M15 3v6M21 9H3M21 15H3"/>
+                            </svg>
+                        </button>
+                        <button class="icon-btn" onclick="copyTableAsMarkdown('offcutsTable')" title="Copy Markdown">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <table id="offcutsTable"></table>
+                </div>
+                
+                <h2 data-translate="parts_placed_detailed">Cut List & Part Details</h2>
+                <div class="tree-controls">
+                    <button type="button" id="treeToggle" onclick="toggleTreeView()" data-translate="show_tree_structure">Show Tree Structure</button>
+                    <div class="tree-search" id="treeSearchContainer" style="display: none;">
+                        <input type="text" id="treeSearch" data-translate="search_components" placeholder="Search components..." oninput="filterTree()">
+                        <button type="button" onclick="clearTreeSearch()" data-translate="clear">Clear</button>
+                        <button type="button" onclick="expandAll()">Expand All</button>
+                        <button type="button" onclick="collapseAll()">Collapse All</button>
+                    </div>
+                </div>
+                <div id="treeStructure" class="tree-structure" style="display: none;"></div>
+                <div class="table-with-controls">
+                    <div class="table-controls">
+                        <button class="icon-btn" onclick="openTableCustomization('partsTable')" title="Customize Table">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <path d="M9 9h6v6H9z"/>
+                                <path d="M9 3v6M15 3v6M21 9H3M21 15H3"/>
+                            </svg>
+                        </button>
+                        <button class="icon-btn" onclick="copyTableAsMarkdown('partsTable')" title="Copy Markdown">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <table id="partsTable"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Customization Panel -->
+    <div id="tableCustomizationPanel" class="table-customization-panel">
+        <h3 id="panelTitle">Table Settings</h3>
+        
+        <div class="table-setting-group">
+            <h4>Appearance</h4>
+            <div class="table-setting-row">
+                <label>Font Size:</label>
+                <select id="tableFontSize" onchange="applyTableSetting('fontSize', this.value)">
+                    <option value="12px">Small</option>
+                    <option value="14px" selected>Normal</option>
+                    <option value="16px">Large</option>
+                </select>
+            </div>
+            <div class="table-setting-row">
+                <label>Cell Padding:</label>
+                <select id="tableCellPadding" onchange="applyTableSetting('cellPadding', this.value)">
+                    <option value="4px 8px">Compact</option>
+                    <option value="8px 12px" selected>Normal</option>
+                    <option value="12px 16px">Spacious</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="table-setting-group">
+            <h4>Colors</h4>
+            <div class="table-setting-row">
+                <label>Header Background:</label>
+                <input type="color" id="tableHeaderBg" class="color-input" value="#f5f5f5" onchange="applyTableSetting('headerBg', this.value)">
+            </div>
+            <div class="table-setting-row">
+                <label>Header Text:</label>
+                <input type="color" id="tableHeaderColor" class="color-input" value="#000000" onchange="applyTableSetting('headerColor', this.value)">
+            </div>
+            <div class="table-setting-row">
+                <label>Row Hover:</label>
+                <input type="color" id="tableRowHover" class="color-input" value="#f6f8fa" onchange="applyTableSetting('rowHover', this.value)">
+            </div>
+        </div>
+        
+        <div class="table-setting-group">
+            <h4>Alignment</h4>
+            <div class="table-setting-row">
+                <label>Text Align:</label>
+                <select id="tableTextAlign" onchange="applyTableSetting('textAlign', this.value)">
+                    <option value="left" selected>Left</option>
+                    <option value="center">Center</option>
+                    <option value="right">Right</option>
+                </select>
+            </div>
+            <div class="table-setting-row">
+                <label>Vertical Align:</label>
+                <select id="tableVerticalAlign" onchange="applyTableSetting('verticalAlign', this.value)">
+                    <option value="top">Top</option>
+                    <option value="middle" selected>Middle</option>
+                    <option value="bottom">Bottom</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="table-setting-group">
+            <h4>Text Wrapping</h4>
+            <div class="table-setting-row">
+                <label>Text Wrap:</label>
+                <select id="tableTextWrap" onchange="applyTableSetting('textWrap', this.value)">
+                    <option value="nowrap">No Wrap (Clip)</option>
+                    <option value="normal" selected>Wrap Text</option>
+                    <option value="break-word">Break Words</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="table-setting-group">
+            <h4>Borders</h4>
+            <div class="table-setting-row">
+                <label>Border Width:</label>
+                <select id="tableBorderWidth" onchange="applyTableSetting('borderWidth', this.value)">
+                    <option value="0px">None</option>
+                    <option value="1px" selected>Light</option>
+                    <option value="2px">Medium</option>
+                    <option value="3px">Heavy</option>
+                </select>
+            </div>
+            <div class="table-setting-row">
+                <label>Border Color:</label>
+                <input type="color" id="tableBorderColor" class="color-input" value="#d0d7de" onchange="applyTableSetting('borderColor', this.value)">
+            </div>
+        </div>
+        
+        <div class="template-section">
+            <h4>Templates</h4>
+            <div class="template-controls">
+                <select id="individualTemplateSelector" onchange="loadIndividualTemplate()">
+                    <option value="">Select Template...</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="panel-buttons">
+            <button onclick="saveCurrentAsTemplate()" class="icon-btn" title="Save as Template">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17,21 17,13 7,13 7,21"/>
+                    <polyline points="7,3 7,8 15,8"/>
+                </svg>
+                <span>Save as Template</span>
+            </button>
+            <button onclick="applyCurrentTableSettings()" class="icon-btn primary" title="Apply">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20,6 9,17 4,12"/>
+                </svg>
+                <span>Apply</span>
+            </button>
+            <button onclick="applyToGlobal()" class="icon-btn" title="Apply to Global">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+                <span>Apply to Global</span>
+            </button>
+            <button onclick="resetTableSettings()" class="icon-btn" title="Reset">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                    <path d="M21 3v5h-5"/>
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                    <path d="M3 21v-5h5"/>
+                </svg>
+                <span>Reset</span>
+            </button>
+            <button onclick="closeTableCustomization()" class="icon-btn" title="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                <span>Close</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal overlay for table customization -->
+    <div class="modal-overlay" onclick="closeTableCustomization()"></div>
+
+    <!-- Template Manager Modal -->
+    <div id="templateManagerModal" class="modal">
+        <div class="modal-content template-manager-content">
+            <span class="close" onclick="closeTemplateManager()">&times;</span>
+            <h3>Template Manager</h3>
+            
+            <div class="template-categories">
+                <div class="category-tabs">
+                    <button class="category-tab active" onclick="showTemplateCategory('predefined')">Built-in Templates</button>
+                    <button class="category-tab" onclick="showTemplateCategory('custom')">My Templates</button>
+                </div>
+                
+                <div id="predefinedTemplates" class="template-category active">
+                    <div class="template-grid" id="predefinedTemplateGrid"></div>
+                </div>
+                
+                <div id="customTemplates" class="template-category">
+                    <div class="template-actions">
+                        <input type="file" id="templateImportFile" accept=".json" style="display: none;" onchange="importTemplateFile(this)">
+                        <button onclick="document.getElementById('templateImportFile').click()">Import Template</button>
+                        <button onclick="exportAllTemplates()">Export All Templates</button>
+                    </div>
+                    <div class="template-grid" id="customTemplateGrid"></div>
+                </div>
+            </div>
+            
+            <div class="template-manager-buttons">
+                <button onclick="closeTemplateManager()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSettings()">&times;</span>
+
+            <div class="settings-section">
+                <h3>Units</h3>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <select id="settingsUnits" class="sort-select">
+                        <option value="mm">Millimeters (mm)</option>
+                        <option value="cm">Centimeters (cm)</option>
+                        <option value="m">Meters (m)</option>
+                        <option value="in">Inches (in)</option>
+                        <option value="ft">Feet (ft)</option>
+                    </select>
+                    <button onclick="updateUnits()" class="icon-btn" title="Update Units">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                            <path d="M21 3v5h-5"/>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                            <path d="M3 21v-5h5"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="settings-section">
+                <h3>Precision</h3>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <select id="settingsPrecision" class="sort-select">
+                        <option value="0">0</option>
+                        <option value="1">0.0</option>
+                        <option value="2">0.00</option>
+                        <option value="3">0.000</option>
+                    </select>
+                    <button onclick="updatePrecision()" class="icon-btn" title="Update Precision">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                            <path d="M21 3v5h-5"/>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                            <path d="M3 21v-5h5"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="settings-section">
+                <h3>Area Units</h3>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <select id="settingsAreaUnits" class="sort-select">
+                        <option value="mm2">Square Millimeters (mm²)</option>
+                        <option value="cm2">Square Centimeters (cm²)</option>
+                        <option value="m2">Square Meters (m²)</option>
+                        <option value="in2">Square Inches (in²)</option>
+                        <option value="ft2">Square Feet (ft²)</option>
+                    </select>
+                    <button onclick="updateAreaUnits()" class="icon-btn" title="Update Area Units">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                            <path d="M21 3v5h-5"/>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                            <path d="M3 21v-5h5"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="settings-section">
+                <h3>Default Currency</h3>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <select id="settingsCurrency" class="sort-select">
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="SAR">SAR (ر.س)</option>
+                        <option value="AED">AED (د.إ)</option>
+                        <option value="GBP">GBP (£)</option>
+                    </select>
+                    <button onclick="updateCurrency()" class="icon-btn" title="Update Currency">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                            <path d="M21 3v5h-5"/>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                            <path d="M3 21v-5h5"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="settings-buttons">
+                <button onclick="closeSettings()" class="primary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for enlarged part view -->
+    <div id="partModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-controls">
+                <button id="projectionToggle">Orthographic</button>
+            </div>
+            <canvas id="modalCanvas" width="500" height="400"></canvas>
+            <div id="modalInfo"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="app.js"></script>
+    <script src="diagrams_report.js"></script>
+    <script src="resizer_fix.js"></script>
+    <script src="table_customization.js"></script>
+    <script src="export_validator.js"></script>
+    <script>
+        let currentReportData = null;
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tabs .tab-button').forEach(btn => btn.classList.remove('active'));
+            
+            // Configuration tab specific action buttons
+            const configActionButtons = ['generateCutListButton', 'refreshSelectionButton', 'cancelButton'];
+            // Report tab specific action buttons
+            const reportActionButtons = ['refreshReportButton', 'printButton', 'exportCsvButton', 'exportHtmlButton', 'copyMarkdownButton'];
+
+            configActionButtons.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.style.display = (tabName === 'config') ? 'inline-flex' : 'none';
+            });
+            reportActionButtons.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.style.display = (tabName === 'report') ? 'inline-flex' : 'none';
+            });
+            
+            if (tabName === 'config') {
+                document.getElementById('configTab').classList.add('active');
+            } else if (tabName === 'report') {
+                document.getElementById('reportTabContent').classList.add('active');
+            }
+            document.querySelector(`.tabs [onclick="showTab('${tabName}')"]`).classList.add('active');
+        }
+
+        function showReportTab(data) {
+            console.log('showReportTab called with data:', data);
+            
+            document.getElementById('reportTab').disabled = false;
+            currentReportData = data;
+            
+            console.log('currentReportData set to:', currentReportData);
+            
+            // Ensure data structure is correct
+            if (data && data.diagrams && data.report) {
+                g_boardsData = data.diagrams;
+                g_reportData = data.report;
+                window.originalComponents = data.original_components || [];
+                window.hierarchyTree = data.hierarchy_tree || [];
+                
+                console.log('Report data loaded:', g_reportData);
+                console.log('Boards data loaded:', g_boardsData);
+                
+                // Render with delay to ensure DOM is ready
+                setTimeout(() => {
+                    if (typeof renderDiagrams === 'function') {
+                        console.log('Calling renderDiagrams');
+                        renderDiagrams();
+                    }
+                    if (typeof renderReport === 'function') {
+                        console.log('Calling renderReport');
+                        renderReport();
+                    }
+                }, 100);
+                
+                showTab('report');
+                
+                // Initialize export button event listeners only once
+                initializeExportButtons();
+                
+                // Re-initialize resizer after showing report tab
+                setTimeout(() => {
+                    resizerInitialized = false;
+                    initResizer();
+                }, 200);
+            } else {
+                console.error('Invalid data structure received:', data);
+                alert('Error: Invalid report data received. Please try generating the report again.');
+            }
+        }
+        
+        let exportButtonsInitialized = false;
+        
+        function initializeExportButtons() {
+            if (exportButtonsInitialized) return;
+            
+            const printBtn = document.getElementById('printButton');
+            const exportCsvBtn = document.getElementById('exportCsvButton');
+            const exportHtmlBtn = document.getElementById('exportHtmlButton');
+            
+            if (printBtn) {
+                printBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    exportToPDF();
+                });
+            }
+            
+            if (exportCsvBtn) {
+                exportCsvBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (currentReportData && currentReportData.report) {
+                        callRuby('export_csv', JSON.stringify(currentReportData.report));
+                    } else {
+                        alert('No report data available for export.');
+                    }
+                });
+            }
+            
+            if (exportHtmlBtn) {
+                exportHtmlBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (typeof exportInteractiveHTML === 'function') {
+                        exportInteractiveHTML();
+                    } else {
+                        alert('HTML export feature is not available.');
+                    }
+                });
+            }
+            
+            const copyMarkdownBtn = document.getElementById('copyMarkdownButton');
+            if (copyMarkdownBtn) {
+                copyMarkdownBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    copyFullReportAsMarkdown();
+                });
+            }
+            
+            exportButtonsInitialized = true;
+        }
+        
+        function exportToPDF() {
+            showPDFPreview();
+        }
+
+        function showError(message) {
+            console.error('Error:', message);
+            alert(message);
+        }
+        
+        function showProgressOverlay(message) {
+            const overlay = document.createElement('div');
+            overlay.id = 'progressOverlay';
+            overlay.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <div style="width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid #007cba; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+                    <div id="progressMessage" style="background: rgba(0,0,0,0.8); color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; margin-bottom: 10px;">${message}</div>
+                    <div id="progressPercent" style="background: rgba(0,0,0,0.8); color: white; padding: 4px 12px; border-radius: 15px; font-size: 12px; margin-bottom: 15px;">0%</div>
+                    <button onclick="cancelProcessing()" style="background: #ff4444; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 12px; cursor: pointer;">Cancel</button>
+                </div>
+                <style>
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                </style>
+            `;
+            document.body.appendChild(overlay);
+        }
+        
+        function updateProgressOverlay(message, percentage) {
+            const messageEl = document.getElementById('progressMessage');
+            const percentEl = document.getElementById('progressPercent');
+            
+            if (messageEl) messageEl.textContent = message;
+            if (percentEl) percentEl.textContent = percentage + '%';
+        }
+        
+        function hideProgressOverlay() {
+            const overlay = document.getElementById('progressOverlay');
+            if (overlay) overlay.remove();
+        }
+        
+        function cancelProcessing() {
+            callRuby('cancel_processing');
+            hideProgressOverlay();
+        }
+        
+        function refreshConfiguration() {
+            callRuby('refresh_config');
+        }
+        
+        function refreshReport() {
+            callRuby('refresh_report');
+        }
+        
+        function refreshReportWithFeedback() {
+            // Clear cached nesting results to force recalculation with new kerf
+            if (typeof g_boardsData !== 'undefined') {
+                callRuby('clear_nesting_cache');
+            }
+            refreshReport();
+        }
+        
+        function receiveRefreshedData(data) {
+            // Update the configuration with refreshed data
+            receiveInitialData(data);
+        }
+        
+        function refreshReportWithCurrentSettings() {
+            // Get current settings from the form
+            const settings = getCurrentSettings();
+            if (settings) {
+                // Re-process with current settings
+                callRuby('process', JSON.stringify(settings));
+            }
+        }
+        
+        function showConfigTab() {
+            showTab('config');
+        }
+        
+        let showTreeView = false;
+        
+        function toggleTreeView() {
+            showTreeView = !showTreeView;
+            const button = document.getElementById('treeToggle');
+            const treeContainer = document.getElementById('treeStructure');
+            const searchContainer = document.getElementById('treeSearchContainer');
+            
+            if (showTreeView) {
+                button.textContent = 'Hide Tree Structure';
+                treeContainer.style.display = 'block';
+                searchContainer.style.display = 'flex';
+            } else {
+                button.textContent = 'Show Tree Structure';
+                treeContainer.style.display = 'none';
+                searchContainer.style.display = 'none';
+            }
+        }
+
+        // --- NEW --- Placeholder for copyTableAsMarkdown function.
+        // This will be properly implemented in app.js/diagrams_report.js later.
+        // This function is now defined in diagrams_report.js and included there.
+        // This blank function prevents errors if called before diagrams_report.js loads.
+        function copyTableAsMarkdown(tableId) {
+            console.log(`Attempting to copy table: ${tableId}`);
+            // Actual implementation is in diagrams_report.js
+        }
+        
+        // Function to format area for PDF output where unit is in the header
+        function formatAreaForPDF(areaInMm2) {
+            const factor = areaFactors[window.currentAreaUnits || 'm2']; // Default to m2 if not set
+            const convertedArea = areaInMm2 / factor;
+            return formatNumber(convertedArea, currentPrecision); // Use current precision
+        }
+
+
+        // Ensure required globals are initialized
+        window.currencySymbols = window.currencySymbols || {
+            'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'CAD': '$', 'AUD': '$',
+            'CHF': 'CHF', 'CNY': '¥', 'SEK': 'kr', 'NZD': '$', 'SAR': 'SAR', 'AED': 'د.إ'
+        };
+        window.currentUnits = window.currentUnits || 'mm';
+        window.currentPrecision = window.currentPrecision ?? 1;
+        window.currentAreaUnits = window.currentAreaUnits || 'm2';
+        window.areaFactors = window.areaFactors || {
+            'mm2': 1, 'cm2': 100, 'm2': 1000000, 'in2': 645.16, 'ft2': 92903.04
+        };
+        window.unitFactors = window.unitFactors || {
+            'mm': 1, 'cm': 10, 'm': 1000, 'in': 25.4, 'ft': 304.8
+        };
+        window.defaultCurrency = window.defaultCurrency || 'USD';
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const modal = document.getElementById('partModal');
+            const closeBtns = document.querySelectorAll('#partModal .close');
+            
+            closeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.style.display = 'none';
+                });
+            });
+            
+            window.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+
+            // Initialize resizer with a delay to ensure DOM is ready
+            setTimeout(() => {
+                initResizer();
+            }, 100);
+            if (typeof callRuby === 'function') {
+                callRuby('ready');
+            }
+            
+            // Set "Used Only" toggle to ON by default for materials
+            // The actual filtering logic will be in app.js/displayMaterials
+            const foldToggle = document.getElementById('foldToggle');
+            if (foldToggle) {
+                if (showOnlyUsed) { // showOnlyUsed is initialized to true in app.js
+                    // Call toggleFold to set initial visual state and filter
+                    toggleFold();
+                }
+            }
+        });
+
+        function generateSummaryTableHTML(reportData) {
+            console.log('generateSummaryTableHTML called with:', reportData);
+            if (!reportData || !reportData.summary) {
+                console.log('No summary data found');
+                return '<thead><tr><th>Project Metric</th><th>Value</th></tr></thead><tbody><tr><td colspan="2">No project data available</td></tr></tbody>';
+            }
+            
+            const summary = reportData.summary;
+            const currency = summary.currency || window.defaultCurrency || 'USD';
+            const currencySymbol = window.currencySymbols[currency] || currency;
+            const reportPrecision = window.currentPrecision ?? 1;
+            
+            let html = `<thead><tr><th>Project Metric</th><th>Value</th></tr></thead><tbody>`;
+            
+            if (summary.project_name && summary.project_name !== 'Untitled Project') {
+                html += `<tr><td>Project Name</td><td><strong>${summary.project_name}</strong></td></tr>`;
+            }
+            if (summary.client_name) {
+                html += `<tr><td>Client</td><td><strong>${summary.client_name}</strong></td></tr>`;
+            }
+            if (summary.prepared_by) {
+                html += `<tr><td>Prepared by</td><td><strong>${summary.prepared_by}</strong></td></tr>`;
+            }
+            
+            html += `
+                <tr><td>Total Parts</td><td>${summary.total_parts_instances || 0}</td></tr>
+                <tr><td>Unique Components</td><td>${summary.total_unique_part_types || 0}</td></tr>
+                <tr><td>Material Sheets</td><td>${summary.total_boards || 0}</td></tr>
+                <tr><td>Kerf Width</td><td>${summary.kerf_width || '3.0mm'}</td></tr>
+                <tr><td>Material Efficiency</td><td>${formatNumber(summary.overall_efficiency || 0, reportPrecision)}%</td></tr>
+                <tr><td>Total Waste Area</td><td>${summary.total_waste_area_absolute || '0 m²'}</td></tr>
+                <tr><td class="total-highlight">Total Cost</td><td class="total-highlight">${currencySymbol}${formatNumber(summary.total_project_cost || 0, 2)}</td></tr>
+            </tbody>`;
+            
+            return html;
+        }
+        
+        function generateUniquePartsTableHTML(reportData) {
+            console.log('generateUniquePartsTableHTML called with:', reportData);
+            if (!reportData || !reportData.unique_part_types || reportData.unique_part_types.length === 0) {
+                console.log('No unique_part_types found');
+                return '<thead><tr><th>Part Name</th><th>Width</th><th>Height</th><th>Thickness</th><th>Material</th><th>Grain</th><th>Qty</th><th>Area</th></tr></thead><tbody><tr><td colspan="8">No part specifications available</td></tr></tbody>';
+            }
+            
+            const reportUnits = window.currentUnits || 'mm';
+            const reportPrecision = window.currentPrecision ?? 1;
+            const currentAreaUnitLabel = getAreaUnitLabel();
+            
+            let html = `<thead><tr><th>Part Name</th><th>Width (${reportUnits})</th><th>Height (${reportUnits})</th><th>Thickness (${reportUnits})</th><th>Material</th><th>Grain</th><th>Qty</th><th>Area (${currentAreaUnitLabel})</th></tr></thead><tbody>`;
+            
+            reportData.unique_part_types.forEach(part_type => {
+                const width = part_type.width / window.unitFactors[reportUnits];
+                const height = part_type.height / window.unitFactors[reportUnits];
+                const thickness = part_type.thickness / window.unitFactors[reportUnits];
+                
+                html += `<tr>
+                    <td>${part_type.name}</td>
+                    <td>${formatNumber(width, reportPrecision)}</td>
+                    <td>${formatNumber(height, reportPrecision)}</td>
+                    <td>${formatNumber(thickness, reportPrecision)}</td>
+                    <td>${part_type.material}</td>
+                    <td>${part_type.grain_direction || 'Any'}</td>
+                    <td class="total-highlight">${part_type.total_quantity}</td>
+                    <td>${getAreaDisplay(part_type.total_area)}</td>
+                </tr>`;
+            });
+            
+            html += `</tbody>`;
+            return html;
+        }
+        
+        function generateBoardsSummaryHTML(boardsData) {
+            if (!boardsData || boardsData.length === 0) return '<table><thead><tr><th>Sheet</th><th>Material</th><th>Dimensions</th><th>Parts</th><th>Efficiency</th><th>Waste</th></tr></thead><tbody><tr><td colspan="6">No material requirements available</td></tr></tbody></table>';
+            
+            const reportUnits = window.currentUnits || 'mm';
+            const reportPrecision = window.currentPrecision ?? 1;
+            
+            let html = `<table><thead><tr><th>Sheet</th><th>Material</th><th>Dimensions (${reportUnits})</th><th>Parts Count</th><th>Efficiency</th><th>Waste</th></tr></thead><tbody>`;
+            
+            boardsData.forEach((board, index) => {
+                const width = (board.stock_width || 0) / window.unitFactors[reportUnits];
+                const height = (board.stock_height || 0) / window.unitFactors[reportUnits];
+                
+                html += `<tr>
+                    <td>Sheet ${index + 1}</td>
+                    <td>${board.material}</td>
+                    <td>${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)}</td>
+                    <td>${board.parts ? board.parts.length : 0}</td>
+                    <td>${formatNumber(board.efficiency_percentage, 1)}%</td>
+                    <td>${formatNumber(board.waste_percentage, 1)}%</td>
+                </tr>`;
+            });
+            
+            html += `</tbody></table>`;
+            return html;
+        }
+        
+        function generateDiagramsHTML(boardsData) {
+            if (!boardsData || boardsData.length === 0) return '<div style="text-align: center;"><p>No cutting diagrams available</p></div>';
+            
+            let html = '';
+            const diagramsContainer = document.getElementById('diagramsContainer');
+            
+            if (diagramsContainer) {
+                const canvases = diagramsContainer.querySelectorAll('canvas');
+                
+                boardsData.forEach((board, index) => {
+                    if (index < canvases.length) {
+                        try {
+                            const canvas = canvases[index];
+                            const imageData = canvas.toDataURL('image/png', 0.8);
+                            
+                            html += `<div class="diagram-section">
+                                <h3>Sheet ${index + 1}: ${board.material}</h3>
+                                <div class="diagram-container">
+                                    <img src="${imageData}" alt="Cutting diagram for ${board.material}" class="diagram-image">
+                                </div>
+                                <p class="diagram-info">Efficiency: ${formatNumber(board.efficiency_percentage, 1)}% | Waste: ${formatNumber(board.waste_percentage, 1)}%</p>
+                            </div>`;
+                        } catch (error) {
+                            html += `<div class="diagram-section">
+                                <h3>Sheet ${index + 1}: ${board.material}</h3>
+                                <div class="diagram-placeholder">
+                                    <p>Diagram Export Not Available</p>
+                                    <p>Size: ${formatNumber((board.stock_width || 0) / window.unitFactors[window.currentUnits || 'mm'], window.currentPrecision ?? 1)} × ${formatNumber((board.stock_height || 0) / window.unitFactors[window.currentUnits || 'mm'], window.currentPrecision ?? 1)} ${window.currentUnits || 'mm'}</p>
+                                </div>
+                                <p class="diagram-info">Efficiency: ${formatNumber(board.efficiency_percentage, 1)}% | Waste: ${formatNumber(board.waste_percentage, 1)}%</p>
+                            </div>`;
+                        }
+                    }
+                });
+            }
+            
+            return html;
+        }
+        
+        function generateDetailedPartsTableHTML(reportData, boardsData) {
+            let allParts = [];
+            
+            // Use parts_placed from reportData if available
+            if (reportData && reportData.parts_placed) {
+                allParts = reportData.parts_placed;
+            } else if (boardsData && boardsData.length > 0) {
+                // Fallback to boardsData
+                boardsData.forEach((board, boardIndex) => {
+                    if (board.parts) {
+                        board.parts.forEach(part => {
+                            allParts.push({
+                                ...part,
+                                board_number: boardIndex + 1,
+                                board_material: board.material
+                            });
+                        });
+                    }
+                });
+            }
+            
+            if (allParts.length === 0) {
+                return '<thead><tr><th>Part ID</th><th>Name</th><th>Dimensions</th><th>Material</th><th>Board</th><th>Grain</th><th>Edge Banding</th></tr></thead><tbody><tr><td colspan="7">No detailed parts available</td></tr></tbody>';
+            }
+            
+            const reportUnits = window.currentUnits || 'mm';
+            const reportPrecision = window.currentPrecision ?? 1;
+            
+            let html = `<thead><tr><th>Part ID</th><th>Name</th><th>Dimensions (${reportUnits})</th><th>Material</th><th>Sheet #</th><th>Grain</th><th>Edge Banding</th></tr></thead><tbody>`;
+            
+            allParts.forEach((part, index) => {
+                const width = (part.width || 0) / window.unitFactors[reportUnits];
+                const height = (part.height || 0) / window.unitFactors[reportUnits];
+                const partId = part.part_unique_id || part.instance_id || `P${index + 1}`;
+                
+                // Handle edge banding display
+                let edgeBandingDisplay = 'None';
+                if (part.edge_banding_summary && part.edge_banding_summary.type !== 'None') {
+                    const summary = part.edge_banding_summary;
+                    edgeBandingDisplay = `${summary.type} (${summary.total_length}mm)`;
+                } else if (part.edge_banding && part.edge_banding !== 'None') {
+                    edgeBandingDisplay = typeof part.edge_banding === 'object' ? part.edge_banding.type || 'None' : part.edge_banding;
+                }
+                
+                html += `<tr>
+                    <td>${escapeHtml(partId)}</td>
+                    <td>${escapeHtml(part.name)}</td>
+                    <td>${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)}</td>
+                    <td>${escapeHtml(part.material)}</td>
+                    <td>${part.board_number}</td>
+                    <td>${escapeHtml(part.grain_direction || 'Any')}</td>
+                    <td>${escapeHtml(edgeBandingDisplay)}</td>
+                </tr>`;
+            });
+            
+            html += `</tbody>`;
+            return html;
+        }
+        
+        function generateSheetInventoryTableHTML(reportData) {
+            if (!reportData || !reportData.unique_board_types || reportData.unique_board_types.length === 0) {
+                return '<thead><tr><th>Material</th><th>Dimensions</th><th>Count</th><th>Total Area</th><th>Price/Sheet</th><th>Total Cost</th></tr></thead><tbody><tr><td colspan="6">No sheet inventory available</td></tr></tbody>';
+            }
+            
+            const reportUnits = window.currentUnits || 'mm';
+            const reportPrecision = window.currentPrecision ?? 1;
+            const currentAreaUnitLabel = getAreaUnitLabel();
+            const currency = reportData.summary?.currency || window.defaultCurrency || 'USD';
+            
+            let html = `<thead><tr><th>Material</th><th>Dimensions (${reportUnits})</th><th>Count</th><th>Total Area (${currentAreaUnitLabel})</th><th>Price/Sheet</th><th>Total Cost</th></tr></thead><tbody>`;
+            
+            reportData.unique_board_types.forEach(board_type => {
+                const boardCurrency = board_type.currency || currency;
+                const boardSymbol = window.currencySymbols[boardCurrency] || boardCurrency;
+                const width = (board_type.stock_width || 0) / window.unitFactors[reportUnits];
+                const height = (board_type.stock_height || 0) / window.unitFactors[reportUnits];
+                const dimensionsStr = `${formatNumber(width, reportPrecision)} × ${formatNumber(height, reportPrecision)}`;
+                
+                html += `<tr>
+                    <td>${escapeHtml(board_type.material)}</td>
+                    <td>${dimensionsStr}</td>
+                    <td class="total-highlight">${board_type.count}</td>
+                    <td style="text-align:right;">${getAreaDisplay(board_type.total_area)}</td>
+                    <td>${boardSymbol}${formatNumber(board_type.price_per_sheet || 0, 2)}</td>
+                    <td class="total-highlight">${boardSymbol}${formatNumber(board_type.total_cost || 0, 2)}</td>
+                </tr>`;
+            });
+            
+            html += `</tbody>`;
+            return html;
+        }
+        
+        function generateCutSequencesHTML(reportData) {
+            if (!reportData || !reportData.cut_sequences || reportData.cut_sequences.length === 0) {
+                return '<div style="text-align: center; padding: 20px;"><p>No cut sequences available</p></div>';
+            }
+            
+            let html = '';
+            reportData.cut_sequences.forEach(board => {
+                html += `<div class="board-summary">
+                    <h3>Sheet ${board.board_number}: ${escapeHtml(board.material)}</h3>
+                    <p><strong>Stock Size:</strong> ${escapeHtml(board.stock_dimensions)}</p>
+                    <table>
+                        <thead><tr><th>Step</th><th>Operation</th><th>Description</th><th>Measurement</th></tr></thead>
+                        <tbody>`;
+                
+                board.cut_sequence.forEach(step => {
+                    html += `<tr>
+                        <td>${step.step}</td>
+                        <td>${escapeHtml(step.type)}</td>
+                        <td>${escapeHtml(step.description)}</td>
+                        <td>${escapeHtml(step.measurement)}</td>
+                    </tr>`;
+                });
+                
+                html += `</tbody></table></div>`;
+            });
+            
+            return html;
+        }
+        
+        function generateOffcutsTableHTML(reportData) {
+            if (!reportData || !reportData.usable_offcuts || reportData.usable_offcuts.length === 0) {
+                return '<thead><tr><th>Sheet #</th><th>Material</th><th>Estimated Size</th><th>Area (m²)</th></tr></thead><tbody><tr><td colspan="4">No significant offcuts</td></tr></tbody>';
+            }
+            
+            let html = '<thead><tr><th>Sheet #</th><th>Material</th><th>Estimated Size</th><th>Area (m²)</th></tr></thead><tbody>';
+            
+            reportData.usable_offcuts.forEach(offcut => {
+                html += `<tr>
+                    <td>${offcut.board_number}</td>
+                    <td>${escapeHtml(offcut.material)}</td>
+                    <td>${escapeHtml(offcut.estimated_dimensions)}</td>
+                    <td>${offcut.area_m2}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody>';
+            return html;
+        }
+        
+        function renderCutSequences(reportData) {
+            const container = document.getElementById('cutSequenceContainer');
+            if (!container || !reportData.cut_sequences) {
+                return;
+            }
+            
+            // Render each sheet as its own independent table-with-controls container
+            let html = '';
+            reportData.cut_sequences.forEach(board => {
+                const tableId = `cutSequenceTable_${board.board_number}`;
+                html += `
+                <div class="table-with-controls">
+                    <div class="table-controls">
+                        <button class="icon-btn" onclick="openTableCustomization('${tableId}')" title="Customize Table">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <path d="M9 9h6v6H9z"/>
+                                <path d="M9 3v6M15 3v6M21 9H3M21 15H3"/>
+                            </svg>
+                        </button>
+                        <button class="icon-btn" onclick="copyTableAsMarkdown('${tableId}')" title="Copy Markdown">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="cut-sequence-board">
+                        <h4>Sheet ${board.board_number}: ${board.material}</h4>
+                        <p><strong>Stock Size:</strong> ${board.stock_dimensions}</p>
+                        <table id="${tableId}" class="cut-sequence-table">
+                            <thead><tr><th>Step</th><th>Operation</th><th>Description</th><th>Measurement</th></tr></thead>
+                            <tbody>
+                                ${board.cut_sequence.map(step => `
+                                    <tr>
+                                        <td>${step.step}</td>
+                                        <td>${step.type}</td>
+                                        <td>${step.description}</td>
+                                        <td>${step.measurement}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`;
+            });
+            
+            container.innerHTML = html;
+            
+            // After rendering, reinitialize customization so new tables get settings and handles
+            if (typeof reinitializeTableCustomization === 'function') {
+                reinitializeTableCustomization();
+            }
+        }
+        
+
+        
+        function renderOffcutsTable(reportData) {
+            const table = document.getElementById('offcutsTable');
+            if (!table || !reportData.usable_offcuts) {
+                return;
+            }
+            
+            if (reportData.usable_offcuts.length === 0) {
+                table.innerHTML = '<thead><tr><th>Sheet #</th><th>Material</th><th>Estimated Size</th><th>Area (m²)</th></tr></thead><tbody><tr><td colspan="4">No significant offcuts</td></tr></tbody>';
+                return;
+            }
+            
+            let html = '<thead><tr><th>Sheet #</th><th>Material</th><th>Estimated Size</th><th>Area (m²)</th></tr></thead><tbody>';
+            
+            reportData.usable_offcuts.forEach(offcut => {
+                html += `<tr>
+                    <td>${offcut.board_number}</td>
+                    <td>${offcut.material}</td>
+                    <td>${offcut.estimated_dimensions}</td>
+                    <td>${offcut.area_m2}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+        
+        function generateCostTableHTML(reportData) {
+            console.log('generateCostTableHTML called with:', reportData);
+            if (!reportData || !reportData.unique_board_types || reportData.unique_board_types.length === 0) {
+                console.log('No unique_board_types found');
+                return '<thead><tr><th>Material Type</th><th>Sheets Required</th><th>Unit Cost</th><th>Total Cost</th></tr></thead><tbody><tr><td colspan="4">No cost analysis available</td></tr></tbody>';
+            }
+            
+            const currency = reportData.summary?.currency || window.defaultCurrency || 'USD';
+            const currencySymbol = window.currencySymbols[currency] || currency;
+            
+            let html = `<thead><tr><th>Material Type</th><th>Sheets Required</th><th>Unit Cost</th><th>Total Cost</th></tr></thead><tbody>`;
+            
+            reportData.unique_board_types.forEach(board_type => {
+                const boardCurrency = board_type.currency || currency;
+                const boardSymbol = window.currencySymbols[boardCurrency] || boardCurrency;
+                html += `<tr>
+                    <td>${board_type.material}</td>
+                    <td>${board_type.count}</td>
+                    <td>${boardSymbol}${formatNumber(board_type.price_per_sheet || 0, 2)}</td>
+                    <td class="total-highlight">${boardSymbol}${formatNumber(board_type.total_cost || 0, 2)}</td>
+                </tr>`;
+            });
+            
+            html += `</tbody>`;
+            return html;
+        }
+
+        function showPDFPreview() {
+            const reportData = currentReportData;
+            const boardsData = g_boardsData || [];
+            
+            if (!reportData || !reportData.report) {
+                alert('No report data available. Please generate a report first.');
+                return;
+            }
+            
+            const timestamp = new Date().toLocaleString();
+            const actualReportData = reportData.report || reportData;
+
+            // Generate ALL required HTML tables from the report data with consistent structure
+            const summaryTable = generateSummaryTableHTML(actualReportData);
+            const uniquePartsTable = generateUniquePartsTableHTML(actualReportData);
+            const sheetInventoryTable = generateSheetInventoryTableHTML(actualReportData);
+            const detailedPartsTable = generateDetailedPartsTableHTML(actualReportData, boardsData);
+            const costTable = generateCostTableHTML(actualReportData);
+            const cutSequencesHTML = generateCutSequencesHTML(actualReportData);
+            const offcutsTable = generateOffcutsTableHTML(actualReportData);
+
+            const styleCss = `@page {
+    size: A4;
+    margin: 20mm;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    color: #1a1a1a;
+    font-size: 11pt;
+    line-height: 1.5;
+    font-weight: 400;
+    max-width: 210mm;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+}
+
+/* PDF Preview specific styles */
+@media screen {
+    body {
+        max-width: 210mm;
+        margin: 20px auto;
+        padding: 20mm;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        min-height: 297mm; /* A4 height */
+        background: white;
+    }
+    
+    .page-break {
+        page-break-before: always;
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 2px dashed #ccc;
+    }
+    
+    .page-break::before {
+        content: "Page Break";
+        display: block;
+        text-align: center;
+        color: #999;
+        font-size: 10pt;
+        margin-bottom: 20px;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 30pt;
+    padding-bottom: 15pt;
+    border-bottom: 1pt solid #e1e5e9;
+}
+.header h1 {
+    font-size: 24pt;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 6pt 0;
+    letter-spacing: -0.02em;
+}
+
+.header p {
+    font-size: 11pt;
+    color: #6b7280;
+    margin: 3pt 0;
+    font-weight: 400;
+}
+
+.controls {
+    display: none;
+}
+
+@media print {
+    .controls, .no-print {
+        display: none !important;
+    }
+}
+.section {
+    margin-bottom: 25pt;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.section:nth-child(n+4) {
+    page-break-before: auto;
+}
+
+/* Force page breaks for large sections */
+.section.large-section {
+    page-break-before: always;
+}
+
+.section-title, h2 {
+    font-size: 16pt;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 20pt 0 12pt 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    letter-spacing: -0.01em;
+}
+
+.section:first-of-type .section-title {
+    margin-top: 0;
+}
+.tabs {
+    display: flex;
+    gap: 4px;
+    background: #f6f8fa;
+    padding: 4px;
+    border-radius: 6px;
+}
+.tab-button {
+    background: transparent;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #656d76;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex; /* Ensure tab buttons also use flex for potential icon alignment */
+    align-items: center;
+    justify-content: center;
+}
+.tab-button:hover {
+    background: #ffffff;
+    color: #24292e;
+}
+.tab-button.active {
+    background: #ffffff;
+    color: #24292e;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.tab-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.tab-content {
+    display: none;
+    flex: 1;
+    overflow: hidden;
+}
+.tab-content.active {
+    display: flex;
+    flex-direction: column;
+}
+.config-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+.report-header {
+    background: #ffffff;
+    border-bottom: 1px solid #d0d7de;
+    padding: 12px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-shrink: 0;
+}
+.icon-btn, .material-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px; /* Standard padding for square icon buttons */
+    min-width: 36px; /* Ensure a minimum size */
+    height: 36px; /* Ensure a consistent height */
+    border-radius: 6px; /* Standard border-radius for buttons */
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid #d0d7de;
+    background: #ffffff;
+    color: #24292e; /* Default color for icons */
+    box-sizing: border-box; /* Include padding and border in element's total width and height */
+    white-space: nowrap; /* Prevent text wrapping for combined icon/text buttons */
+}
+.icon-btn:hover, .material-icon-btn:hover {
+    background: #f6f8fa;
+    border-color: #8c959f;
+    transform: translateY(-1px);
+}
+.icon-btn:active, .material-icon-btn:active {
+    transform: translateY(0);
+    transition: all 0.05s ease;
+}
+.icon-btn svg, .material-icon-btn svg {
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+    stroke: currentColor; /* Inherit color from parent button */
+    stroke-width: 2; /* Standard Lucide stroke-width */
+    width: 16px; /* Standard icon size */
+    height: 16px; /* Standard icon size */
+}
+.icon-btn:hover svg, .material-icon-btn:hover svg {
+    transform: scale(1.1);
+}
+.header-controls .action-buttons .tab-button.icon-btn.report-action-btn {
+    background: #ffffff; /* Light background */
+    color: #24292e; /* Dark icon color */
+    border: 1px solid #d0d7de; /* Border to match other light buttons */
+    padding: 8px; /* Consistent padding */
+    min-width: 36px;
+    height: 36px;
+    box-shadow: none; /* Remove tab button box shadow if it applies */
+}
+.header-controls .action-buttons .tab-button.icon-btn.report-action-btn:hover {
+    background: #f6f8fa; /* Light grey on hover */
+    border-color: #8c959f; /* Darker border on hover */
+    transform: translateY(-1px);
+}
+#foldToggle.active {
+    background: #28a745; /* Green for active */
+    color: white;
+    border-color: #28a745;
+}
+#foldToggle.active:hover {
+    background: #218838; /* Darker green on hover */
+    border-color: #218838;
+}
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12pt 0;
+    font-size: 10pt;
+    background: #ffffff;
+    border: 1pt solid #e1e5e9;
+    page-break-inside: auto;
+    break-inside: auto;
+}
+
+/* Ensure table headers repeat on new pages */
+thead {
+    display: table-header-group;
+}
+
+tbody {
+    display: table-row-group;
+}
+
+/* Prevent orphaned table rows */
+tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+th {
+    background: #f8fafc;
+    color: #374151;
+    font-weight: 600;
+    padding: 8pt 10pt;
+    text-align: left;
+    border-bottom: 1pt solid #e1e5e9;
+    font-size: 9pt;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+td {
+    padding: 8pt 10pt;
+    border-bottom: 0.5pt solid #f1f5f9;
+    color: #1a1a1a;
+    vertical-align: top;
+}
+
+tr:nth-child(even) {
+    background: #fafbfc;
+}
+
+tr:hover {
+    background: #f1f5f9;
+}
+.total-highlight {
+    font-weight: 600;
+    color: #1a1a1a;
+    background: #f0f9ff;
+}
+
+.board-summary {
+    margin-bottom: 15pt;
+    padding: 12pt;
+    background: #f8fafc;
+    border: 1pt solid #e1e5e9;
+    border-radius: 3pt;
+}
+
+.board-summary h3 {
+    font-size: 12pt;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 8pt 0;
+}
+
+.board-summary p {
+    margin: 4pt 0;
+    font-size: 10pt;
+    color: #4b5563;
+}
+
+.board-summary strong {
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+.board-summary ul {
+    margin: 6pt 0 6pt 15pt;
+    padding: 0;
+    font-size: 9pt;
+    color: #6b7280;
+}
+
+.board-summary li {
+    margin: 2pt 0;
+    line-height: 1.3;
+}
+
+.diagram-section {
+    margin-bottom: 20pt;
+    page-break-inside: avoid;
+    text-align: center;
+}
+
+.diagram-section h3 {
+    font-size: 12pt;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 8pt 0;
+    text-align: center;
+}
+
+.diagram-container {
+    display: flex;
+    justify-content: center;
+    margin: 10pt 0;
+}
+
+.diagram-image {
+    max-width: 100%;
+    height: auto;
+    border: 1pt solid #e1e5e9;
+    border-radius: 3pt;
+}
+
+.diagram-placeholder {
+    text-align: center;
+    margin: 10pt 0;
+    border: 1pt solid #e1e5e9;
+    border-radius: 3pt;
+    padding: 20pt;
+    background: #fafbfc;
+    color: #6b7280;
+    font-size: 10pt;
+}
+
+.diagram-placeholder p {
+    margin: 3pt 0;
+}
+
+.diagram-info {
+    text-align: center;
+    font-size: 9pt;
+    color: #6b7280;
+    margin: 6pt 0 0 0;
+    font-style: italic;
+}
+
+.floating-controls {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1000;
+}
+
+.floating-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1pt solid #d1d5db;
+    background: #ffffff;
+    color: #374151;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: all 0.2s ease;
+    font-size: 0;
+}
+
+.floating-btn:hover {
+    background: #f9fafb;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.export-btn {
+    background: #1f2937;
+    color: white;
+    border-color: #1f2937;
+}
+
+.export-btn:hover {
+    background: #111827;
+}
+
+.floating-btn svg {
+    stroke: currentColor;
+}
+
+@media print {
+    .floating-controls {
+        display: none;
+    }
+    
+    .page-break {
+        page-break-before: always;
+        border: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .page-break::before {
+        display: none;
+    }
+    
+    .diagram-section {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+    
+    .section {
+        page-break-inside: avoid;
+    }
+    
+    table {
+        page-break-inside: auto;
+    }
+    
+    tr {
+        page-break-inside: avoid;
+    }
+    
+    .header {
+        page-break-after: avoid;
+    }
+}
+.footer {
+    margin-top: 30pt;
+    padding-top: 15pt;
+    border-top: 1pt solid #e1e5e9;
+    text-align: center;
+    font-size: 9pt;
+    color: #6b7280;
+}
+
+.footer p {
+    margin: 3pt 0;
+}
+
+@media print {
+    body {
+        font-size: 10pt;
+    }
+    
+    .section {
+        page-break-inside: avoid;
+    }
+    
+    table {
+        page-break-inside: avoid;
+    }
+    
+    .board-summary {
+        page-break-inside: avoid;
+    }
+}
+/* Additional professional styling */
+.no-print {
+    margin: 15pt 0;
+    text-align: center;
+    padding: 12pt;
+    background: #f8fafc;
+    border: 1pt solid #e1e5e9;
+    border-radius: 3pt;
+}
+
+@media screen {
+    body {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+}
+button {
+    padding: 8pt 12pt;
+    margin: 3pt;
+    border: 1pt solid #d1d5db;
+    border-radius: 3pt;
+    font-size: 10pt;
+    background: #ffffff;
+    color: #374151;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+button:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.print-btn {
+    background: #1f2937;
+    color: white;
+    border-color: #1f2937;
+    font-weight: 500;
+}
+
+.close-btn {
+    background: #f3f4f6;
+    color: #374151;
+    border-color: #d1d5db;
+}
+/* Simplified table styling for PDF */
+.table-wrapper {
+    margin-bottom: 12pt;
+    overflow: visible;
+}
+
+/* Remove complex interactive elements for PDF */
+.table-controls {
+    display: none;
+}
+/* Remove all interactive panel elements for PDF */
+.table-customization-panel,
+.modal-overlay,
+.panel-buttons,
+.table-setting-group {
+    display: none;
+}
+.table-with-controls table th {
+    position: relative;
+    border-right: 1px solid #d0d7de;
+}
+.column-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    background: rgba(0, 124, 186, 0.2);
+    border-right: 1px solid rgba(0, 124, 186, 0.4);
+    z-index: 10;
+    transition: all 0.2s ease;
+}
+.column-resize-handle:hover {
+    background: rgba(0, 124, 186, 0.6);
+    border-right: 2px solid #007cba;
+    width: 8px;
+    right: -4px;
+}
+.column-resize-handle.resizing {
+    background: #007cba;
+    border-right: 2px solid #005a87;
+    width: 8px;
+    right: -4px;
+}
+.table-with-controls .column-resize-handle {
+    opacity: 0.6;
+}
+.table-with-controls:hover .column-resize-handle {
+    opacity: 0.8;
+}
+.table-with-controls .column-resize-handle:hover {
+    opacity: 1;
+    transform: scaleX(1.2);
+}
+.table-with-controls table th:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 10%;
+    right: 0;
+    width: 1px;
+    height: 80%;
+    background: rgba(0, 124, 186, 0.15);
+    pointer-events: none;
+}
+.table-with-controls table {
+    transition: all 0.2s ease;
+}
+.table-with-controls th,
+.table-with-controls td {
+    transition: all 0.2s ease;
+}
+.table-customization-panel.active + .modal-overlay {
+    display: block;
+}
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 999;
+}
+.report-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.report-title h2 {
+    margin: 0;
+}
+.color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+.color-input::-webkit-color-swatch {
+    border: none;
+    border-radius: 2px;
+}
+.table-setting-group:last-child {
+    margin-bottom: 0;
+}
+@media (max-width: 768px) {
+    .table-customization-panel {
+        width: 100%;
+        right: -100%;
+    }
+    
+    .global-table-controls {
+        padding: 8px;
+    }
+    
+    .table-setting-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .table-setting-row label {
+        margin-bottom: 4px;
+    }
+}
+.table-controls .icon-btn {
+    background: #f5f5f5; /* Light background for the markdown button */
+    border-color: #d0d7de;
+    min-width: 32px; /* Smaller icon button for table controls */
+    height: 32px;
+    padding: 6px;
+}
+.table-controls .icon-btn:hover {
+    background: #e0e0e0;
+}
+table {
+    width: 100%;
+    table-layout: fixed; /* Ensures column widths are respected */
+    border-collapse: collapse;
+    font-size: var(--table-font-size, 14px);
+    background: #ffffff;
+    margin: 0;
+}
+th, td {
+    padding: var(--table-cell-padding, 8px 12px);
+    text-align: var(--table-text-align, left);
+    border-bottom: var(--table-border-width, 1px) solid var(--table-border-color, #d0d7de);
+    white-space: var(--table-text-wrap, normal);
+    word-wrap: break-word;
+    vertical-align: var(--table-vertical-align, middle);
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+th {
+    background: var(--table-header-bg, #f5f5f5) !important;
+    color: var(--table-header-color, #000000) !important;
+    font-weight: 700;
+    text-align: var(--table-text-align, left) !important;
+}
+tbody tr:hover {
+    background: var(--table-row-hover, #f6f8fa) !important;
+}
+th:nth-child(n+2):not(#uniquePartTypesTable th:nth-child(5)):not(#uniquePartTypesTable th:nth-child(1)),
+#sheetInventoryTable th:nth-child(2), /* Dimensions should be left */
+#materialsUsedTable th:nth-child(2) /* Price should be right */
+{
+    text-align: right;
+}
+#uniquePartTypesTable th:nth-child(9) {
+    text-align: right;
+}
+#uniquePartTypesTable th:nth-child(1), /* Name */
+#uniquePartTypesTable th:nth-child(5), /* Material */
+#uniquePartTypesTable th:nth-child(6), /* Grain */
+#uniquePartTypesTable th:nth-child(7), /* Edge Banding */
+#partsTable th:nth-child(1), /* ID */
+#partsTable th:nth-child(2), /* Name */
+#partsTable th:nth-child(3), /* Dimensions */
+#partsTable th:nth-child(4), /* Material */
+#partsTable th:nth-child(5), /* Grain */
+#partsTable th:nth-child(6), /* Edge Banding */
+#materialsUsedTable th:nth-child(1), /* Material */
+#sheetInventoryTable th:nth-child(1), /* Material */
+#sheetInventoryTable th:nth-child(2) /* Dimensions (now descriptive string) */
+{
+    text-align: left;
+}
+#uniquePartTypesTable th:nth-child(1), #uniquePartTypesTable td:nth-child(1) { /* Name */
+    width: 20%;
+}
+#uniquePartTypesTable th:nth-child(2), #uniquePartTypesTable td:nth-child(2) { /* W */
+    width: 9%;
+}
+#uniquePartTypesTable th:nth-child(3), #uniquePartTypesTable td:nth-child(3) { /* H */
+    width: 9%;
+}
+#uniquePartTypesTable th:nth-child(4), #uniquePartTypesTable td:nth-child(4) { /* Thick */
+    width: 9%;
+}
+#uniquePartTypesTable th:nth-child(5), #uniquePartTypesTable td:nth-child(5) { /* Material */
+    width: 15%;
+}
+#uniquePartTypesTable th:nth-child(6), #uniquePartTypesTable td:nth-child(6) { /* Grain */
+    width: 8%; /* Reduced width */
+}
+#uniquePartTypesTable th:nth-child(7), #uniquePartTypesTable td:nth-child(7) { /* Edge Banding */
+    width: 10%;
+}
+#uniquePartTypesTable th:nth-child(8), #uniquePartTypesTable td:nth-child(8) { /* Qty */
+    width: 5%;
+}
+#uniquePartTypesTable th:nth-child(9), #uniquePartTypesTable td:nth-child(9) { /* Total Area */
+    width: 15%; /* Increased width */
+}
+@media (max-width: 768px) {
+    .table-wrapper, .table-with-controls {
+        font-size: 12px;
+    }
+    
+    th, td {
+        padding: 6px 8px;
+    }
+    #uniquePartTypesTable th:nth-child(1), #uniquePartTypesTable td:nth-child(1) { width: 18%; }
+    #uniquePartTypesTable th:nth-child(2), #uniquePartTypesTable td:nth-child(2) { width: 8%; }
+    #uniquePartTypesTable th:nth-child(3), #uniquePartTypesTable td:nth-child(3) { width: 8%; }
+    #uniquePartTypesTable th:nth-child(4), #uniquePartTypesTable td:nth-child(4) { width: 8%; }
+    #uniquePartTypesTable th:nth-child(5), #uniquePartTypesTable td:nth-child(5) { width: 12%; }
+    #uniquePartTypesTable th:nth-child(6), #uniquePartTypesTable td:nth-child(6) { width: 7%; }
+    #uniquePartTypesTable th:nth-child(7), #uniquePartTypesTable td:nth-child(7) { width: 9%; }
+    #uniquePartTypesTable th:nth-child(8), #uniquePartTypesTable td:nth-child(8) { width: 5%; }
+    #uniquePartTypesTable th:nth-child(9), #uniquePartTypesTable td:nth-child(9) { width: 15%; }
+}
+tbody tr:hover {
+    background: #f6f8fa;
+}
+.container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+.diagrams-container {
+    flex: 1;
+    min-width: 300px;
+    padding: 16px;
+    background: #ffffff;
+    border-right: 1px solid #d0d7de;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 16px;
+}
+.report-container {
+    flex: 1;
+    min-width: 400px;
+    padding: 16px;
+    background: #ffffff;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-width: 0;
+    width: 100%; /* Take full width when diagrams are hidden */
+}
+#resizer {
+    width: 8px;
+    background: #d0d7de;
+    cursor: col-resize;
+    user-select: none;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    border-left: 1px solid #d0d7de;
+    border-right: 1px solid #d0d7de;
+}
+#resizer:hover {
+    background: #8c959f;
+}
+#resizer:active {
+    background: #656d76;
+}
+.tree-controls {
+    margin: 12px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.tree-search {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 12px;
+    background: #f6f8fa;
+    border-radius: 6px;
+    border: 1px solid #d0d7de;
+    flex-grow: 1; /* Allows it to take available space */
+}
+.tree-search input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 14px;
+}
+.tree-search button {
+    padding: 6px 12px;
+    font-size: 14px;
+    margin: 0;
+}
+.parts-card {
+    margin-bottom: 16px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    background: #ffffff;
+    position: relative; /* For absolute positioning of markdown button */
+}
+.parts-card-title {
+    background: #f5f5f5;
+    padding: 8px 12px;
+    font-weight: 900;
+    font-size: 14px;
+    border-bottom: 1px solid #d0d7de;
+    color: #000000;
+    display: flex; /* Allow title and button to be on same line */
+    justify-content: space-between;
+    align-items: center;
+}
+.parts-card-title .icon-btn {
+    background: transparent;
+    border: none;
+    padding: 4px; /* Smaller padding for inline button */
+    min-width: 28px;
+    height: 28px;
+    /* Ensure icon color is dark on light background */
+    color: #24292e; 
+}
+.parts-card-title .icon-btn:hover {
+    background: #e0e0e0;
+}
+.parts-preview-table th, .parts-preview-table td {
+    padding: 6px 8px;
+    font-size: 14px;
+}
+.used-indicator {
+    color: #000000;
+    font-weight: 800;
+    font-size: 12px;
+}
+.unused-indicator {
+    color: #656d76;
+    font-size: 12px;
+}
+.sort-select {
+    padding: 6px 8px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 14px;
+    background: #ffffff;
+    max-width: 120px; /* Constrain width of sort dropdown */
+}
+.materials-sort-controls, .materials-filter-buttons, .currency-selector {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.currency-selector {
+    margin-bottom: 12px;
+}
+.currency-selector label {
+    margin-bottom: 0;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+.tree-structure {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 16px;
+    margin: 12px 0;
+    max-height: 500px;
+    overflow-y: auto;
+    font-size: 14px;
+}
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+}
+.modal-content {
+    background: #ffffff;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #d0d7de;
+    width: 520px;
+    max-width: 90%;
+    border-radius: 6px;
+}
+.close {
+    color: #656d76;
+    float: right;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.close:hover {
+    color: #24292e;
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+.stat-card {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    border: 1px solid #d0d7de;
+    text-align: center;
+}
+.stat-number {
+    font-size: 24px;
+    font-weight: 900;
+    color: #24292e;
+    margin-bottom: 4px;
+}
+.stat-label {
+    font-size: 12px;
+    color: #656d76;
+    font-weight: 600;
+}
+.preset-selection {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.material-option {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.material-option:hover {
+    background: #f6f8fa;
+    border-color: #8c959f;
+}
+.material-option.selected {
+    background: #24292e;
+    color: #ffffff;
+    border-color: #24292e;
+}
+.material-name {
+    font-size: 14px;
+    font-weight: 900;
+    margin-bottom: 4px;
+}
+.material-details {
+    font-size: 12px;
+    color: #656d76;
+    margin-bottom: 2px;
+}
+.material-option.selected .material-details,
+.material-option.selected .material-pattern {
+    color: #ffffff;
+    opacity: 0.8;
+}
+.material-pattern {
+    font-size: 12px;
+    color: #656d76;
+    font-style: italic;
+}
+.results-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 16px;
+}
+.result-group {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    border: 1px solid #d0d7de;
+}
+.result-group h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 900;
+    color: #24292e;
+}
+.result-group p {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #24292e;
+}
+.result-group strong {
+    font-weight: 800;
+}
+select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #ffffff;
+    color: #24292e;
+    box-sizing: border-box;
+}
+select:focus {
+    outline: none;
+    border-color: #24292e;
+    box-shadow: 0 0 0 3px rgba(36, 41, 46, 0.1);
+}
+`;
+            const diagramsStyleCss = `body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    font-size: 14px;
+    color: #24292e;
+}
+.header {
+    background: #ffffff;
+    border-bottom: 1px solid #d0d7de;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 56px;
+}
+.header h1 {
+    font-size: 18px;
+    margin: 0;
+    font-weight: 600;
+    color: #24292e;
+}
+.developer-credit {
+    font-size: 12px;
+    margin: 2px 0 0 0;
+    color: #656d76;
+}
+.back-btn, .icon-btn {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #24292e;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.back-btn:hover, .icon-btn:hover {
+    background: #f6f8fa;
+    border-color: #8c959f;
+}
+.icon-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 60px;
+    padding: 8px 10px;
+}
+.icon-btn .icon {
+    font-size: 16px;
+}
+.icon-btn .label {
+    font-size: 11px;
+}
+button {
+    background: #24292e;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+button:hover {
+    background: #1c2128;
+}
+.btn-secondary {
+    background: #ffffff;
+    color: #24292e;
+    border: 1px solid #d0d7de;
+}
+.btn-secondary:hover {
+    background: #f6f8fa;
+}
+.container {
+    display: flex;
+    flex: 1;
+    overflow: visible;
+}
+.diagrams-container {
+    flex: 1 0 auto;
+    min-width: 300px;
+    padding: 16px;
+    background: #ffffff;
+    border-right: 1px solid #d0d7de;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: block;
+}
+.report-container {
+    flex: 1 0 auto;
+    min-width: 400px;
+    padding: 16px;
+    background: #ffffff;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+#resizer {
+    width: 5px;
+    flex-shrink: 0;
+    background: #d0d7de;
+    cursor: col-resize;
+    user-select: none;
+    z-index: 10;
+}
+#resizer:hover {
+    background: #24292e;
+}
+.diagram-card {
+    border: 1px solid #d0d7de;
+    padding: 12px;
+    background: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+.diagram-card h3 {
+    font-size: 16px;
+    margin: 0 0 6px 0;
+    font-weight: 600;
+    color: #24292e;
+}
+.diagram-card p {
+    font-size: 14px;
+    color: #656d76;
+    margin: 0 0 12px 0;
+}
+.diagram-canvas {
+    border: 1px solid #d0d7de;
+    background: #ffffff;
+    border-radius: 4px;
+    display: block;
+    margin: 0 auto;
+}
+.table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 16px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    width: 850px;
+    min-width: 850px;
+    padding: 20px;
+    box-sizing: border-box;
+    position: relative;
+}
+table {
+    border-collapse: collapse;
+    font-size: 14px;
+    width: 800px;
+    min-width: 800px;
+    background: #ffffff;
+    margin: 0;
+    table-layout: auto;
+}
+th, td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #d0d7de;
+    white-space: normal;
+    word-wrap: break-word;
+    max-width: 300px;
+}
+th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #f6f8fa;
+    font-weight: 600;
+    font-size: 14px;
+}
+td[title] {
+    white-space: normal;
+    word-wrap: break-word;
+    max-width: 150px;
+}
+@media (max-width: 768px) {
+    .table-wrapper {
+        font-size: 12px;
+    }
+    
+    th, td {
+        padding: 6px 8px;
+        max-width: 120px;
+    }
+}
+tbody tr:hover {
+    background: #f6f8fa;
+}
+.material-item {
+    display: inline-flex;
+    align-items: center;
+    margin: 4px 6px 4px 0;
+    padding: 6px 10px;
+    background: #f6f8fa;
+    border-radius: 4px;
+    border: 1px solid #d0d7de;
+    font-size: 14px;
+}
+.material-swatch {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #d0d7de;
+    margin-right: 6px;
+    border-radius: 3px;
+}
+.material-name {
+    font-size: 14px;
+    font-weight: 500;
+}
+#materialsContainer {
+    margin-bottom: 16px;
+}
+.tabs {
+    display: flex;
+    gap: 4px;
+    background: #f6f8fa;
+    padding: 4px;
+    border-radius: 6px;
+}
+.tab-button {
+    background: transparent;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #656d76;
+    cursor: pointer;
+}
+.tab-button.active {
+    background: #ffffff;
+    color: #24292e;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.tab-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.tab-content {
+    display: none;
+    flex: 1;
+    overflow: hidden;
+}
+.tab-content.active {
+    display: flex;
+    flex-direction: column;
+}
+.report-title {
+    text-align: center;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #d0d7de;
+}
+.report-title h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #24292e;
+}
+.project-value {
+    padding: 8px 12px;
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #24292e;
+    font-weight: 500;
+}
+.total-highlight {
+    background: #f6ffed !important;
+    font-weight: 600;
+    color: #22863a;
+}
+.material-price {
+    font-size: 12px;
+    color: #656d76;
+    margin-left: 8px;
+}
+.report-header {
+    background: #ffffff;
+    border-bottom: 1px solid #d0d7de;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    align-items: center;
+}
+.icon-export-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #24292e;
+    cursor: pointer;
+    min-width: 60px;
+}
+.icon-export-btn:hover {
+    background: #f6f8fa;
+    border-color: #8c959f;
+}
+.export-icon {
+    width: 16px;
+    height: 16px;
+}
+.export-label {
+    font-size: 11px;
+    font-weight: 500;
+}
+.materials-controls-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.materials-action-buttons, .materials-filter-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.material-icon-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #24292e;
+    cursor: pointer;
+    min-width: 60px;
+}
+.material-icon-btn:hover {
+    background: #f6f8fa;
+    border-color: #8c959f;
+}
+.material-icon {
+    width: 16px;
+    height: 16px;
+}
+.materials-sort-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.sort-select {
+    padding: 6px 8px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 14px;
+    background: #ffffff;
+}
+.tree-controls {
+    margin: 12px 0;
+}
+.tree-search {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 12px;
+    background: #f6f8fa;
+    border-radius: 6px;
+    border: 1px solid #d0d7de;
+}
+.tree-search input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 14px;
+}
+.tree-search button {
+    padding: 6px 12px;
+    font-size: 14px;
+    background: #656d76;
+    color: white;
+    border: none;
+    border-radius: 4px;
+}
+.tree-search button:hover {
+    background: #4c5561;
+}
+.tree-structure {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 16px;
+    margin: 12px 0;
+    max-height: 500px;
+    overflow-y: auto;
+    font-size: 14px;
+}
+.tree-header {
+    font-weight: 600;
+    font-size: 16px;
+    color: #24292e;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #d0d7de;
+}
+.tree-node {
+    margin: 2px 0;
+}
+.tree-item {
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+.tree-expandable:hover {
+    background: #f6f8fa;
+}
+.expand-icon {
+    width: 12px;
+    text-align: center;
+    font-size: 10px;
+    color: #656d76;
+}
+.node-name {
+    font-weight: 500;
+    color: #24292e;
+}
+.node-dimensions {
+    color: #24292e;
+    font-size: 13px;
+}
+.node-material {
+    color: #656d76;
+    font-size: 13px;
+    font-style: italic;
+}
+.tree-children {
+    border-left: 1px dotted #d0d7de;
+    margin-left: 12px;
+}
+.part-id-btn {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #24292e;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.15s;
+}
+.part-id-btn:hover {
+    background: #e1e8ed;
+    border-color: #8c959f;
+    transform: translateY(-1px);
+}
+.part-label-cell:hover, .part-dimensions-cell:hover {
+    background: #f6f8fa !important;
+    font-weight: 600;
+}
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    overflow-y: auto;
+}
+.modal-content {
+    background: #ffffff;
+    margin: 2vh auto;
+    padding: 20px;
+    border: 1px solid #d0d7de;
+    width: 520px;
+    max-width: 90vw;
+    max-height: 96vh;
+    border-radius: 6px;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+    overflow-y: auto;
+}
+.close {
+    color: #656d76;
+    float: right;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.close:hover {
+    color: #24292e;
+}
+#modalCanvas {
+    border: 1px solid #d0d7de;
+    margin: 12px 0;
+    border-radius: 4px;
+}
+#modalInfo {
+    text-align: left;
+    margin-top: 12px;
+}
+#modalInfo h3 {
+    margin-top: 0;
+    font-size: 16px;
+    color: #24292e;
+}
+#modalInfo p {
+    margin: 6px 0;
+    font-size: 14px;
+    color: #656d76;
+}
+.modal-controls {
+    text-align: center;
+    margin-bottom: 12px;
+}
+.modal-controls button {
+    margin: 0 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+}
+.preview-modal-content {
+    width: 85% !important;
+    max-width: 900px !important;
+    max-height: 85vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #d0d7de;
+    margin-bottom: 12px;
+}
+.preview-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+.preview-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: #f6f8fa;
+    border-radius: 6px;
+    margin-bottom: 12px;
+}
+.preview-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 12px;
+    border-top: 1px solid #d0d7de;
+}
+.btn-primary {
+    background: #22863a;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+.btn-primary:hover {
+    background: #1a6f32;
+}
+.copy-btn {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    margin-left: 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    vertical-align: middle;
+}
+.copy-btn:hover {
+    background: #f6f8fa;
+}
+.copy-btn svg {
+    width: 14px;
+    height: 14px;
+    stroke: #656d76;
+}
+.copy-btn:hover svg {
+    stroke: #24292e;
+}
+h2 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 18px;
+    font-weight: 700;
+    color: #24292e;
+    margin: 32px 0 16px 0;
+    padding: 12px 16px;
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    border-left: 4px solid #24292e;
+    width: 850px;
+    min-width: 850px;
+    box-sizing: border-box;
+}
+.section-separator {
+    margin: 24px 0;
+    border-bottom: 1px solid #d0d7de;
+}
+.copy-table-btn {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #24292e;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+.copy-table-btn:hover {
+    background: #e1e8ed;
+    border-color: #8c959f;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.copy-table-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.copy-table-btn.copied {
+    background: #22863a;
+    color: white;
+    border-color: #22863a;
+}
+.copy-table-btn svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+}
+.copy-table-btn:hover svg {
+    transform: scale(1.1);
+}
+.export-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #24292e;
+    cursor: pointer;
+    min-width: 60px;
+    transition: all 0.15s;
+}
+.export-btn:hover {
+    background: #f6f8fa;
+    border-color: #8c959f;
+}
+.material-actions button {
+    background: #ffffff !important;
+    border: 1px solid #d0d7de !important;
+}
+.material-actions button:hover {
+    background: #f6f8fa !important;
+    border-color: #8c959f !important;
+}
+.cost-analysis {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 16px 0 32px 0;
+    font-size: 14px;
+    color: #656d76;
+    border-left: 4px solid #22863a;
+}
+.cost-breakdown-wrapper {
+    display: block !important;
+    width: auto !important;
+    min-width: auto !important;
+    max-width: 600px !important;
+    margin: 0 0 32px 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    position: static !important;
+    float: none !important;
+    clear: both !important;
+    contain: layout style !important;
+    isolation: isolate !important;
+}
+.cost-breakdown-wrapper,
+.cost-breakdown-wrapper *,
+.cost-breakdown-wrapper::before,
+.cost-breakdown-wrapper::after {
+    width: auto !important;
+    min-width: auto !important;
+    max-width: none !important;
+    table-layout: auto !important;
+    border-collapse: separate !important;
+    position: static !important;
+    float: none !important;
+    clear: none !important;
+    flex: none !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    transform: none !important;
+}
+.table-wrapper .cost-breakdown-wrapper,
+table .cost-breakdown-wrapper,
+th .cost-breakdown-wrapper,
+td .cost-breakdown-wrapper {
+    display: block !important;
+    width: auto !important;
+    min-width: auto !important;
+    position: absolute !important;
+    left: 0 !important;
+    z-index: 1000 !important;
+    background: white !important;
+    border: 1px solid #ccc !important;
+    padding: 10px !important;
+}
+.cost-breakdown-independent {
+    display: block !important;
+    padding: 16px !important;
+    background: #f6f8fa !important;
+    border: 1px solid #d0d7de !important;
+    border-radius: 6px !important;
+    border-left: 4px solid #22863a !important;
+    font-size: 14px !important;
+    color: #656d76 !important;
+    width: auto !important;
+    max-width: 600px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+}
+.cost-line-independent {
+    display: block !important;
+    margin: 6px 0 !important;
+    padding: 0 !important;
+    line-height: 1.4 !important;
+    font-size: 14px !important;
+    color: #656d76 !important;
+    width: auto !important;
+}
+.cost-total-independent {
+    display: block !important;
+    font-weight: bold !important;
+    color: #22863a !important;
+    margin-top: 12px !important;
+    padding-top: 12px !important;
+    border-top: 1px solid #d0d7de !important;
+    font-size: 16px !important;
+    line-height: 1.4 !important;
+    width: auto !important;
+}
+.cost-analysis-isolated {
+    display: block !important;
+    margin: 0 0 10px 0 !important;
+    padding: 8px !important;
+    background: #f8f9fa !important;
+    border-left: 3px solid #28a745 !important;
+    font-size: 12px !important;
+    color: #495057 !important;
+    width: auto !important;
+    max-width: 600px !important;
+    position: static !important;
+    float: none !important;
+    clear: both !important;
+    isolation: isolate !important;
+}
+`;
+            
+            // Add page break logic for better pagination
+            const addPageBreaks = (content) => {
+                // Add page breaks before major sections for better layout
+                return content
+                    .replace('<div class="section">\n        <h2 class="section-title">Cutting Diagrams</h2>', '<div class="section page-break">\n        <h2 class="section-title">Cutting Diagrams</h2>')
+                    .replace('<div class="section">\n        <h2 class="section-title">Detailed Parts List</h2>', '<div class="section page-break">\n        <h2 class="section-title">Detailed Parts List</h2>');
+            };
+            
+            let pdfHTML = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AutoNestCut Professional Report</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>${styleCss}</style>
+</head>
+<body>
+    <div class="header">
+        <h1>Cut List & Nesting Report</h1>
+        <p>Professional Manufacturing Analysis</p>
+        <p>Generated: ${timestamp}</p>
+    </div>
+    
+    <div class="floating-controls">
+        <button class="floating-btn refresh-btn" onclick="refreshPDFPreview()" title="Refresh">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                <path d="M21 3v5h-5"/>
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                <path d="M3 21v-5h5"/>
+            </svg>
+        </button>
+        <button class="floating-btn export-btn" onclick="window.print()" title="Export PDF">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6,9 6,2 18,2 18,9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <polyline points="6,14 6,22 18,22 18,14"/>
+            </svg>
+        </button>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">Project Summary</h2>
+        <table>${summaryTable}</table>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">Materials Used</h2>
+        <table>${costTable}</table>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">Unique Part Types</h2>
+        <table>${uniquePartsTable}</table>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">Sheet Inventory Summary</h2>
+        <table>${sheetInventoryTable}</table>
+    </div>
+
+    <div class="section page-break large-section">
+        <h2 class="section-title">Cutting Diagrams</h2>
+        ${generateDiagramsHTML(boardsData)}
+    </div>
+
+    <div class="section page-break large-section">
+        <h2 class="section-title">Cut Sequences</h2>
+        ${cutSequencesHTML}
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">Usable Offcuts</h2>
+        <table>${offcutsTable}</table>
+    </div>
+
+    <div class="section page-break large-section">
+        <h2 class="section-title">Cut List & Part Details</h2>
+        <table>${detailedPartsTable}</table>
+    </div>
+
+    <div class="footer">
+        <p>AutoNestCut Professional</p>
+        <p>Developed by Int. Arch. M.Shkeir</p>
+    </div>
+</body>
+</html>`;
+
+            console.log('Generated PDF HTML length:', pdfHTML.length);
+            console.log('Summary table HTML:', summaryTable);
+            console.log('Unique parts table HTML:', uniquePartsTable);
+            console.log('Cost table HTML:', costTable);
+            
+            if (typeof callRuby === 'function') {
+                callRuby('print_pdf', pdfHTML);
+            } else {
+                // Fallback: open in new window for printing
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(pdfHTML);
+                printWindow.document.close();
+                printWindow.focus();
+            }
+        }
+
+        function escapeHtml(text) {
+            if (typeof text !== 'string') {
+                return String(text || '');
+            }
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Helper functions that might be missing
+        function formatNumber(value, precision) {
+            if (typeof value !== 'number' || isNaN(value) || value === null) {
+                return '-';
+            }
+            const actualPrecision = (precision === 0 || precision === '0' || precision === 0.0) ? 0 : (typeof precision === 'number' ? precision : parseFloat(precision));
+            if (isNaN(actualPrecision) || actualPrecision < 0) {
+                return value.toFixed(1);
+            }
+            return value.toFixed(actualPrecision);
+        }
+        
+        function getAreaDisplay(areaMM2) {
+            const units = window.currentAreaUnits || 'm2';
+            const factor = window.areaFactors[units] || window.areaFactors['m2'];
+            const convertedArea = areaMM2 / factor;
+            return formatNumber(convertedArea, window.currentPrecision);
+        }
+        
+        function getAreaUnitLabel() {
+            const unitMap = {
+                'mm2': 'mm²',
+                'cm2': 'cm²',
+                'm2': 'm²',
+                'in2': 'in²',
+                'ft2': 'ft²'
+            };
+            return unitMap[window.currentAreaUnits] || window.currentAreaUnits || 'm²';
+        }
+
+        function refreshPDFPreview() {
+            showPDFPreview();
+        }
+        
+        function closePDFPreview() {
+            const modal = document.getElementById('pdfPreviewModal');
+            if (modal) modal.style.display = 'none';
+        }
+        
+        // Setup event listener for PDF content
+        window.addEventListener('pdf-ready', function(e) {
+            // This is a placeholder for the Ruby integration
+            console.log('PDF content ready for export');
+        });
+    </script>
+</body>
+</html>

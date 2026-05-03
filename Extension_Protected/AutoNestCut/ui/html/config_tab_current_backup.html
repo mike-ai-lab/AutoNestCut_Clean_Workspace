@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Configuration Tab</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        .config-container { max-width: 900px; margin: 0 auto; padding: 24px; }
+    </style>
+</head>
+<body>
+    <div class="config-container">
+        <!-- Project Configuration -->
+        <div class="section">
+            <h2>Project Configuration</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <div>
+                    <div class="form-group">
+                        <label for="project_name">Project Name:</label>
+                        <input type="text" id="project_name" name="project_name" placeholder="Enter project name">
+                    </div>
+                    <div class="form-group">
+                        <label for="client_name">Client Name:</label>
+                        <input type="text" id="client_name" name="client_name" placeholder="Enter client name">
+                    </div>
+                    <div class="form-group">
+                        <label for="prepared_by">Prepared by:</label>
+                        <input type="text" id="prepared_by" name="prepared_by" placeholder="Enter preparer name" value="Int. Arch. M.Shkeir">
+                    </div>
+                    <div class="form-group">
+                        <label for="kerf_width">Kerf Width (mm):</label>
+                        <input type="number" id="kerf_width" name="kerf_width" step="0.1" min="0" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="allow_rotation">
+                            <input type="checkbox" id="allow_rotation" name="allow_rotation"> Allow part rotation
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <h3 style="margin: 0 0 12px 0; font-size: 17px; font-weight: 600; color: #24292e;">Selection Status</h3>
+                    <div id="selectionStatusTree" style="background: #ffffff; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px; max-height: 400px; overflow-y: auto; font-family: 'Inter', sans-serif; font-size: 17px;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Components Found -->
+        <div class="section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h2 style="margin: 0;">Components Found (<span id="totalComponentsCount">0</span>)</h2>
+                <button type="button" onclick="toggleComponentsList()" class="icon-btn" id="componentsToggleBtn" style="min-width: auto;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="componentsList" style="display: none; max-height: 300px; overflow-y: auto; border: 1px solid #d0d7de; border-radius: 6px; background: #f8fafc;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 17px;">
+                    <thead style="position: sticky; top: 0; background: #f5f5f5; z-index: 1;">
+                        <tr>
+                            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #d0d7de;">Component</th>
+                            <th style="padding: 8px; text-align: right; border-bottom: 1px solid #d0d7de;">Width</th>
+                            <th style="padding: 8px; text-align: right; border-bottom: 1px solid #d0d7de;">Height</th>
+                            <th style="padding: 8px; text-align: right; border-bottom: 1px solid #d0d7de;">Thickness</th>
+                            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #d0d7de;">Material</th>
+                        </tr>
+                    </thead>
+                    <tbody id="componentsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Parts Preview -->
+        <div class="section">
+            <h2>Parts Preview</h2>
+            <div id="parts_preview"></div>
+        </div>
+        
+        <!-- Stock Materials & Pricing -->
+        <div class="section">
+            <div style="background: linear-gradient(135deg, #007cba 0%, #005a87 100%); color: white; padding: 20px 24px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; margin: -28px -28px 0 -28px;">
+                <h2 style="margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.3px;">Stock Materials & Pricing</h2>
+                <div style="display: flex; gap: 12px;">
+                    <button type="button" onclick="addMaterial()" class="material-icon-btn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white;" title="Add Material">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                    <button type="button" onclick="loadDefaults()" class="material-icon-btn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white;" title="Load Defaults">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                    </button>
+                    <button type="button" onclick="importCSV()" class="material-icon-btn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white;" title="Import CSV">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/></svg>
+                    </button>
+                    <button type="button" onclick="exportDatabase()" class="material-icon-btn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white;" title="Export Database">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div style="background: #f8f9fa; border-bottom: 1px solid #d0d7de; padding: 16px 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <button type="button" id="foldToggle" onclick="toggleFold()" class="material-icon-btn" style="background: white; border: 1px solid #d0d7de; color: #1a1a1a; font-size: 13px; font-weight: 600; padding: 8px 16px; min-width: auto;" title="Toggle Used Materials Only">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                    Used Only
+                </button>
+                <button type="button" onclick="clearHighlight()" class="material-icon-btn" style="background: white; border: 1px solid #d0d7de; color: #1a1a1a; font-size: 13px; font-weight: 600; padding: 8px 16px; min-width: auto;" title="Clear Highlight">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.67 1.33a2 2 0 0 0-2.83 0L13.5 6.67l-3.8-3.8a2 2 0 0 0-2.83 0L1.33 6.17a2 2 0 0 0 0 2.83l5.5 5.5c.39.39 1.02.39 1.41 0l3.8-3.8 5.83 5.83c.39.39 1.02.39 1.41 0l2.83-2.83a2 2 0 0 0 0-2.83z"/></svg>
+                    Clear Highlight
+                </button>
+                <div style="width: 1px; height: 24px; background: #d0d7de; margin: 0 4px;"></div>
+                <select id="sortBy" onchange="displayMaterials()" class="sort-select" style="padding: 8px 12px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 13px; background: white; color: #1a1a1a; cursor: pointer; font-weight: 500;">
+                    <option value="alphabetical">Sort: A-Z</option>
+                    <option value="usage">Sort: Used First</option>
+                    <option value="mostUsed">Sort: Most Used</option>
+                </select>
+            </div>
+            <div style="overflow-x: auto; overflow-y: hidden; border: 1px solid #d0d7de; border-top: none; border-radius: 0 0 8px 8px; max-height: 500px;">
+                <table id="materialsTable" class="materials-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead style="background: #f0f4f8; position: sticky; top: 0; z-index: 10;">
+                        <tr>
+                            <th style="padding: 14px 16px; text-align: left; font-weight: 700; color: #1a1a1a; border-bottom: 2px solid #d0d7de; font-size: 13px;">Material Name</th>
+                            <th style="padding: 14px 16px; text-align: right; font-weight: 700; color: #1a1a1a; border-bottom: 2px solid #d0d7de; font-size: 13px;">Width (mm)</th>
+                            <th style="padding: 14px 16px; text-align: right; font-weight: 700; color: #1a1a1a; border-bottom: 2px solid #d0d7de; font-size: 13px;">Height (mm)</th>
+                            <th style="padding: 14px 16px; text-align: right; font-weight: 700; color: #1a1a1a; border-bottom: 2px solid #d0d7de; font-size: 13px;">Thickness (mm)</th>
+                            <th style="padding: 14px 16px; text-align: right; font-weight: 700; color: #1a1a1a; border-bottom: 2px solid #d0d7de; font-size: 13px;">Density (kg/m³)</th>
+                            <th style="padding: 14px 16px; text-align: right; font-weight: 700; color: #1a1a1a; border-bottom: 2px solid #d0d7de; font-size: 13px;">Price per Sheet</th>
+                            <th style="padding: 14px 16px; text-align: center; font-weight: 700; color: #1a1a1a; border-bottom: 2px solid #d0d7de; font-size: 13px;">Actions</th>
+                            <th style="padding: 14px 16px; text-align: center; font-weight: 700; color: #1a1a1a; border-bottom: 2px solid #d0d7de; font-size: 13px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="materials_tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Communication with parent window
+        function notifyParent(action, data) {
+            if (window.parent !== window) {
+                window.parent.postMessage({ action, data }, '*');
+            } else if (typeof callRuby === 'function') {
+                callRuby(action, JSON.stringify(data));
+            }
+        }
+
+        // Receive data from parent
+        window.addEventListener('message', function(event) {
+            if (event.data.action === 'loadData') {
+                loadConfigData(event.data.data);
+            }
+        });
+
+        function loadConfigData(data) {
+            // Populate form fields
+            if (data.project_name) document.getElementById('project_name').value = data.project_name;
+            if (data.client_name) document.getElementById('client_name').value = data.client_name;
+            if (data.prepared_by) document.getElementById('prepared_by').value = data.prepared_by;
+            if (data.kerf_width) document.getElementById('kerf_width').value = data.kerf_width;
+            if (data.allow_rotation !== undefined) document.getElementById('allow_rotation').checked = data.allow_rotation;
+            
+            // Load materials, parts, etc.
+            if (data.materials) displayMaterials(data.materials);
+            if (data.parts) displayParts(data.parts);
+            if (data.components) updateComponentsList(data.components);
+        }
+
+        function toggleComponentsList() {
+            const list = document.getElementById('componentsList');
+            const btn = document.getElementById('componentsToggleBtn');
+            const isVisible = list.style.display !== 'none';
+            list.style.display = isVisible ? 'none' : 'block';
+            btn.querySelector('svg').style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+
+        function updateComponentsList(components) {
+            const tbody = document.getElementById('componentsTableBody');
+            const count = document.getElementById('totalComponentsCount');
+            count.textContent = components.length;
+            
+            let html = '';
+            components.forEach(comp => {
+                html += `<tr style="border-bottom: 1px solid #e1e5e9;">
+                    <td style="padding: 8px;">${comp.name || 'Unnamed'}</td>
+                    <td style="padding: 8px; text-align: right;">${comp.width || 0}</td>
+                    <td style="padding: 8px; text-align: right;">${comp.height || 0}</td>
+                    <td style="padding: 8px; text-align: right;">${comp.thickness || 0}</td>
+                    <td style="padding: 8px;">${comp.material || 'No Material'}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function displayMaterials(materials) {
+            // Implementation from app.js
+            notifyParent('displayMaterials', materials);
+        }
+
+        function displayParts(parts) {
+            // Implementation from app.js
+            notifyParent('displayParts', parts);
+        }
+
+        function addMaterial() { notifyParent('addMaterial'); }
+        function loadDefaults() { notifyParent('loadDefaults'); }
+        function importCSV() { notifyParent('importCSV'); }
+        function exportDatabase() { notifyParent('exportDatabase'); }
+        function toggleFold() { notifyParent('toggleFold'); }
+        function clearHighlight() { notifyParent('clearHighlight'); }
+    </script>
+</body>
+</html>

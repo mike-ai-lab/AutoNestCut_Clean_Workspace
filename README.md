@@ -37,11 +37,12 @@ AutoNestCut is a professional SketchUp extension that optimizes material usage f
 
 ### For Users
 
-1. Download the latest `.rbz` file from releases
+1. Download the latest `.rbz` file from https://mimevents.com/tools/autonestcut
 2. In SketchUp, go to **Window > Extension Manager**
 3. Click **Install Extension** and select the `.rbz` file
 4. Restart SketchUp
 5. Find **AutoNestCut** in the **Extensions** menu
+6. Start your **7-day free trial** or enter your license key
 
 ### For Developers
 

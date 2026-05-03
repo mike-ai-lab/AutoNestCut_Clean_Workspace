@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Missing Materials - AutoNestCut</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            padding: 24px;
+            background: #f8f9fa;
+            font-size: 14px;
+            color: #1a1a1a;
+            line-height: 1.5;
+        }
+        
+        .dialog-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .dialog-header {
+            background: #2323FF;
+            color: #ffffff;
+            padding: 20px 24px;
+        }
+        
+        .dialog-header h2 {
+            margin: 0 0 8px 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .dialog-header p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .dialog-content {
+            padding: 24px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .material-card {
+            background: #f6f8fa;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .material-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #d0d7de;
+        }
+        
+        .material-info h3 {
+            margin: 0 0 4px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        
+        .material-info p {
+            margin: 0;
+            font-size: 13px;
+            color: #656d76;
+        }
+        
+        .component-list {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #ffffff;
+            border: 1px solid #d0d7de;
+            border-radius: 4px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        
+        .component-item {
+            font-size: 12px;
+            color: #1a1a1a;
+            padding: 4px 0;
+            border-bottom: 1px solid #f6f8fa;
+        }
+        
+        .component-item:last-child {
+            border-bottom: none;
+        }
+        
+        .component-name {
+            font-weight: 600;
+            color: #0969da;
+        }
+        
+        .component-dims {
+            color: #656d76;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+        
+        .material-badge {
+            background: #fff3cd;
+            color: #856404;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .option-group {
+            margin-bottom: 16px;
+        }
+        
+        .option-radio {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px;
+            border: 2px solid #d0d7de;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .option-radio:hover {
+            border-color: #2323FF;
+            background: #f0f4ff;
+        }
+        
+        .option-radio.selected {
+            border-color: #2323FF;
+            background: #e6f0ff;
+        }
+        
+        .option-radio input[type="radio"] {
+            margin: 4px 12px 0 0;
+            cursor: pointer;
+        }
+        
+        .option-content {
+            flex: 1;
+        }
+        
+        .option-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+        
+        .option-description {
+            font-size: 13px;
+            color: #656d76;
+            margin-bottom: 12px;
+        }
+        
+        .option-details {
+            display: none;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #d0d7de;
+        }
+        
+        .option-radio.selected .option-details {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 12px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 6px;
+        }
+        
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d0d7de;
+            border-radius: 4px;
+            font-size: 14px;
+            background: #ffffff;
+        }
+        
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #2323FF;
+            box-shadow: 0 0 0 3px rgba(35, 35, 255, 0.1);
+        }
+        
+        .dimension-inputs {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .dimension-inputs .form-group {
+            flex: 1;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+        
+        .checkbox-group label {
+            margin: 0;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .dialog-footer {
+            padding: 20px 24px;
+            background: #f6f8fa;
+            border-top: 1px solid #d0d7de;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .footer-info {
+            font-size: 13px;
+            color: #656d76;
+        }
+        
+        .footer-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        
+        .btn-cancel {
+            background: #ffffff;
+            color: #1a1a1a;
+            border: 1px solid #d0d7de;
+        }
+        
+        .btn-cancel:hover {
+            background: #f6f8fa;
+            border-color: #8c959f;
+        }
+        
+        .btn-primary {
+            background: #2323FF;
+            color: #ffffff;
+        }
+        
+        .btn-primary:hover {
+            background: #1a1acc;
+        }
+        
+        .btn-primary:disabled {
+            background: #d0d7de;
+            cursor: not-allowed;
+        }
+        
+        .info-box {
+            background: #e6f0ff;
+            border-left: 4px solid #2323FF;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .info-box p {
+            margin: 0;
+            font-size: 13px;
+            color: #1a1a1a;
+        }
+    </style>
+</head>
+<body>
+    <div class="dialog-container">
+        <div class="dialog-header">
+            <h2>Missing Materials Found</h2>
+            <p>The following materials are not in your database. Please specify how to handle them.</p>
+        </div>
+        
+        <div class="dialog-content" id="materialsContainer">
+            <!-- Materials will be dynamically inserted here -->
+        </div>
+        
+        <div class="dialog-footer">
+            <div class="footer-info">
+                <span id="materialCount">0</span> material(s) to resolve
+            </div>
+            <div class="footer-buttons">
+                <button class="btn btn-cancel" onclick="cancelDialog()">Cancel</button>
+                <button class="btn btn-primary" id="continueBtn" onclick="continueProcess()">Continue</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let missingMaterials = [];
+        let availableMaterials = [];
+        let userChoices = {};
+        
+        // Notify Ruby that dialog is ready
+        window.location = 'skp:ready@';
+        
+        // Initialize dialog with data from Ruby
+        function initializeDialog(materials, available) {
+            missingMaterials = materials;
+            availableMaterials = available;
+            renderMaterials();
+            updateMaterialCount();
+        }
+        
+        function renderMaterials() {
+            const container = document.getElementById('materialsContainer');
+            container.innerHTML = '';
+            
+            if (missingMaterials.length === 0) {
+                container.innerHTML = '<div class="info-box"><p>No missing materials found.</p></div>';
+                return;
+            }
+            
+            missingMaterials.forEach((material, index) => {
+                const card = createMaterialCard(material, index);
+                container.appendChild(card);
+            });
+        }
+        
+        function createMaterialCard(material, index) {
+            const card = document.createElement('div');
+            card.className = 'material-card';
+            card.id = `material-${index}`;
+            
+            // Filter available materials by thickness
+            const matchingMaterials = availableMaterials.filter(m => 
+                Math.abs(m.thickness - material.thickness) < 0.1
+            );
+            
+            card.innerHTML = `
+                <div class="material-header">
+                    <div class="material-info">
+                        <h3>${escapeHtml(material.name)}</h3>
+                        <p>Thickness: ${material.thickness}mm • Used by ${material.component_count} component(s)</p>
+                        <div class="component-list">
+                            ${material.components.map(comp => `
+                                <div class="component-item">
+                                    <span class="component-name">${escapeHtml(comp.name || 'Unnamed')}</span>
+                                    <span class="component-dims">(${comp.width}×${comp.height}mm)</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="material-badge">Missing</div>
+                </div>
+                
+                <div class="option-group">
+                    <!-- Option 1: Use Existing Material -->
+                    <div class="option-radio" onclick="selectOption(${index}, 'existing')">
+                        <input type="radio" name="option-${index}" value="existing" id="option-${index}-existing">
+                        <div class="option-content">
+                            <div class="option-title">Use existing material from stock</div>
+                            <div class="option-description">Map this material to an existing material in your database</div>
+                            <div class="option-details">
+                                <div class="form-group">
+                                    <label>Select material (${matchingMaterials.length} available with ${material.thickness}mm thickness):</label>
+                                    <select id="existing-select-${index}" onchange="updateChoice(${index}, 'existing', this.value)">
+                                        <option value="">-- Select a material --</option>
+                                        ${matchingMaterials.map(m => `
+                                            <option value="${escapeHtml(m.name)}">
+                                                ${escapeHtml(m.name)} (${m.width}x${m.height}x${m.thickness}mm)
+                                            </option>
+                                        `).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Option 2: Create Standard Sheet -->
+                    <div class="option-radio" onclick="selectOption(${index}, 'standard')">
+                        <input type="radio" name="option-${index}" value="standard" id="option-${index}-standard" checked>
+                        <div class="option-content">
+                            <div class="option-title">Create new standard sheet material</div>
+                            <div class="option-description">Create a new material with standard sheet dimensions</div>
+                            <div class="option-details">
+                                <div class="dimension-inputs">
+                                    <div class="form-group">
+                                        <label>Width (mm):</label>
+                                        <input type="number" id="standard-width-${index}" value="2440" onchange="updateChoice(${index}, 'standard')">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Height (mm):</label>
+                                        <input type="number" id="standard-height-${index}" value="1220" onchange="updateChoice(${index}, 'standard')">
+                                    </div>
+                                </div>
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="save-to-db-${index}" checked onchange="updateChoice(${index}, 'standard')">
+                                    <label for="save-to-db-${index}">Save to database for future use</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Option 3: Create Custom Part -->
+                    <div class="option-radio" onclick="selectOption(${index}, 'custom')">
+                        <input type="radio" name="option-${index}" value="custom" id="option-${index}-custom">
+                        <div class="option-content">
+                            <div class="option-title">Create custom part (exact dimensions)</div>
+                            <div class="option-description">For specialty materials like glass or metal that are cut-to-size</div>
+                            <div class="option-details">
+                                <div class="info-box">
+                                    <p>Material will be created with exact component dimensions. Not saved to database.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Initialize default choice (standard)
+            userChoices[index] = {
+                type: 'standard',
+                width: 2440,
+                height: 1220,
+                saveToDb: true,
+                materialName: material.name,
+                thickness: material.thickness
+            };
+            
+            return card;
+        }
+        
+        function selectOption(index, type) {
+            const radio = document.getElementById(`option-${index}-${type}`);
+            radio.checked = true;
+            
+            // Update visual selection
+            const card = document.getElementById(`material-${index}`);
+            const options = card.querySelectorAll('.option-radio');
+            options.forEach(opt => opt.classList.remove('selected'));
+            radio.closest('.option-radio').classList.add('selected');
+            
+            // Update choice
+            updateChoice(index, type);
+        }
+        
+        function updateChoice(index, type, value) {
+            const material = missingMaterials[index];
+            
+            if (type === 'existing') {
+                const select = document.getElementById(`existing-select-${index}`);
+                userChoices[index] = {
+                    type: 'existing',
+                    existingMaterial: value || select.value,
+                    materialName: material.name,
+                    thickness: material.thickness
+                };
+            } else if (type === 'standard') {
+                const width = document.getElementById(`standard-width-${index}`).value;
+                const height = document.getElementById(`standard-height-${index}`).value;
+                const saveToDb = document.getElementById(`save-to-db-${index}`).checked;
+                userChoices[index] = {
+                    type: 'standard',
+                    width: parseFloat(width),
+                    height: parseFloat(height),
+                    saveToDb: saveToDb,
+                    materialName: material.name,
+                    thickness: material.thickness
+                };
+            } else if (type === 'custom') {
+                userChoices[index] = {
+                    type: 'custom',
+                    materialName: material.name,
+                    thickness: material.thickness
+                };
+            }
+            
+            validateChoices();
+        }
+        
+        function validateChoices() {
+            let allValid = true;
+            
+            for (let i = 0; i < missingMaterials.length; i++) {
+                const choice = userChoices[i];
+                if (!choice) {
+                    allValid = false;
+                    break;
+                }
+                
+                if (choice.type === 'existing' && !choice.existingMaterial) {
+                    allValid = false;
+                    break;
+                }
+            }
+            
+            document.getElementById('continueBtn').disabled = !allValid;
+        }
+        
+        function updateMaterialCount() {
+            document.getElementById('materialCount').textContent = missingMaterials.length;
+        }
+        
+        function continueProcess() {
+            // Send choices back to Ruby
+            window.location = 'skp:material_choices@' + JSON.stringify(userChoices);
+        }
+        
+        function cancelDialog() {
+            window.location = 'skp:cancel_dialog@';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

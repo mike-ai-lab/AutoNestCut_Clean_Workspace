@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Nesting Error - AutoNestCut</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            padding: 24px;
+            background: #f8f9fa;
+            font-size: 14px;
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+        
+        .error-container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        
+        .error-header {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: #ffffff;
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .error-icon {
+            font-size: 48px;
+            line-height: 1;
+        }
+        
+        .error-header-text h2 {
+            margin: 0 0 8px 0;
+            font-size: 22px;
+            font-weight: 700;
+        }
+        
+        .error-header-text p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.95;
+        }
+        
+        .error-content {
+            padding: 24px;
+        }
+        
+        .error-details {
+            background: #fef2f2;
+            border-left: 4px solid #dc2626;
+            padding: 16px;
+            margin-bottom: 24px;
+            border-radius: 4px;
+        }
+        
+        .error-details h3 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #991b1b;
+        }
+        
+        .error-message {
+            font-size: 14px;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+            font-family: 'Courier New', monospace;
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 4px;
+            border: 1px solid #fecaca;
+        }
+        
+        .problem-summary {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .summary-item {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 4px;
+            border: 1px solid #fecaca;
+        }
+        
+        .summary-label {
+            font-size: 11px;
+            color: #991b1b;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        
+        .summary-value {
+            font-size: 16px;
+            color: #1a1a1a;
+            font-weight: 700;
+        }
+        
+        .solutions-section {
+            margin-bottom: 24px;
+        }
+        
+        .solutions-section h3 {
+            margin: 0 0 16px 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        
+        .solution-card {
+            background: #f0fdf4;
+            border: 2px solid #86efac;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .solution-card:hover {
+            border-color: #22c55e;
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
+        }
+        
+        .solution-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .solution-icon {
+            font-size: 24px;
+        }
+        
+        .solution-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #166534;
+        }
+        
+        .solution-description {
+            font-size: 14px;
+            color: #15803d;
+            margin-bottom: 12px;
+        }
+        
+        .solution-steps {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 4px;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .solution-steps ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .solution-steps li {
+            font-size: 13px;
+            color: #1a1a1a;
+            margin-bottom: 6px;
+        }
+        
+        .solution-steps li:last-child {
+            margin-bottom: 0;
+        }
+        
+        .technical-details {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .technical-details summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #6b7280;
+            font-size: 13px;
+            user-select: none;
+        }
+        
+        .technical-details summary:hover {
+            color: #1a1a1a;
+        }
+        
+        .technical-content {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            color: #6b7280;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .error-footer {
+            padding: 20px 24px;
+            background: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .footer-help {
+            font-size: 13px;
+            color: #6b7280;
+        }
+        
+        .footer-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        
+        .btn-secondary {
+            background: #ffffff;
+            color: #1a1a1a;
+            border: 1px solid #d1d5db;
+        }
+        
+        .btn-secondary:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+        
+        .btn-primary {
+            background: #2323FF;
+            color: #ffffff;
+        }
+        
+        .btn-primary:hover {
+            background: #1a1acc;
+        }
+        
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 12px 16px;
+            margin-top: 16px;
+            border-radius: 4px;
+        }
+        
+        .info-box p {
+            margin: 0;
+            font-size: 13px;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-header">
+            <div class="error-icon">⚠️</div>
+            <div class="error-header-text">
+                <h2>Nesting Failed</h2>
+                <p>A component is too large to fit on the selected sheet material</p>
+            </div>
+        </div>
+        
+        <div class="error-content">
+            <div class="error-details">
+                <h3>What Went Wrong?</h3>
+                <div class="error-message" id="errorMessage">
+                    <!-- Error message will be inserted here -->
+                </div>
+                
+                <div class="problem-summary">
+                    <div class="summary-item">
+                        <div class="summary-label">Component</div>
+                        <div class="summary-value" id="componentName">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Component Size</div>
+                        <div class="summary-value" id="componentSize">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Sheet Size</div>
+                        <div class="summary-value" id="sheetSize">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Material</div>
+                        <div class="summary-value" id="materialName">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="solutions-section">
+                <h3>💡 How to Fix This</h3>
+                
+                <div class="solution-card" onclick="selectSolution(1)">
+                    <div class="solution-header">
+                        <div class="solution-icon">📏</div>
+                        <div class="solution-title">Solution 1: Use Larger Sheet Material</div>
+                    </div>
+                    <div class="solution-description">
+                        Increase the sheet dimensions to accommodate the component
+                    </div>
+                    <div class="solution-steps">
+                        <ol>
+                            <li>Click "Open Materials Stock" below</li>
+                            <li>Find material: <strong id="sol1Material">-</strong></li>
+                            <li>Edit dimensions to be larger than <strong id="sol1MinSize">-</strong></li>
+                            <li>Save and retry nesting</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="solution-card" onclick="selectSolution(2)">
+                    <div class="solution-header">
+                        <div class="solution-icon">✂️</div>
+                        <div class="solution-title">Solution 2: Reduce Kerf Width</div>
+                    </div>
+                    <div class="solution-description">
+                        Decrease the cutting blade width to gain more usable space
+                    </div>
+                    <div class="solution-steps">
+                        <ol>
+                            <li>Go to Settings tab in main dialog</li>
+                            <li>Find "Kerf Width" setting</li>
+                            <li>Reduce from current value (try 2-3mm)</li>
+                            <li>Retry nesting</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="solution-card" onclick="selectSolution(3)">
+                    <div class="solution-header">
+                        <div class="solution-icon">🔄</div>
+                        <div class="solution-title">Solution 3: Enable Rotation</div>
+                    </div>
+                    <div class="solution-description">
+                        Allow components to rotate 90° for better fit
+                    </div>
+                    <div class="solution-steps">
+                        <ol>
+                            <li>Go to Settings tab in main dialog</li>
+                            <li>Enable "Allow Rotation" option</li>
+                            <li>Component will try both orientations</li>
+                            <li>Retry nesting</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="solution-card" onclick="selectSolution(4)">
+                    <div class="solution-header">
+                        <div class="solution-icon">🔧</div>
+                        <div class="solution-title">Solution 4: Modify Component in SketchUp</div>
+                    </div>
+                    <div class="solution-description">
+                        Reduce the component dimensions in your model
+                    </div>
+                    <div class="solution-steps">
+                        <ol>
+                            <li>Close this dialog</li>
+                            <li>Find component: <strong id="sol4Component">-</strong></li>
+                            <li>Edit to reduce dimensions</li>
+                            <li>Run AutoNestCut again</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <p><strong>💡 Quick Tip:</strong> The most common solution is #1 (Use Larger Sheet). Standard sheet sizes: 2440×1220mm, 2800×2070mm, 3050×1220mm</p>
+            </div>
+            
+            <details class="technical-details">
+                <summary>🔍 Technical Details (for debugging)</summary>
+                <div class="technical-content" id="technicalDetails">
+                    <!-- Stack trace will be inserted here -->
+                </div>
+            </details>
+        </div>
+        
+        <div class="error-footer">
+            <div class="footer-help">
+                Need help? Check the documentation or contact support
+            </div>
+            <div class="footer-buttons">
+                <button class="btn btn-secondary" onclick="openMaterialsStock()">Open Materials Stock</button>
+                <button class="btn btn-primary" onclick="closeDialog()">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let errorData = {};
+        
+        // Notify Ruby that dialog is ready
+        window.location = 'skp:ready@';
+        
+        function initializeError(data) {
+            errorData = data;
+            
+            // Set error message
+            document.getElementById('errorMessage').textContent = data.message;
+            
+            // Set summary values
+            document.getElementById('componentName').textContent = data.componentName || '-';
+            document.getElementById('componentSize').textContent = data.componentSize || '-';
+            document.getElementById('sheetSize').textContent = data.sheetSize || '-';
+            document.getElementById('materialName').textContent = data.materialName || '-';
+            
+            // Set solution-specific values
+            document.getElementById('sol1Material').textContent = data.materialName || '-';
+            document.getElementById('sol1MinSize').textContent = data.componentSize || '-';
+            document.getElementById('sol4Component').textContent = data.componentName || '-';
+            
+            // Set technical details
+            if (data.stackTrace) {
+                document.getElementById('technicalDetails').textContent = data.stackTrace;
+            }
+        }
+        
+        function selectSolution(number) {
+            console.log('Selected solution:', number);
+            // Visual feedback could be added here
+        }
+        
+        function openMaterialsStock() {
+            window.location = 'skp:open_materials_stock@';
+        }
+        
+        function closeDialog() {
+            window.location = 'skp:close_dialog@';
+        }
+    </script>
+</body>
+</html>

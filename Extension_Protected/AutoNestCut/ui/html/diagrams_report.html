@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>AutoNestCut Diagrams & Report</title>
+    <link rel="stylesheet" href="diagrams_style.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <button id="backButton" class="back-btn">← Back</button>
+        </div>
+        <div class="header-center">
+            <h1>AutoNestCut Report</h1>
+        </div>
+        <div class="header-right">
+            <button id="printButton" class="icon-btn" title="Print / Save as PDF">
+                <span class="icon">📄</span>
+                <span class="label">PDF</span>
+            </button>
+            <button id="exportCsvButton" class="icon-btn" title="Export CSV Report">
+                <span class="icon">📊</span>
+                <span class="label">CSV</span>
+            </button>
+            <button id="exportHtmlButton" class="icon-btn" title="Export Interactive HTML">
+                <span class="icon">🌐</span>
+                <span class="label">HTML</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="diagramsContainer" class="diagrams-container">
+            <p>Loading diagrams...</p>
+        </div>
+        <div class="resizer" id="resizer"></div>
+        <div id="reportContainer" class="report-container">
+            <div class="section-separator"></div>
+            <h2>Materials Used</h2>
+            <div id="materialsContainer"></div>
+
+            <div class="section-separator"></div>
+            <h2>Overall Summary</h2>
+            <div class="table-wrapper">
+                <table id="summaryTable"></table>
+            </div>
+
+            <div class="section-separator"></div>
+            <h2>Unique Part Types</h2>
+            <div class="table-wrapper">
+                <table id="uniquePartTypesTable"></table>
+            </div>
+
+            <div class="section-separator"></div>
+            <h2>Sheet Inventory Summary</h2>
+            <div class="table-wrapper">
+                <table id="sheetInventoryTable"></table>
+            </div>
+
+            <div class="section-separator"></div>
+            <h2>Cost Breakdown</h2>
+            <div id="costBreakdownContainer" class="cost-breakdown-wrapper"></div>
+
+            <div class="section-separator"></div>
+            <h2>Cut List & Part Details</h2>
+            <div class="tree-controls">
+                <button type="button" id="treeToggle" onclick="toggleTreeView()">Show Tree Structure</button>
+                <div class="tree-search" id="treeSearchContainer" style="display: none;">
+                    <input type="text" id="treeSearch" placeholder="Search components..." oninput="filterTree()">
+                    <button type="button" onclick="clearTreeSearch()">Clear</button>
+                    <button type="button" onclick="expandAll()">Expand All</button>
+                    <button type="button" onclick="collapseAll()">Collapse All</button>
+                </div>
+            </div>
+            <div id="treeStructure" class="tree-structure" style="display: none;"></div>
+            <div class="table-wrapper">
+                <table id="partsTable"></table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for enlarged part view -->
+    <div id="partModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-controls">
+                <button id="projectionToggle">Orthographic</button>
+            </div>
+            <canvas id="modalCanvas" width="500" height="400"></canvas>
+            <div id="modalInfo"></div>
+        </div>
+    </div>
+
+    <!-- Preview Modal for Export -->
+    <div id="previewModal" class="modal">
+        <div class="modal-content preview-modal-content">
+            <div class="preview-header">
+                <h2>Export Preview</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div id="previewContent" class="preview-content"></div>
+            <div class="preview-footer">
+                <button id="confirmExportBtn" class="btn-primary">Confirm Export</button>
+                <button id="cancelExportBtn" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="diagrams_report.js"></script>
+</body>
+</html>

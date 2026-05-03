@@ -1,0 +1,108 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Database Manager</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fa; overflow: hidden; }
+        .container { height: 100vh; display: flex; flex-direction: column; }
+        .materials-section { background: white; flex: 1; display: flex; flex-direction: column; }
+        .section-header { background: linear-gradient(135deg, #007cba 0%, #005a87 100%); color: white; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; }
+        .header-left { display: flex; flex-direction: column; gap: 4px; }
+        .section-header h2 { font-size: 18px; font-weight: 700; margin: 0; }
+        .header-stats { font-size: 12px; opacity: 0.9; display: flex; gap: 16px; }
+        .stat-item { display: flex; align-items: center; gap: 4px; }
+        .header-controls { display: flex; gap: 12px; }
+        .icon-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .icon-btn:hover { background: rgba(255,255,255,0.3); transform: translateY(-1px); }
+        .icon-btn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .toolbar { background: #f8f9fa; border-bottom: 1px solid #d0d7de; padding: 16px 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .toolbar-btn { background: white; border: 1px solid #d0d7de; color: #1a1a1a; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+        .toolbar-btn:hover { background: #f0f4f8; border-color: #8c959f; }
+        .toolbar-btn.primary { background: #007cba; color: white; border-color: #007cba; }
+        .toolbar-btn.primary:hover { background: #005a87; }
+        .toolbar-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .sort-select { padding: 8px 12px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 13px; background: white; cursor: pointer; font-weight: 500; }
+        .table-wrapper { overflow: auto; flex: 1; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        thead { background: #f0f4f8; position: sticky; top: 0; z-index: 10; }
+        th { padding: 14px 16px; text-align: left; font-weight: 700; color: #1a1a1a; border-bottom: 2px solid #d0d7de; font-size: 13px; white-space: nowrap; }
+        th:nth-child(2), th:nth-child(3), th:nth-child(4), th:nth-child(5) { text-align: right; }
+        td { padding: 14px 16px; border-bottom: 1px solid #e1e5e9; color: #1a1a1a; }
+        td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5) { text-align: right; }
+        tbody tr { transition: background-color 0.15s; }
+        tbody tr:hover { background: #f8f9fa; }
+        tbody tr.flagged { background: #fff3cd; }
+        tbody tr.flagged:hover { background: #ffe69c; }
+        .material-name { font-weight: 600; color: #007cba; }
+        .material-name.flagged { color: #856404; }
+        .material-actions { display: flex; gap: 6px; justify-content: flex-end; }
+        .action-btn { background: white; border: 1px solid #d0d7de; color: #1a1a1a; width: 32px; height: 32px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .action-btn:hover { background: #f0f4f8; border-color: #8c959f; }
+        .action-btn.delete:hover { background: #fee; border-color: #d73a49; color: #d73a49; }
+        .action-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 6px 8px; border: 1px solid #d0d7de; border-radius: 4px; font-size: 13px; font-family: 'Courier New', monospace; }
+        input[type="text"]:focus, input[type="number"]:focus { outline: none; border-color: #007cba; box-shadow: 0 0 0 3px rgba(0, 124, 186, 0.1); }
+        .editable-cell { padding: 8px 16px; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-left: 6px; }
+        .badge.auto { background: #f3e8ff; color: #6f42c1; }
+        .badge.flagged { background: #fff3cd; color: #856404; }
+        .empty-state { padding: 60px 24px; text-align: center; color: #656d76; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="materials-section">
+            <div class="section-header">
+                <div class="header-left">
+                    <h2>Material Database Manager</h2>
+                    <div class="header-stats">
+                        <div class="stat-item"><span>Total:</span> <strong id="totalCount">0</strong></div>
+                        <div class="stat-item"><span>Auto:</span> <strong id="autoCount">0</strong></div>
+                        <div class="stat-item"><span>Flagged:</span> <strong id="flaggedCount">0</strong></div>
+                        <div class="stat-item" id="lastUpdated">Loading...</div>
+                    </div>
+                </div>
+                <div class="header-controls">
+                    <button class="icon-btn" id="refreshBtn" title="Refresh">
+                        <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M3 21v-5h5"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="toolbar">
+                <button class="toolbar-btn primary" id="addMaterialBtn">
+                    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                    Add Material
+                </button>
+                <button class="toolbar-btn" id="saveBtn">
+                    <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Save Changes
+                </button>
+                <select class="sort-select" id="sortSelect">
+                    <option value="name-asc">Sort: A-Z</option>
+                    <option value="name-desc">Sort: Z-A</option>
+                    <option value="thickness-asc">Sort: Thickness (Low-High)</option>
+                    <option value="thickness-desc">Sort: Thickness (High-Low)</option>
+                </select>
+            </div>
+            <div class="table-wrapper">
+                <table id="materialsTable">
+                    <thead>
+                        <tr>
+                            <th>Material Name</th>
+                            <th>Width (mm)</th>
+                            <th>Height (mm)</th>
+                            <th>Thickness (mm)</th>
+                            <th>Price</th>
+                            <th>Currency</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="materialsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>

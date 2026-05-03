@@ -1,0 +1,43 @@
+{
+  "boards": [
+    {
+      "material": "WEN_Wood",
+      "width": 2440,
+      "height": 1220
+    }
+  ],
+  "parts": [
+    {
+      "id": "p1",
+      "name": "Base",
+      "material": "WEN_Wood",
+      "width": 600,
+      "height": 400,
+      "thickness": 18,
+      "grain_direction": "any"
+    },
+    {
+      "id": "p2",
+      "name": "Side",
+      "material": "WEN_Wood",
+      "width": 400,
+      "height": 800,
+      "thickness": 18,
+      "grain_direction": "any"
+    },
+    {
+      "id": "p3",
+      "name": "Top",
+      "material": "WEN_Wood",
+      "width": 600,
+      "height": 400,
+      "thickness": 18,
+      "grain_direction": "any"
+    }
+  ],
+  "settings": {
+    "kerf": 3,
+    "allow_rotation": true,
+    "timeout_ms": 60000
+  }
+}
