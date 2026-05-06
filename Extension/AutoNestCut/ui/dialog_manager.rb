@@ -16,20 +16,36 @@ module AutoNestCut
   class MaterialHighlightTool
     def initialize(entities_with_transforms)
       @entities_with_transforms = entities_with_transforms
-      @all_points = []
+      @face_data = []
       
-      # Calculate bounding box points for all entities
+      # Collect all faces from all entities with their world transforms
       entities_with_transforms.each do |entity, world_trans|
         next unless entity && entity.valid?
         
-        bb = entity.definition.bounds rescue entity.bounds
-        next unless bb
+        # Get the definition entities
+        definition = entity.is_a?(Sketchup::ComponentInstance) ? entity.definition : entity
+        entities_collection = definition.respond_to?(:entities) ? definition.entities : entity.entities
         
-        # Get all 8 corner points and transform to world space
-        (0..7).each do |i|
-          pt = bb.corner(i).clone
-          pt.transform!(world_trans)
-          @all_points << pt
+        # Collect all faces recursively
+        collect_faces_recursive(entities_collection, world_trans, @face_data)
+      end
+    end
+    
+    def collect_faces_recursive(entities, transform, face_data)
+      entities.each do |ent|
+        if ent.is_a?(Sketchup::Face)
+          # Store face vertices transformed to world space
+          vertices = ent.vertices.map do |v|
+            pt = v.position.clone
+            pt.transform!(transform)
+            pt
+          end
+          face_data << vertices if vertices.length >= 3
+        elsif ent.is_a?(Sketchup::Group) || ent.is_a?(Sketchup::ComponentInstance)
+          # Recursively collect faces from nested groups/components
+          nested_transform = transform * ent.transformation
+          nested_entities = ent.is_a?(Sketchup::ComponentInstance) ? ent.definition.entities : ent.entities
+          collect_faces_recursive(nested_entities, nested_transform, face_data)
         end
       end
     end
@@ -43,40 +59,26 @@ module AutoNestCut
     end
     
     def draw(view)
-      return unless @all_points.any?
+      return unless @face_data.any?
       
-      # Draw individual bounding boxes
-      @entities_with_transforms.each do |entity, world_trans|
-        next unless entity && entity.valid?
-        
-        bb = entity.definition.bounds rescue entity.bounds
-        next unless bb
-        
-        points = (0..7).map do |i|
-          pt = bb.corner(i).clone
-          pt.transform!(world_trans)
-          pt
-        end
-        
-        view.line_width = 3
-        view.line_stipple = ''
-        view.drawing_color = Sketchup::Color.new(52, 152, 219)  # Blue
-        
-        # Draw edges of the bounding box
-        edges = [
-          [0,1],[1,2],[2,3],[3,0], # bottom
-          [4,5],[5,6],[6,7],[7,4], # top
-          [0,4],[1,5],[2,6],[3,7]  # verticals
-        ]
-        
-        edges.each do |start_i, end_i|
-          view.draw(GL_LINES, points[start_i], points[end_i])
-        end
-        
-        # Draw corner spheres
-        view.drawing_color = Sketchup::Color.new(231, 76, 60)  # Red
-        points.each do |pt|
-          view.draw_points(pt, 8, 1, Sketchup::Color.new(231, 76, 60))
+      # Draw all faces with blue semi-transparent fill
+      view.drawing_color = Sketchup::Color.new(52, 152, 219, 128)  # Blue with 50% transparency
+      
+      @face_data.each do |vertices|
+        # Draw filled polygon
+        view.draw(GL_POLYGON, vertices)
+      end
+      
+      # Draw edges for better visibility
+      view.line_width = 2
+      view.line_stipple = ''
+      view.drawing_color = Sketchup::Color.new(52, 152, 219)  # Solid blue for edges
+      
+      @face_data.each do |vertices|
+        # Draw edges around the face
+        vertices.each_with_index do |vertex, i|
+          next_vertex = vertices[(i + 1) % vertices.length]
+          view.draw(GL_LINES, vertex, next_vertex)
         end
       end
     end

@@ -207,6 +207,17 @@ function convertDimension(value, fromUnit, toUnit) {
     return valueInMM / window.unitFactors[toUnit];
 }
 
+// Format dimension with unit conversion and precision
+function formatDimension(valueInMM, targetUnit, precision) {
+    if (valueInMM === null || valueInMM === undefined) return 'N/A';
+    
+    targetUnit = targetUnit || window.currentUnits || 'mm';
+    precision = precision !== undefined ? precision : (window.currentPrecision ?? 1);
+    
+    const converted = convertDimension(valueInMM, 'mm', targetUnit);
+    return converted.toFixed(precision) + ' ' + targetUnit;
+}
+
 function renderDiagrams() {
     const container = document.getElementById('diagramsContainer');
     if (!container) {

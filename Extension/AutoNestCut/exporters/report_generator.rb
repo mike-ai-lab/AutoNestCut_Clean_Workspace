@@ -677,6 +677,22 @@ module AutoNestCut
       resizer_js = File.read(File.join(ui_path, 'resizer_fix.js'))
       table_customization_js = File.read(File.join(ui_path, 'table_customization.js'))
       
+      # Extract inline styles from main.html (critical for report styling)
+      inline_styles = ''
+      style_match = main_html.match(/<style[^>]*>(.*?)<\/style>/m)
+      if style_match
+        inline_styles = style_match[1]
+        puts "✓ Extracted #{inline_styles.length} characters of inline styles from main.html"
+      else
+        puts "WARNING: No inline styles found in main.html"
+      end
+      
+      # Read card visualization files (for overview cards)
+      card_visualizations_js = File.exist?(File.join(ui_path, 'card_visualizations.js')) ? 
+        File.read(File.join(ui_path, 'card_visualizations.js')) : ''
+      card_visualizations_extended_js = File.exist?(File.join(ui_path, 'card_visualizations_extended.js')) ? 
+        File.read(File.join(ui_path, 'card_visualizations_extended.js')) : ''
+      
       # Extract the body content from main.html (everything between <body> tags)
       body_match = main_html.match(/<body[^>]*>(.*?)<\/body>/m)
       body_content = body_match ? body_match[1] : main_html
@@ -722,8 +738,26 @@ module AutoNestCut
         assembly_data: assembly_data_for_export
       }
       
-      # Convert to JSON - no additional escaping needed for JSON script tag
-      json_data = export_data.to_json
+      # Convert to JSON with validation
+      begin
+        json_data = export_data.to_json
+        
+        # Validate JSON is parseable
+        JSON.parse(json_data)
+        puts "✓ JSON data validated successfully (#{json_data.length} characters)"
+      rescue JSON::GeneratorError => e
+        puts "ERROR: Failed to generate JSON: #{e.message}"
+        # Create minimal fallback data
+        json_data = {
+          diagrams: [],
+          report: { boards: [], parts: [], summary: {} },
+          settings: settings,
+          timestamp: timestamp
+        }.to_json
+      rescue JSON::ParserError => e
+        puts "ERROR: Generated JSON is invalid: #{e.message}"
+        puts "This may cause issues in the exported HTML report"
+      end
       
       # Generate the complete standalone HTML
       html_template = <<~HTML
@@ -738,6 +772,7 @@ module AutoNestCut
                 #{style_css}
                 #{diagrams_style_css}
                 #{resizer_css}
+                #{inline_styles}
                 
                 /* Export-specific styles */
                 .header-controls .action-buttons .tab-button:not(.report-action-btn) {
@@ -865,8 +900,20 @@ module AutoNestCut
             </script>
             
             <script>
-                // Load embedded data
-                var EMBEDDED_DATA = JSON.parse(document.getElementById('embedded-data').textContent);
+                // Load embedded data with error handling
+                try {
+                    var EMBEDDED_DATA = JSON.parse(document.getElementById('embedded-data').textContent);
+                } catch (e) {
+                    console.error('Failed to parse embedded data:', e);
+                    console.error('JSON parse error at position:', e.message);
+                    // Provide fallback empty data structure
+                    var EMBEDDED_DATA = {
+                        report: { boards: [], parts: [], summary: {}, cut_sequences: [], usable_offcuts: [] },
+                        settings: { units: 'mm', precision: 1, area_units: 'm2', default_currency: 'USD' },
+                        assembly: null
+                    };
+                    alert('Error loading report data. The report may not display correctly. Check browser console for details.');
+                }
                 
                 // Add showTab function
                 function showTab(tabName) {
@@ -905,9 +952,10 @@ module AutoNestCut
                     }
                     
                     // Initialize globals
-                    window.currencySymbols = window.currencySymbols || {
-                        'USD': '$', 'EUR': 'Ôé¼', 'GBP': '┬ú', 'JPY': '┬Ñ', 'CAD': '$', 'AUD': '$',
-                        'CHF': 'CHF', 'CNY': '┬Ñ', 'SEK': 'kr', 'NZD': '$', 'SAR': 'SAR', 'AED': 'Ï».ÏÑ'
+                    window.currencySymbols = {
+                        'USD': '\u0024', 'EUR': '\u20AC', 'GBP': '\u00A3', 'JPY': '\u00A5',
+                        'CAD': 'C\u0024', 'AUD': 'A\u0024', 'CHF': 'CHF', 'CNY': '\u00A5',
+                        'SEK': 'kr', 'NZD': 'NZ\u0024', 'SAR': 'SAR', 'AED': '\u062F.\u0625'
                     };
                     
                     window.areaFactors = window.areaFactors || {
@@ -987,6 +1035,14 @@ module AutoNestCut
             
             <script>
                 #{table_customization_js}
+            </script>
+            
+            <script>
+                #{card_visualizations_js}
+            </script>
+            
+            <script>
+                #{card_visualizations_extended_js}
             </script>
             
             <script>
@@ -1173,12 +1229,30 @@ module AutoNestCut
       html_content = html_content.gsub(/<button[^>]*onclick="refreshConfiguration\(\)"[^>]*>.*?<\/button>/m, '')
       html_content = html_content.gsub(/<button[^>]*onclick="window\.close\(\)"[^>]*>.*?<\/button>/m, '')
       
-      # Remove external script references (we embed them inline)
+      # Remove external script references that don't exist or are embedded inline
       html_content = html_content.gsub(/<script[^>]*src="app\.js"[^>]*><\/script>/m, '')
-      html_content = html_content.gsub(/<script[^>]*src="diagrams_report\.js"[^>]*><\/script>/m, '')
+      html_content = html_content.gsub(/<script[^>]*src="unit_debug\.js"[^>]*><\/script>/m, '')
+      html_content = html_content.gsub(/<script[^>]*src="svg_diagram_generator\.js"[^>]*><\/script>/m, '')
+      html_content = html_content.gsub(/<script[^>]*src="diagrams_report\.js[^"]*"[^>]*><\/script>/m, '')
       html_content = html_content.gsub(/<script[^>]*src="resizer_fix\.js"[^>]*><\/script>/m, '')
       html_content = html_content.gsub(/<script[^>]*src="table_customization\.js"[^>]*><\/script>/m, '')
+      html_content = html_content.gsub(/<script[^>]*src="card_visualizations\.js"[^>]*><\/script>/m, '')
+      html_content = html_content.gsub(/<script[^>]*src="card_visualizations_extended\.js"[^>]*><\/script>/m, '')
       html_content = html_content.gsub(/<script[^>]*src="export_validator\.js"[^>]*><\/script>/m, '')
+      html_content = html_content.gsub(/<script[^>]*src="pdf_export_clean\.js"[^>]*><\/script>/m, '')
+      html_content = html_content.gsub(/<script[^>]*src="languages\.js"[^>]*><\/script>/m, '')
+      
+      # Add toggleSection function if it's missing (for config tab sections)
+      unless html_content.include?('function toggleSection')
+        toggle_function = <<~JS
+          <script>
+          function toggleSection(header) {
+              header.parentElement.classList.toggle('collapsed');
+          }
+          </script>
+        JS
+        html_content = html_content.sub('</body>', "#{toggle_function}</body>")
+      end
       
       html_content
     end

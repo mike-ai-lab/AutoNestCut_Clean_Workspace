@@ -1,4 +1,6 @@
-﻿raise SecurityError if defined?(Debugger) || $DEBUG
+﻿# Security check
+raise SecurityError, 'Debugging not allowed' if defined?(Debugger) || defined?(Byebug) || defined?(Pry)
+
 # AutoNestCut Trial Management
 require_relative 'license_manager'
 

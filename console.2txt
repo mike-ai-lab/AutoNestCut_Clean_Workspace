@@ -1,0 +1,131 @@
+15:23:18.437 walkin-closet_Intera…ve_Report.html:8921 Uncaught 
+15:23:18.750  ╔════════════════════════════════════════════════════════════════╗
+15:23:18.750  ║ RECEIVE DATA - FRONTEND ENTRY POINT                            ║
+15:23:18.750  ╚═════════════════════════════════════════════════════���══════════╝
+15:23:18.750  📥 Data received from Ruby backend
+15:23:18.750  📊 Data type: object
+15:23:18.750  📋 Data keys: Array(8)
+15:23:18.750  📈 Full data object: Object
+15:23:18.750  ✓ Data exists
+15:23:18.750    - diagrams: 30 boards
+15:23:18.750    - report: EXISTS
+15:23:18.750    - assembly_data: EXISTS
+15:23:18.750    - original_components: 62 items
+15:23:18.750    - hierarchy_tree: 1 items
+15:23:18.750  ✓ Global variables assigned:
+15:23:18.750    - g_boardsData: 30 boards
+15:23:18.750    - g_reportData: SET
+15:23:18.750    - window.assemblyData: SET
+15:23:18.750    - window.hierarchyTree: 1 items
+15:23:18.750  🎨 Calling renderDiagrams()...
+15:23:18.910  ✓ renderDiagrams() completed
+15:23:18.911  📊 Calling renderReport()...
+15:23:18.938  🔧 renderBoardsSummary called with data: Object
+15:23:18.939  🔧 Boards count: 30
+15:23:18.939  ✅ Container found: 
+15:23:18.939  🎨 Building HTML for 30 boards
+15:23:18.957  ✅ Boards summary rendered successfully
+15:23:18.957  📊 Total boards rendered: 30
+15:23:18.958  🔧 renderCutSequences called with data: Object
+15:23:18.958  🔧 Cut sequences count: 30
+15:23:18.959  ✅ Container found: 
+15:23:18.959  🎨 Building HTML with NEW DESIGN for 30 boards
+15:23:18.959  📋 Board 1: 13 steps
+15:23:18.960  📋 Board 2: 19 steps
+15:23:18.960  📋 Board 3: 4 steps
+15:23:18.960  📋 Board 4: 4 steps
+15:23:18.961  📋 Board 5: 4 steps
+15:23:18.961  📋 Board 6: 4 steps
+15:23:18.961  📋 Board 7: 4 steps
+15:23:18.961  📋 Board 8: 4 steps
+15:23:18.961  📋 Board 9: 4 steps
+15:23:18.961  📋 Board 10: 10 steps
+15:23:18.961  📋 Board 11: 10 steps
+15:23:18.962  📋 Board 12: 13 steps
+15:23:18.962  📋 Board 13: 13 steps
+15:23:18.962  📋 Board 14: 13 steps
+15:23:18.962  📋 Board 15: 13 steps
+15:23:18.963  📋 Board 16: 13 steps
+15:23:18.963  📋 Board 17: 4 steps
+15:23:18.963  📋 Board 18: 4 steps
+15:23:18.963  📋 Board 19: 4 steps
+15:23:18.963  📋 Board 20: 4 steps
+15:23:18.964  📋 Board 21: 4 steps
+15:23:18.964  📋 Board 22: 4 steps
+15:23:18.964  📋 Board 23: 4 steps
+15:23:18.964  📋 Board 24: 19 steps
+15:23:18.964  📋 Board 25: 4 steps
+15:23:18.964  📋 Board 26: 4 steps
+15:23:18.965  📋 Board 27: 4 steps
+15:23:18.965  📋 Board 28: 4 steps
+15:23:18.965  📋 Board 29: 4 steps
+15:23:18.965  📋 Board 30: 4 steps
+15:23:18.985  ✅ Cut sequences rendered successfully with NEW DESIGN
+15:23:18.985  📊 Total boards rendered: 30
+15:23:18.989  Finished rendering report
+15:23:18.989  ✓ renderReport() completed
+15:23:18.989  🏗️  Calling renderAssemblyViews()...
+15:23:18.990  DEBUG: Views keys: Array(6)
+15:23:18.990  DEBUG: Looking for Front, found: true
+15:23:18.990  DEBUG: Looking for Back, found: true
+15:23:18.990  DEBUG: Looking for Left, found: true
+15:23:18.990  DEBUG: Looking for Right, found: true
+15:23:18.990  DEBUG: Looking for Top, found: true
+15:23:18.990  DEBUG: Looking for Bottom, found: true
+15:23:19.013  DEBUG: Initializing report 3D viewer with geometry data
+15:23:19.013  ✓ renderAssemblyViews() completed
+15:23:19.013  ╔════════════════════════════════════════════════════════════════╗
+15:23:19.013  ║ RECEIVE DATA - COMPLETE                                        ║
+15:23:19.013  ╚════════════════════════════════════════════════════════════════╝
+15:23:19.018  Resizer initialized successfully
+15:23:19.019 walkin-closet_Interactive_Report.html:13599 [TABLE_CUSTOMIZATION] DOMContentLoaded fired
+15:23:19.947 walkin-closet_Interactive_Report.html:8947 showTab called: report
+15:23:19.961 walkin-closet_Interactive_Report.html:13602 [TABLE_CUSTOMIZATION] Initializing table customization...
+15:23:19.970 walkin-closet_Interactive_Report.html:13606 [TABLE_CUSTOMIZATION] Found 0 tables
+15:23:19.970 walkin-closet_Interactive_Report.html:13614 [TABLE_CUSTOMIZATION] Applying all table settings...
+15:23:19.970 walkin-closet_Interactive_Report.html:13616 [TABLE_CUSTOMIZATION] Global settings: Object
+15:23:19.970 walkin-closet_Interactive_Report.html:13643 [TABLE_CUSTOMIZATION] Successfully hooked into renderReport
+15:23:20.307 walkin-closet_Interactive_Report.html:13622 [TABLE_CUSTOMIZATION] Window load fired
+15:23:20.677 walkin-closet_Interactive_Report.html:9933 🔧 renderCutSequences called with data: Object
+15:23:20.677 walkin-closet_Interactive_Report.html:9934 🔧 Cut sequences count: 30
+15:23:20.677 walkin-closet_Interactive_Report.html:9943 ✅ Container found: <div id=​"cutSequencesContainer">​…​</div>​
+15:23:20.678 walkin-closet_Interactive_Report.html:9951 🎨 Building HTML with NEW DESIGN for 30 boards
+15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 1: 13 steps
+15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 2: 19 steps
+15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 3: 4 steps
+15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 4: 4 steps
+15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 5: 4 steps
+15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 6: 4 steps
+15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 7: 4 steps
+15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 8: 4 steps
+15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 9: 4 steps
+15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 10: 10 steps
+15:23:20.679 walkin-closet_Interactive_Report.html:9963 📋 Board 11: 10 steps
+15:23:20.679 walkin-closet_Interactive_Report.html:9963 📋 Board 12: 13 steps
+15:23:20.679 walkin-closet_Interactive_Report.html:9963 📋 Board 13: 13 steps
+15:23:20.679 walkin-closet_Interactive_Report.html:9963 📋 Board 14: 13 steps
+15:23:20.679 walkin-closet_Interactive_Report.html:9963 📋 Board 15: 13 steps
+15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 16: 13 steps
+15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 17: 4 steps
+15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 18: 4 steps
+15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 19: 4 steps
+15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 20: 4 steps
+15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 21: 4 steps
+15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 22: 4 steps
+15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 23: 4 steps
+15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 24: 19 steps
+15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 25: 4 steps
+15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 26: 4 steps
+15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 27: 4 steps
+15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 28: 4 steps
+15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 29: 4 steps
+15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 30: 4 steps
+15:23:20.704 walkin-closet_Interactive_Report.html:10013 ✅ Cut sequences rendered successfully with NEW DESIGN
+15:23:20.704 walkin-closet_Interactive_Report.html:10014 📊 Total boards rendered: 30
+15:23:20.706 walkin-closet_Interactive_Report.html:13668 [TABLE_CUSTOMIZATION] reinitializeTableCustomization called
+15:23:20.839 walkin-closet_Interactive_Report.html:13672 [TABLE_CUSTOMIZATION] Loaded settings: Object
+15:23:20.840 walkin-closet_Interactive_Report.html:13678 [TABLE_CUSTOMIZATION] Applying all table settings...
+15:23:20.841 walkin-closet_Interactive_Report.html:13683 [TABLE_CUSTOMIZATION] Applied settings to 0 tables
+15:23:21.309 walkin-closet_Interactive_Report.html:13624 [TABLE_CUSTOMIZATION] Re-initializing on window load...
+15:23:37.846 walkin-closet_Interactive_Report.html:1 Unsafe attempt to load URL file:///C:/Users/Administrator/Downloads/walkin-closet_Interactive_Report.html from frame with URL file:///C:/Users/Administrator/Downloads/walkin-closet_Interactive_Report.html. 'file:' URLs are treated as unique security origins.
+

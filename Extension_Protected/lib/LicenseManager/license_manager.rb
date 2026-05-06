@@ -1,4 +1,6 @@
-﻿raise SecurityError if defined?(Debugger) || $DEBUG
+﻿# Security check
+raise SecurityError, 'Debugging not allowed' if defined?(Debugger) || defined?(Byebug) || defined?(Pry)
+
 # AutoNestCut License Manager
 require 'net/http'
 require 'uri'
@@ -371,4 +373,3 @@ module AutoNestCut
     end
   end
 end
-

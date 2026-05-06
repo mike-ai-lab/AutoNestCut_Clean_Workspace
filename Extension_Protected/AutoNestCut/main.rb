@@ -93,8 +93,8 @@ module AutoNestCut
   end
 
   EXTENSION_NAME = 'Auto Nest Cut'.freeze unless defined?(EXTENSION_NAME)
-  EXTENSION_VERSION = '1.0.0'.freeze unless defined?(EXTENSION_VERSION)
-  EXTENSION_BUILD = '20250119_1445'.freeze unless defined?(EXTENSION_BUILD)
+  EXTENSION_VERSION = '2.6.6'.freeze unless defined?(EXTENSION_VERSION)
+  EXTENSION_BUILD = '20260503_1930'.freeze unless defined?(EXTENSION_BUILD)
   EXTENSION_DESCRIPTION = 'Automated nesting and cut list generation for sheet goods.'.freeze unless defined?(EXTENSION_DESCRIPTION)
   EXTENSION_CREATOR = 'Muhamad Shkeir'.freeze unless defined?(EXTENSION_CREATOR)
 

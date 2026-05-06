@@ -1,4 +1,6 @@
-﻿raise SecurityError if defined?(Debugger) || $DEBUG
+﻿# Security check
+raise SecurityError, 'Debugging not allowed' if defined?(Debugger) || defined?(Byebug) || defined?(Pry)
+
 # AutoNestCut License Information Dialog
 require 'json'
 require_relative 'license_manager'
@@ -166,13 +168,7 @@ module AutoNestCut
     end
 
     def self.show_purchase_dialog
-      purchase_url = 
-            param($match)
-            $str = $match.Groups[1].Value
-            $bytes = [System.Text.Encoding]::UTF8.GetBytes($str)
-            $encoded = [Convert]::ToBase64String($bytes)
-            "Base64.decode64('$encoded')"
-        
+      purchase_url = "https://autonestcutserver-moeshks-projects.vercel.app"
       UI.openURL(purchase_url)
     end
 
