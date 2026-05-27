@@ -550,7 +550,7 @@ module AutoNestCut
           
           material_name = face_material ? face_material.name : nil
           
-          # Extract texture data if available (with caching)
+          # Extract texture data if available (with caching) - EMBED AS BASE64 for export
           texture_data = nil
           if face_material && face_material.texture
             begin
@@ -565,9 +565,18 @@ module AutoNestCut
                 texture_path = File.join(temp_dir, texture_filename)
                 
                 if face_material.texture.write(texture_path)
-                  texture_data = texture_path
-                  @@texture_cache[texture_id] = texture_path
-                  puts "✓ Exported texture for #{material_name} to #{texture_path}"
+                  # Convert to base64 data URI for standalone HTML export
+                  begin
+                    require 'base64'
+                    image_data = File.binread(texture_path)
+                    base64_data = Base64.strict_encode64(image_data)
+                    texture_data = "data:image/png;base64,#{base64_data}"
+                    @@texture_cache[texture_id] = texture_data
+                    puts "✓ Exported texture for #{material_name} as base64 data URI"
+                  rescue => e
+                    puts "WARNING: Failed to encode texture as base64: #{e.message}"
+                    texture_data = nil
+                  end
                 end
               end
             rescue => ex
@@ -1114,107 +1123,6 @@ module AutoNestCut
                     }
                 `;
                 document.head.appendChild(printStyles);
-                
-                // Enhanced auto-scroll to diagram functionality with piece highlighting
-                function scrollToPieceDiagram(partId, boardNumber) {
-                    // Find the board diagram that contains this piece
-                    const boardIndex = boardNumber - 1;
-                    
-                    if (boardIndex < 0 || boardIndex >= (window.g_boardsData || []).length) {
-                        console.warn(`Board ${boardNumber} not found`);
-                        return;
-                    }
-                    
-                    const diagramContainer = document.getElementById('diagramsContainer');
-                    if (!diagramContainer) {
-                        console.warn('Diagrams container not found');
-                        return;
-                    }
-                    
-                    // Find the canvas for this board
-                    const diagrams = diagramContainer.querySelectorAll('.diagram-card');
-                    let targetCard = null;
-                    let targetCanvas = null;
-                    
-                    if (boardIndex < diagrams.length) {
-                        targetCard = diagrams[boardIndex];
-                        targetCanvas = targetCard.querySelector('canvas');
-                    }
-                    
-                    if (targetCard) {
-                        // Scroll the diagram card into view with smooth animation
-                        targetCard.scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'center',
-                            inline: 'nearest'
-                        });
-                        
-                        // Add visual highlight to the card
-                        targetCard.style.transition = 'all 0.3s ease';
-                        targetCard.style.boxShadow = '0 0 20px rgba(0, 124, 186, 0.5)';
-                        targetCard.style.transform = 'scale(1.02)';
-                        
-                        // Highlight the specific piece on the canvas if possible
-                        if (targetCanvas && targetCanvas.partData) {
-                            highlightPieceOnCanvas(targetCanvas, partId);
-                        }
-                        
-                        setTimeout(() => {
-                            targetCard.style.boxShadow = '';
-                            targetCard.style.transform = '';
-                        }, 3000);
-                    }
-                }
-                
-                // Highlight specific piece on canvas
-                function highlightPieceOnCanvas(canvas, partId) {
-                    if (!canvas.partData) return;
-                    
-                    const ctx = canvas.getContext('2d');
-                    
-                    // Find the piece with matching ID
-                    for (let partData of canvas.partData) {
-                        const partLabel = String(partData.part.instance_id || partData.part.part_unique_id || '');
-                        if (partLabel === partId) {
-                            // Draw highlight border around the piece
-                            ctx.save();
-                            ctx.strokeStyle = '#ff6b35';
-                            ctx.lineWidth = 4;
-                            ctx.setLineDash([8, 4]);
-                            
-                            // Draw animated highlight
-                            let dashOffset = 0;
-                            const animateHighlight = () => {
-                                ctx.clearRect(partData.x - 6, partData.y - 6, partData.width + 12, partData.height + 12);
-                                
-                                // Redraw the piece (simplified)
-                                ctx.fillStyle = getMaterialColor(partData.part.material);
-                                ctx.fillRect(partData.x, partData.y, partData.width, partData.height);
-                                
-                                // Draw animated highlight
-                                ctx.lineDashOffset = dashOffset;
-                                ctx.strokeRect(partData.x - 2, partData.y - 2, partData.width + 4, partData.height + 4);
-                                
-                                dashOffset += 0.5;
-                                if (dashOffset < 50) {
-                                    requestAnimationFrame(animateHighlight);
-                                } else {
-                                    // Redraw canvas normally
-                                    if (canvas.drawCanvas) {
-                                        canvas.drawCanvas();
-                                    }
-                                }
-                            };
-                            
-                            animateHighlight();
-                            ctx.restore();
-                            break;
-                        }
-                    }
-                }
-                
-                // Make scrollToPieceDiagram globally available
-                window.scrollToPieceDiagram = scrollToPieceDiagram;
             </script>
         </body>
         </html>

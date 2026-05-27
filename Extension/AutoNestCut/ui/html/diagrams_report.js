@@ -719,7 +719,7 @@ function renderReport() {
             const edgeBandingDisplay = typeof part.edge_banding === 'object' && part.edge_banding.type ? part.edge_banding.type : (part.edge_banding || 'None');
             partsHtml += `
                 <tr data-part-id="${escapeHtml(partId)}" data-board-number="${part.board_number}" data-cost-level="${costLevel}">
-                    <td><button class="part-id-btn" onclick="scrollToPieceDiagram('${escapeHtml(partId)}', ${part.board_number})">${escapeHtml(partId)}</button></td>
+                    <td><button class="part-id-btn" data-part-id="${escapeHtml(partId)}" data-board-number="${part.board_number}">${escapeHtml(partId)}</button></td>
                     <td title="${escapeHtml(part.name)}">${escapeHtml(part.name)}</td>
                     <td>${dimensionsStr}</td>
                     <td title="${escapeHtml(part.material)}">${escapeHtml(part.material)}</td>
@@ -741,7 +741,17 @@ function renderReport() {
             </tbody>`;
         
         partsTable.innerHTML = partsHtml;
-        // attachPartTableClickHandlers(); // This function is empty, no need to call
+        
+        // Add event delegation for part ID buttons
+        partsTable.addEventListener('click', function(e) {
+            if (e.target.classList.contains('part-id-btn')) {
+                const partId = e.target.getAttribute('data-part-id');
+                const boardNumber = parseInt(e.target.getAttribute('data-board-number'));
+                if (partId && boardNumber) {
+                    scrollToPieceDiagram(partId, boardNumber);
+                }
+            }
+        });
     } else {
         console.error('partsTable element not found');
     }

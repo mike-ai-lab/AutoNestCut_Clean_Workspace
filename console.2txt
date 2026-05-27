@@ -1,131 +1,305 @@
-15:23:18.437 walkin-closet_Intera…ve_Report.html:8921 Uncaught 
-15:23:18.750  ╔════════════════════════════════════════════════════════════════╗
-15:23:18.750  ║ RECEIVE DATA - FRONTEND ENTRY POINT                            ║
-15:23:18.750  ╚═════════════════════════════════════════════════════���══════════╝
-15:23:18.750  📥 Data received from Ruby backend
-15:23:18.750  📊 Data type: object
-15:23:18.750  📋 Data keys: Array(8)
-15:23:18.750  📈 Full data object: Object
-15:23:18.750  ✓ Data exists
-15:23:18.750    - diagrams: 30 boards
-15:23:18.750    - report: EXISTS
-15:23:18.750    - assembly_data: EXISTS
-15:23:18.750    - original_components: 62 items
-15:23:18.750    - hierarchy_tree: 1 items
-15:23:18.750  ✓ Global variables assigned:
-15:23:18.750    - g_boardsData: 30 boards
-15:23:18.750    - g_reportData: SET
-15:23:18.750    - window.assemblyData: SET
-15:23:18.750    - window.hierarchyTree: 1 items
-15:23:18.750  🎨 Calling renderDiagrams()...
-15:23:18.910  ✓ renderDiagrams() completed
-15:23:18.911  📊 Calling renderReport()...
-15:23:18.938  🔧 renderBoardsSummary called with data: Object
-15:23:18.939  🔧 Boards count: 30
-15:23:18.939  ✅ Container found: 
-15:23:18.939  🎨 Building HTML for 30 boards
-15:23:18.957  ✅ Boards summary rendered successfully
-15:23:18.957  📊 Total boards rendered: 30
-15:23:18.958  🔧 renderCutSequences called with data: Object
-15:23:18.958  🔧 Cut sequences count: 30
-15:23:18.959  ✅ Container found: 
-15:23:18.959  🎨 Building HTML with NEW DESIGN for 30 boards
-15:23:18.959  📋 Board 1: 13 steps
-15:23:18.960  📋 Board 2: 19 steps
-15:23:18.960  📋 Board 3: 4 steps
-15:23:18.960  📋 Board 4: 4 steps
-15:23:18.961  📋 Board 5: 4 steps
-15:23:18.961  📋 Board 6: 4 steps
-15:23:18.961  📋 Board 7: 4 steps
-15:23:18.961  📋 Board 8: 4 steps
-15:23:18.961  📋 Board 9: 4 steps
-15:23:18.961  📋 Board 10: 10 steps
-15:23:18.961  📋 Board 11: 10 steps
-15:23:18.962  📋 Board 12: 13 steps
-15:23:18.962  📋 Board 13: 13 steps
-15:23:18.962  📋 Board 14: 13 steps
-15:23:18.962  📋 Board 15: 13 steps
-15:23:18.963  📋 Board 16: 13 steps
-15:23:18.963  📋 Board 17: 4 steps
-15:23:18.963  📋 Board 18: 4 steps
-15:23:18.963  📋 Board 19: 4 steps
-15:23:18.963  📋 Board 20: 4 steps
-15:23:18.964  📋 Board 21: 4 steps
-15:23:18.964  📋 Board 22: 4 steps
-15:23:18.964  📋 Board 23: 4 steps
-15:23:18.964  📋 Board 24: 19 steps
-15:23:18.964  📋 Board 25: 4 steps
-15:23:18.964  📋 Board 26: 4 steps
-15:23:18.965  📋 Board 27: 4 steps
-15:23:18.965  📋 Board 28: 4 steps
-15:23:18.965  📋 Board 29: 4 steps
-15:23:18.965  📋 Board 30: 4 steps
-15:23:18.985  ✅ Cut sequences rendered successfully with NEW DESIGN
-15:23:18.985  📊 Total boards rendered: 30
-15:23:18.989  Finished rendering report
-15:23:18.989  ✓ renderReport() completed
-15:23:18.989  🏗️  Calling renderAssemblyViews()...
-15:23:18.990  DEBUG: Views keys: Array(6)
-15:23:18.990  DEBUG: Looking for Front, found: true
-15:23:18.990  DEBUG: Looking for Back, found: true
-15:23:18.990  DEBUG: Looking for Left, found: true
-15:23:18.990  DEBUG: Looking for Right, found: true
-15:23:18.990  DEBUG: Looking for Top, found: true
-15:23:18.990  DEBUG: Looking for Bottom, found: true
-15:23:19.013  DEBUG: Initializing report 3D viewer with geometry data
-15:23:19.013  ✓ renderAssemblyViews() completed
-15:23:19.013  ╔════════════════════════════════════════════════════════════════╗
-15:23:19.013  ║ RECEIVE DATA - COMPLETE                                        ║
-15:23:19.013  ╚════════════════════════════════════════════════════════════════╝
-15:23:19.018  Resizer initialized successfully
-15:23:19.019 walkin-closet_Interactive_Report.html:13599 [TABLE_CUSTOMIZATION] DOMContentLoaded fired
-15:23:19.947 walkin-closet_Interactive_Report.html:8947 showTab called: report
-15:23:19.961 walkin-closet_Interactive_Report.html:13602 [TABLE_CUSTOMIZATION] Initializing table customization...
-15:23:19.970 walkin-closet_Interactive_Report.html:13606 [TABLE_CUSTOMIZATION] Found 0 tables
-15:23:19.970 walkin-closet_Interactive_Report.html:13614 [TABLE_CUSTOMIZATION] Applying all table settings...
-15:23:19.970 walkin-closet_Interactive_Report.html:13616 [TABLE_CUSTOMIZATION] Global settings: Object
-15:23:19.970 walkin-closet_Interactive_Report.html:13643 [TABLE_CUSTOMIZATION] Successfully hooked into renderReport
-15:23:20.307 walkin-closet_Interactive_Report.html:13622 [TABLE_CUSTOMIZATION] Window load fired
-15:23:20.677 walkin-closet_Interactive_Report.html:9933 🔧 renderCutSequences called with data: Object
-15:23:20.677 walkin-closet_Interactive_Report.html:9934 🔧 Cut sequences count: 30
-15:23:20.677 walkin-closet_Interactive_Report.html:9943 ✅ Container found: <div id=​"cutSequencesContainer">​…​</div>​
-15:23:20.678 walkin-closet_Interactive_Report.html:9951 🎨 Building HTML with NEW DESIGN for 30 boards
-15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 1: 13 steps
-15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 2: 19 steps
-15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 3: 4 steps
-15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 4: 4 steps
-15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 5: 4 steps
-15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 6: 4 steps
-15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 7: 4 steps
-15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 8: 4 steps
-15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 9: 4 steps
-15:23:20.678 walkin-closet_Interactive_Report.html:9963 📋 Board 10: 10 steps
-15:23:20.679 walkin-closet_Interactive_Report.html:9963 📋 Board 11: 10 steps
-15:23:20.679 walkin-closet_Interactive_Report.html:9963 📋 Board 12: 13 steps
-15:23:20.679 walkin-closet_Interactive_Report.html:9963 📋 Board 13: 13 steps
-15:23:20.679 walkin-closet_Interactive_Report.html:9963 📋 Board 14: 13 steps
-15:23:20.679 walkin-closet_Interactive_Report.html:9963 📋 Board 15: 13 steps
-15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 16: 13 steps
-15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 17: 4 steps
-15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 18: 4 steps
-15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 19: 4 steps
-15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 20: 4 steps
-15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 21: 4 steps
-15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 22: 4 steps
-15:23:20.680 walkin-closet_Interactive_Report.html:9963 📋 Board 23: 4 steps
-15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 24: 19 steps
-15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 25: 4 steps
-15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 26: 4 steps
-15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 27: 4 steps
-15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 28: 4 steps
-15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 29: 4 steps
-15:23:20.681 walkin-closet_Interactive_Report.html:9963 📋 Board 30: 4 steps
-15:23:20.704 walkin-closet_Interactive_Report.html:10013 ✅ Cut sequences rendered successfully with NEW DESIGN
-15:23:20.704 walkin-closet_Interactive_Report.html:10014 📊 Total boards rendered: 30
-15:23:20.706 walkin-closet_Interactive_Report.html:13668 [TABLE_CUSTOMIZATION] reinitializeTableCustomization called
-15:23:20.839 walkin-closet_Interactive_Report.html:13672 [TABLE_CUSTOMIZATION] Loaded settings: Object
-15:23:20.840 walkin-closet_Interactive_Report.html:13678 [TABLE_CUSTOMIZATION] Applying all table settings...
-15:23:20.841 walkin-closet_Interactive_Report.html:13683 [TABLE_CUSTOMIZATION] Applied settings to 0 tables
-15:23:21.309 walkin-closet_Interactive_Report.html:13624 [TABLE_CUSTOMIZATION] Re-initializing on window load...
-15:23:37.846 walkin-closet_Interactive_Report.html:1 Unsafe attempt to load URL file:///C:/Users/Administrator/Downloads/walkin-closet_Interactive_Report.html from frame with URL file:///C:/Users/Administrator/Downloads/walkin-closet_Interactive_Report.html. 'file:' URLs are treated as unique security origins.
+# AutoNestCut Report
 
+**Generated:** 5/27/2026, 5:59:06 AM
+
+
+---
+
+## Overall Summary
+
+| Metric | Value |
+|--------|-------|
+| Total Parts Instances | 21 |
+| Total Unique Part Types | 10 |
+| Total Boards | 6 |
+| Overall Efficiency | 45.5% |
+| Total Project Weight | 77.50 kg |
+| **Total Project Cost** | **SAR1800.00** |
+
+## Materials Used
+
+| Material | Price per Sheet |
+|----------|----------------|
+| A06_Ruby_Spark | SAR300.00 |
+| C04_Amber_Sunshine | SAR300.00 |
+| No Material | SAR300.00 |
+
+## Unique Part Types
+
+| Name | Width (mm) | Height (mm) | Thickness (mm) | Material | Grain | Edge Banding | Qty | Total Area (m²) | Weight (kg) |
+|------|--------|---------|-----------|----------|-------|--------------|-----|-------------|-------------|
+| Back | 764.0 | 1164.0 | 5.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 | 1.3 | 3.96 |
+| Deck_B | 600.0 | 1164.0 | 18.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 | 1.0 | 11.20 |
+| Deck_T | 600.0 | 1164.0 | 18.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 | 1.0 | 11.20 |
+| Panel | 598.0 | 798.0 | 18.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 3 | 1.4 | 15.46 |
+| Plinth_Front | 600.0 | 100.0 | 18.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 | 0.2 | 1.94 |
+| Plinth_Side_L | 532.0 | 100.0 | 18.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 | 0.1 | 1.15 |
+| Plinth_Side_R | 532.0 | 100.0 | 18.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 | 0.1 | 1.15 |
+| Shelf | 575.0 | 1162.0 | 18.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 | 1.0 | 10.71 |
+| Side_L | 600.0 | 800.0 | 18.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 | 1.0 | 10.37 |
+| Side_R | 600.0 | 800.0 | 18.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 | 1.0 | 10.37 |
+
+## Sheet Inventory Summary
+
+| Material | Dimensions (mm) | Count | Total Area (m²) | Price/Sheet | Total Cost |
+|----------|-------------|-------|-------------|-------------|------------|
+| A06_Ruby_Spark | 2440.0 × 1220.0 | 1 | 3.0 | SAR300.00 | SAR300.00 |
+| C04_Amber_Sunshine | 2440.0 × 1220.0 | 1 | 3.0 | SAR300.00 | SAR300.00 |
+| No Material | 2440.0 × 1220.0 | 4 | 11.9 | SAR300.00 | SAR1200.00 |
+
+## Boards Summary
+
+### Board 1: No Material
+
+- **Size:** 2440.0 × 1220.0 mm
+- **Parts:** 5
+- **Efficiency:** 87.3%
+- **Waste:** 12.7%
+
+**Parts on this board:**
+
+| Part ID | Name | Dimensions (mm) | Material | Grain | Edge Banding |
+|---------|------|-------------|----------|-------|-------------|
+| P1 | Deck_B | 600.0 × 1164.0 | null | Any | None |
+| P2 | Deck_T | 600.0 × 1164.0 | null | Any | None |
+| P3 | Shelf | 575.0 × 1162.0 | null | Any | None |
+| P4 | Side_L | 600.0 × 800.0 | null | Any | None |
+| P5 | Plinth_Side_R | 532.0 × 100.0 | null | Any | None |
+
+### Board 2: No Material
+
+- **Size:** 2440.0 × 1220.0 mm
+- **Parts:** 8
+- **Efficiency:** 71.8%
+- **Waste:** 28.2%
+
+**Parts on this board:**
+
+| Part ID | Name | Dimensions (mm) | Material | Grain | Edge Banding |
+|---------|------|-------------|----------|-------|-------------|
+| P6 | Side_R | 600.0 × 800.0 | null | Any | None |
+| P7 | Side_L | 600.0 × 800.0 | null | Any | None |
+| P8 | Side_R | 600.0 × 800.0 | null | Any | None |
+| P9 | Panel | 598.0 × 798.0 | null | Any | None |
+| P10 | Plinth_Front | 600.0 × 100.0 | null | Any | None |
+| P11 | Plinth_Side_L | 532.0 × 100.0 | null | Any | None |
+| P12 | Plinth_Side_L | 532.0 × 100.0 | null | Any | None |
+| P13 | Plinth_Side_R | 532.0 × 100.0 | null | Any | None |
+
+### Board 3: No Material
+
+- **Size:** 2440.0 × 1220.0 mm
+- **Parts:** 4
+- **Efficiency:** 42.3%
+- **Waste:** 57.7%
+
+**Parts on this board:**
+
+| Part ID | Name | Dimensions (mm) | Material | Grain | Edge Banding |
+|---------|------|-------------|----------|-------|-------------|
+| P14 | Panel | 598.0 × 798.0 | null | Any | None |
+| P15 | Deck_B | 564.0 × 600.0 | null | Any | None |
+| P16 | Shelf | 562.0 × 575.0 | null | Any | None |
+| P17 | Plinth_Front | 100.0 × 1200.0 | null | Any | None |
+
+### Board 4: A06_Ruby_Spark
+
+- **Size:** 2440.0 × 1220.0 mm
+- **Parts:** 1
+- **Efficiency:** 11.4%
+- **Waste:** 88.6%
+
+**Parts on this board:**
+
+| Part ID | Name | Dimensions (mm) | Material | Grain | Edge Banding |
+|---------|------|-------------|----------|-------|-------------|
+| P18 | Deck_T | 564.0 × 600.0 | A06_Ruby_Spark | Any | None |
+
+### Board 5: C04_Amber_Sunshine
+
+- **Size:** 2440.0 × 1220.0 mm
+- **Parts:** 1
+- **Efficiency:** 16.0%
+- **Waste:** 84.0%
+
+**Parts on this board:**
+
+| Part ID | Name | Dimensions (mm) | Material | Grain | Edge Banding |
+|---------|------|-------------|----------|-------|-------------|
+| P19 | Panel | 598.0 × 798.0 | C04_Amber_Sunshine | Any | None |
+
+### Board 6: No Material
+
+- **Size:** 2440.0 × 1220.0 mm
+- **Parts:** 2
+- **Efficiency:** 44.4%
+- **Waste:** 55.6%
+
+**Parts on this board:**
+
+| Part ID | Name | Dimensions (mm) | Material | Grain | Edge Banding |
+|---------|------|-------------|----------|-------|-------------|
+| P20 | Back | 764.0 × 1164.0 | null | Any | None |
+| P21 | Back | 564.0 × 764.0 | null | Any | None |
+
+## Cut Sequences
+
+### Sheet 1: No Material
+
+**Stock Size:** 2440.0 x 1220.0 mm
+
+| Step | Operation | Description | Measurement |
+|------|-----------|-------------|-------------|
+| 1 | Setup | Prepare stock material | 2440.0 x 1220.0 mm |
+| 2 | Cut | Cut Deck_B - Length | 600.0 mm |
+| 3 | Cut | Cut Deck_B - Width | 1164.0 mm |
+| 4 | Edge Band | Apply edge banding to Deck_B | None () |
+| 5 | Cut | Cut Deck_T - Length | 600.0 mm |
+| 6 | Cut | Cut Deck_T - Width | 1164.0 mm |
+| 7 | Edge Band | Apply edge banding to Deck_T | None () |
+| 8 | Cut | Cut Shelf - Length | 575.0 mm |
+| 9 | Cut | Cut Shelf - Width | 1162.0 mm |
+| 10 | Edge Band | Apply edge banding to Shelf | None () |
+| 11 | Cut | Cut Side_L - Length | 600.0 mm |
+| 12 | Cut | Cut Side_L - Width | 800.0 mm |
+| 13 | Edge Band | Apply edge banding to Side_L | None () |
+| 14 | Cut | Cut Plinth_Side_R - Length | 532.0 mm |
+| 15 | Cut | Cut Plinth_Side_R - Width | 100.0 mm |
+| 16 | Edge Band | Apply edge banding to Plinth_Side_R | None () |
+
+### Sheet 2: No Material
+
+**Stock Size:** 2440.0 x 1220.0 mm
+
+| Step | Operation | Description | Measurement |
+|------|-----------|-------------|-------------|
+| 1 | Setup | Prepare stock material | 2440.0 x 1220.0 mm |
+| 2 | Cut | Cut Side_R - Length | 600.0 mm |
+| 3 | Cut | Cut Side_R - Width | 800.0 mm |
+| 4 | Edge Band | Apply edge banding to Side_R | None () |
+| 5 | Cut | Cut Side_L - Length | 600.0 mm |
+| 6 | Cut | Cut Side_L - Width | 800.0 mm |
+| 7 | Edge Band | Apply edge banding to Side_L | None () |
+| 8 | Cut | Cut Side_R - Length | 600.0 mm |
+| 9 | Cut | Cut Side_R - Width | 800.0 mm |
+| 10 | Edge Band | Apply edge banding to Side_R | None () |
+| 11 | Cut | Cut Panel - Length | 598.0 mm |
+| 12 | Cut | Cut Panel - Width | 798.0 mm |
+| 13 | Edge Band | Apply edge banding to Panel | None () |
+| 14 | Cut | Cut Plinth_Side_L - Length | 532.0 mm |
+| 15 | Cut | Cut Plinth_Side_L - Width | 100.0 mm |
+| 16 | Edge Band | Apply edge banding to Plinth_Side_L | None () |
+| 17 | Cut | Cut Plinth_Front - Length | 600.0 mm |
+| 18 | Cut | Cut Plinth_Front - Width | 100.0 mm |
+| 19 | Edge Band | Apply edge banding to Plinth_Front | None () |
+| 20 | Cut | Cut Plinth_Side_L - Length | 532.0 mm |
+| 21 | Cut | Cut Plinth_Side_L - Width | 100.0 mm |
+| 22 | Edge Band | Apply edge banding to Plinth_Side_L | None () |
+| 23 | Cut | Cut Plinth_Side_R - Length | 532.0 mm |
+| 24 | Cut | Cut Plinth_Side_R - Width | 100.0 mm |
+| 25 | Edge Band | Apply edge banding to Plinth_Side_R | None () |
+
+### Sheet 3: No Material
+
+**Stock Size:** 2440.0 x 1220.0 mm
+
+| Step | Operation | Description | Measurement |
+|------|-----------|-------------|-------------|
+| 1 | Setup | Prepare stock material | 2440.0 x 1220.0 mm |
+| 2 | Cut | Cut Panel - Length | 598.0 mm |
+| 3 | Cut | Cut Panel - Width | 798.0 mm |
+| 4 | Edge Band | Apply edge banding to Panel | None () |
+| 5 | Cut | Cut Deck_B - Length | 564.0 mm |
+| 6 | Cut | Cut Deck_B - Width | 600.0 mm |
+| 7 | Edge Band | Apply edge banding to Deck_B | None () |
+| 8 | Cut | Cut Shelf - Length | 562.0 mm |
+| 9 | Cut | Cut Shelf - Width | 575.0 mm |
+| 10 | Edge Band | Apply edge banding to Shelf | None () |
+| 11 | Cut | Cut Plinth_Front - Length | 100.0 mm |
+| 12 | Cut | Cut Plinth_Front - Width | 1200.0 mm |
+| 13 | Edge Band | Apply edge banding to Plinth_Front | None () |
+
+### Sheet 4: A06_Ruby_Spark
+
+**Stock Size:** 2440.0 x 1220.0 mm
+
+| Step | Operation | Description | Measurement |
+|------|-----------|-------------|-------------|
+| 1 | Setup | Prepare stock material | 2440.0 x 1220.0 mm |
+| 2 | Cut | Cut Deck_T - Length | 564.0 mm |
+| 3 | Cut | Cut Deck_T - Width | 600.0 mm |
+| 4 | Edge Band | Apply edge banding to Deck_T | None () |
+
+### Sheet 5: C04_Amber_Sunshine
+
+**Stock Size:** 2440.0 x 1220.0 mm
+
+| Step | Operation | Description | Measurement |
+|------|-----------|-------------|-------------|
+| 1 | Setup | Prepare stock material | 2440.0 x 1220.0 mm |
+| 2 | Cut | Cut Panel - Length | 598.0 mm |
+| 3 | Cut | Cut Panel - Width | 798.0 mm |
+| 4 | Edge Band | Apply edge banding to Panel | None () |
+
+### Sheet 6: No Material
+
+**Stock Size:** 2440.0 x 1220.0 mm
+
+| Step | Operation | Description | Measurement |
+|------|-----------|-------------|-------------|
+| 1 | Setup | Prepare stock material | 2440.0 x 1220.0 mm |
+| 2 | Cut | Cut Back - Length | 764.0 mm |
+| 3 | Cut | Cut Back - Width | 1164.0 mm |
+| 4 | Edge Band | Apply edge banding to Back | None () |
+| 5 | Cut | Cut Back - Length | 564.0 mm |
+| 6 | Cut | Cut Back - Width | 764.0 mm |
+| 7 | Edge Band | Apply edge banding to Back | None () |
+
+## Usable Offcuts
+
+| Sheet # | Material | Width (mm) | Height (mm) | Area (m²) |
+|---------|----------|------------|-------------|----------|
+| 1 | No Material | 1952.0 mm | 194.0 mm | 0.4 |
+| 2 | No Material | 1952.0 mm | 430.0 mm | 0.8 |
+| 3 | No Material | 1952.0 mm | 880.0 mm | 1.7 |
+| 4 | A06_Ruby_Spark | 1952.0 mm | 1352.0 mm | 2.6 |
+| 5 | C04_Amber_Sunshine | 1952.0 mm | 1281.0 mm | 2.5 |
+| 6 | No Material | 1952.0 mm | 849.0 mm | 1.7 |
+
+## Cut List & Part Details
+
+| ID | Name | Dimensions (mm) | Material | Grain | Edge Banding | Board # |
+|----|------|-------------|----------|-------|--------------|--------|
+| 117238 | Deck_B | 600.0 × 1164.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 1 |
+| 117270 | Deck_T | 600.0 × 1164.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 1 |
+| 117334 | Shelf | 575.0 × 1162.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 1 |
+| 117174 | Side_L | 600.0 × 800.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 1 |
+| 117142 | Plinth_Side_R | 532.0 × 100.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 1 |
+| 117628 | Side_R | 600.0 × 800.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 |
+| 117596 | Side_L | 600.0 × 800.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 |
+| 117206 | Side_R | 600.0 × 800.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 |
+| 117434 | Panel | 598.0 × 798.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 |
+| 117500 | Plinth_Front | 600.0 × 100.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 |
+| 117532 | Plinth_Side_L | 532.0 × 100.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 |
+| 117110 | Plinth_Side_L | 532.0 × 100.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 |
+| 117564 | Plinth_Side_R | 532.0 × 100.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 2 |
+| 117368 | Panel | 598.0 × 798.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 3 |
+| 117660 | Deck_B | 564.0 × 600.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 3 |
+| 117756 | Shelf | 562.0 × 575.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 3 |
+| 117078 | Plinth_Front | 100.0 × 1200.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 3 |
+| 117692 | Deck_T | 564.0 × 600.0 | A06_Ruby_Spark | Any | None | 4 |
+| 117790 | Panel | 598.0 × 798.0 | C04_Amber_Sunshine | Any | None | 5 |
+| 117302 | Back | 764.0 × 1164.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 6 |
+| 117724 | Back | 564.0 × 764.0 | Material1_22.0mm_grain_Any (22.0mm) | Any | None | 6 |
+
+## Cost Breakdown
+
+| Material | Sheets Required | Unit Cost | Total Cost |
+|----------|----------------|-----------|------------|
+| A06_Ruby_Spark | 1 | SAR300.00 | SAR300.00 |
+| C04_Amber_Sunshine | 1 | SAR300.00 | SAR300.00 |
+| No Material | 4 | SAR300.00 | SAR1200.00 |
+
+---
+
+*Report generated by AutoNestCut*
