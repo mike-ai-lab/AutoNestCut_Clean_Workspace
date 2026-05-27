@@ -50,6 +50,8 @@ module AutoNestCut
   require_relative 'exporters/label_generator'
   require_relative 'exporters/label_sheet_generator'
   require_relative 'ui/svg_export_ui'
+  require_relative 'ui/material_checker_ui'
+  require_relative 'processors/material_checker'
   require_relative 'scheduler'
   require_relative 'supabase_client'
   require_relative 'util'
@@ -670,6 +672,7 @@ module AutoNestCut
     menu = UI.menu('Extensions')
     autonest_menu = menu.add_submenu(EXTENSION_NAME)
 
+    autonest_menu.add_item('Material Check') { MaterialCheckerUI.show_dialog }
     autonest_menu.add_item('Generate Cut List') { run_extension_feature }
     autonest_menu.add_item('🎯 Flatten for CNC (SVG Export)') { show_svg_export_dialog }
     autonest_menu.add_item('🏷️ Generate QR Label Sheet') { show_label_sheet_generator }

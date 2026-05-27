@@ -64,7 +64,7 @@ module AutoNestCut
               y: (comp_data[:transform].origin.y * 25.4).round(2),
               z: (comp_data[:transform].origin.z * 25.4).round(2)
             },
-            material: part_temp.material,
+            material: comp_data[:material],  # face material only — already resolved
             definition: entity.definition,
             has_face_materials: comp_data[:has_face_materials]
           }
@@ -82,7 +82,7 @@ module AutoNestCut
               y: (comp_data[:transform].origin.y * 25.4).round(2),
               z: (comp_data[:transform].origin.z * 25.4).round(2)
             },
-            material: part_temp.material,
+            material: comp_data[:material],  # face material only — already resolved
             definition: comp_data[:definition],
             is_group: true,
             has_face_materials: comp_data[:has_face_materials]
@@ -121,12 +121,12 @@ module AutoNestCut
         
         next unless representative
         
-        detected_material = representative[:material]
+        detected_material = representative[:material]  # face material only — already resolved by deep_recursive_search
         entity = representative[:entity]
         
         next unless entity
         
-        # Create part_type using the actual entity, passing the detected material as override
+        # Create part_type using the actual entity, passing the face material as override
         part_type = AutoNestCut::Part.new(entity, detected_material)
         material_name = part_type.material
         thickness = part_type.thickness
@@ -196,90 +196,70 @@ module AutoNestCut
 
     private
 
-    # AGGRESSIVE DEEP RECURSIVE SEARCH - Goes through ALL nesting levels
-    # Processes BOTH components AND groups as valid sheet goods
-    # Only counts LEAF components (no children), never parent containers.
-    # inherited_material: the resolved material name from the nearest ancestor that had one,
-    # used as a fallback when a leaf has no material of its own.
-    def deep_recursive_search(entity, definition_counts, transformation = Geom::Transformation.new, is_root_selection = false, inherited_material = nil)
-      # Skip non-geometry entities silently (construction points, edges, guides, text)
+    # DEEP RECURSIVE SEARCH — face materials only, no inheritance, no fallback.
+    # Only leaf components (no nested children) that qualify as sheet goods are counted.
+    # The material used is ONLY what is painted on the faces inside the component definition.
+    def deep_recursive_search(entity, definition_counts, transformation = Geom::Transformation.new, is_root_selection = false, _inherited_material = nil)
       return unless entity.is_a?(Sketchup::ComponentInstance) || entity.is_a?(Sketchup::Group)
-      
+
       if entity.is_a?(Sketchup::ComponentInstance)
         definition = entity.definition
-        
-        # Resolve this instance's own material, then fall back to what was inherited
-        own_material = entity.material&.display_name || entity.material&.name
-        resolved_material = own_material || inherited_material
-        
-        # Check if this component has any nested components or groups
+
         has_nested_components = definition.entities.any? { |e| e.is_a?(Sketchup::ComponentInstance) || e.is_a?(Sketchup::Group) }
-        
+
         if !has_nested_components && Util.is_sheet_good?(definition.bounds)
           definition_counts[definition] ||= 0
           definition_counts[definition] += 1
-          
+
           combined_transform = transformation * entity.transformation
-          
+
           has_face_materials = definition.entities.any? do |e|
             e.is_a?(Sketchup::Face) && (e.material || e.back_material)
           end
-          
-          # Use face-dominant material if faces are painted, otherwise use resolved (instance or inherited)
-          effective_material = if has_face_materials
-            Util.get_dominant_material(definition) || resolved_material
-          else
-            resolved_material
-          end
-          
+
+          # Face-only material — the single source of truth
+          face_material = Util.get_dominant_material(definition)
+
           @original_components << {
-            entity: entity,
-            transform: combined_transform,
-            material: effective_material,
-            definition: definition,
+            entity:            entity,
+            transform:         combined_transform,
+            material:          face_material,
+            definition:        definition,
             has_face_materials: has_face_materials
           }
         end
-        
-        # Recurse into children, passing down the resolved material so grandchildren can inherit it
+
         component_transform = transformation * entity.transformation
-        definition.entities.each { |child| deep_recursive_search(child, definition_counts, component_transform, false, resolved_material) }
-        
+        definition.entities.each { |child| deep_recursive_search(child, definition_counts, component_transform, false, nil) }
+
       elsif entity.is_a?(Sketchup::Group)
-        own_material = entity.material&.display_name || entity.material&.name
-        resolved_material = own_material || inherited_material
-        
         has_nested_entities = entity.entities.any? { |e| e.is_a?(Sketchup::ComponentInstance) || e.is_a?(Sketchup::Group) }
-        
+
         if !has_nested_entities && Util.is_sheet_good?(entity.bounds)
           group_key = "GROUP_#{entity.entityID}"
           definition_counts[group_key] ||= 0
           definition_counts[group_key] += 1
-          
+
           combined_transform = transformation * entity.transformation
-          
+
           has_face_materials = entity.entities.any? do |e|
             e.is_a?(Sketchup::Face) && (e.material || e.back_material)
           end
-          
-          effective_material = if has_face_materials
-            Util.get_dominant_material(entity) || resolved_material
-          else
-            resolved_material
-          end
-          
+
+          face_material = Util.get_dominant_material(entity)
+
           @original_components << {
-            entity: entity,
-            transform: combined_transform,
-            material: effective_material,
-            definition: group_key,
+            entity:            entity,
+            transform:         combined_transform,
+            material:          face_material,
+            definition:        group_key,
             has_face_materials: has_face_materials,
-            is_group: true
+            is_group:          true
           }
         end
-        
+
         group_transform = transformation * entity.transformation
-        entity.entities.each { |child| deep_recursive_search(child, definition_counts, group_transform, false, resolved_material) }
+        entity.entities.each { |child| deep_recursive_search(child, definition_counts, group_transform, false, nil) }
       end
     end
     

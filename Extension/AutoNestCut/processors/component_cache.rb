@@ -6,18 +6,17 @@ module AutoNestCut
     
     def self.get_selection_hash(selection)
       selection.map do |e|
-        mat = e.respond_to?(:material) ? (e.material ? e.material.name : 'nil') : 'nil'
         defn_id = e.respond_to?(:definition) && e.definition ? e.definition.entityID : 'group'
-        # Include a recursive material fingerprint for nested entities
         nested_mat = get_nested_material_fingerprint(e)
-        "#{e.entityID}_#{defn_id}_#{mat}_#{nested_mat}"
+        "#{e.entityID}_#{defn_id}_#{nested_mat}"
       end.sort.join('|')
     end
 
-    # Recursively collects a lightweight fingerprint of all materials in nested entities
+    # Recursively collects a lightweight fingerprint of all materials in nested entities.
+    # Tracks face materials on leaf components — matching exactly what the analyzer reads.
     def self.get_nested_material_fingerprint(entity, depth = 0)
-      return '' if depth > 5 # Limit recursion depth for performance
-      
+      return '' if depth > 5
+
       entities = nil
       if entity.respond_to?(:definition) && entity.definition.respond_to?(:entities)
         entities = entity.definition.entities
@@ -25,15 +24,21 @@ module AutoNestCut
         entities = entity.entities
       end
       return '' unless entities
-      
+
       parts = []
       entities.each do |e|
-        next unless e.is_a?(Sketchup::ComponentInstance) || e.is_a?(Sketchup::Group)
-        mat = e.respond_to?(:material) ? (e.material ? e.material.name : 'nil') : 'nil'
-        parts << "#{e.entityID}:#{mat}"
-        parts << get_nested_material_fingerprint(e, depth + 1) if depth < 5
+        if e.is_a?(Sketchup::ComponentInstance) || e.is_a?(Sketchup::Group)
+          # Capture face material fingerprint for this child
+          child_entities = e.is_a?(Sketchup::ComponentInstance) && e.definition ?
+                             e.definition.entities : (e.respond_to?(:entities) ? e.entities : [])
+          face_mats = child_entities.select { |f| f.is_a?(Sketchup::Face) && (f.material || f.back_material) }
+                                    .map { |f| (f.material || f.back_material).name }
+                                    .sort.join(',')
+          parts << "#{e.entityID}:#{face_mats}"
+          parts << get_nested_material_fingerprint(e, depth + 1)
+        end
       end
-      parts.join(',')
+      parts.join('|')
     end
     
     def self.get_cached_analysis(selection)
